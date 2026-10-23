@@ -2,8 +2,9 @@
 
 Environment variables (Render → Environment):
   ACCESS_KEY         a password of your choice; the tracker asks for it once per browser
-  ANTHROPIC_API_KEY  Claude API key, used to read the uploaded documents
+  ANTHROPIC_API_KEY  OPTIONAL Claude API key (paid) to also read handwritten fard/tatima
   CLAUDE_MODEL       optional, default claude-opus-5-5
+  (Without ANTHROPIC_API_KEY the app runs in free mode: GPS overlay read by free OCR, handwriting not read.)
 """
 import hmac, html, os, time
 
@@ -103,8 +104,10 @@ def analyse():
            "village": f.get("villageD") or appd.get("village") or "", "applicant": f.get("applicant") or appd.get("name") or "",
            "area": f.get("areaProposed") or appd.get("area") or ""}
     ai, ai_err = (None, None)
-    if data.get("read_docs", True):
+    if os.environ.get("ANTHROPIC_API_KEY") and data.get("read_docs", True):
         ai, ai_err = engine.read_documents(pages, ctx)
+    else:
+        ai = engine.free_read(pages)
     rep = engine.analyse(appd, ai, ai_err)
     if skipped:
         engine.add(rep.sections[0], "amber", "Some documents could not be opened: " + "; ".join(skipped))

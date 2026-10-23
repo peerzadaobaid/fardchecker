@@ -449,6 +449,36 @@ Read them carefully and return ONLY a JSON object, no other text, in exactly thi
 Rules: areas are kanal/marla/sqft (1 kanal = 20 marla, 1 marla = 272.25 sqft); convert to marla numbers in *_marla fields. Read Urdu numerals carefully. Do NOT output Aadhaar, phone or any ID numbers. Be honest in "uncertain" rather than guessing."""
 
 
+_ocr = None
+
+
+def free_read(pages):
+    """Free mode (no API key): OCR the printed GPS overlay of a geotagged photo. Handwriting is not read."""
+    global _ocr
+    out = {"mode": "free", "photo": {"found": False}}
+    try:
+        import numpy as np
+        from PIL import Image
+        if _ocr is None:
+            from rapidocr_onnxruntime import RapidOCR
+            _ocr = RapidOCR()
+        for p in pages:
+            im = Image.open(io.BytesIO(base64.b64decode(p["data"]))).convert("RGB")
+            im.thumbnail((1200, 1200))
+            res, _ = _ocr(np.array(im))
+            txt = " ".join(r[1] for r in (res or []))
+            m = re.search(r"Lat(?:itude)?\s*[:.]?\s*(\d{1,2}\.\d{3,})\s*°?\s*[NS]?\s*,?\s*Lon(?:g(?:itude)?)?\s*[:.]?\s*(\d{2,3}\.\d{3,})", txt, re.I)
+            if not m or not (6 <= float(m.group(1)) <= 38 and 68 <= float(m.group(2)) <= 98):
+                continue
+            dt = re.search(r"(\d{1,2}/\d{1,2}/\d{4})\s*(\d{1,2}:\d{2}\s*[AP]M)?", txt, re.I)
+            out["photo"] = {"found": True, "lat": float(m.group(1)), "lng": float(m.group(2)),
+                            "datetime": " ".join(x for x in dt.groups() if x) if dt else "", "label": p["label"]}
+            break
+    except Exception as e:
+        out["error"] = f"OCR failed: {e}"
+    return out
+
+
 def read_documents(pages, ctx):
     key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
@@ -551,14 +581,13 @@ def analyse(app, ai=None, ai_error=None):
     ph = ai.get("photo") or {}
     lat = num(pf(f, "lat")) or num(ph.get("lat"))
     lng = num(pf(f, "lng")) or num(ph.get("lng"))
-    src = "Patwari report" if num(pf(f, "lat")) else ("photo overlay (read by AI)" if num(ph.get("lat")) else "")
+    free = ai.get("mode") == "free"
+    src = "Patwari report" if num(pf(f, "lat")) else (("photo overlay (" + ("read by free OCR" if free else "read by AI") + ")") if num(ph.get("lat")) else "")
     rep.point = None
     if lat is None or lng is None:
         add(s1, "amber", "No spot coordinates: latitude/longitude blank in the Patwari report and none read from a photo.",
             "Record latitude/longitude of the spot (geotagged photograph).", rep)
     else:
-        if lat < lng:  # sanity for J&K (lat ~32-36, lng ~73-80)
-            pass
         add(s1, "info", f"Coordinates {lat:.6f}, {lng:.6f} from {src}" + (f"; photo taken {esc(ph.get('datetime'))}" if ph.get("datetime") else "") + ".")
         if not num(pf(f, "lat")):
             add(s1, "amber", "Latitude/longitude fields are blank in the Patwari report although the photo carries them.",
@@ -578,7 +607,9 @@ def analyse(app, ai=None, ai_error=None):
                 add(s1, "info", f"The point falls in khasra {inside['khasra'] or '(unnumbered)'}.")
             else:
                 add(s1, "red", "The point is not inside this village's map.", "Geotag is outside the village — verify.", rep)
-    if ph.get("found"):
+    if ph.get("found") and free:
+        add(s1, "info", f"Land shown in the photo was not assessed (free mode) — compare it yourself with on-spot position “{pf(f, 'onspot') or '—'}”.")
+    elif ph.get("found"):
         add(s1, "info", f"Photo shows: {(ph.get('land_description') or '—').rstrip('.')}." + (" A person is standing on the plot." if ph.get("person_present") else ""))
         onspot = pf(f, "onspot")
         bu = (ph.get("built_up") or "").lower()
@@ -690,8 +721,29 @@ def analyse(app, ai=None, ai_error=None):
         # later mutations in favour/against applicant (AI-read)
         a_toks = name_tokens(applicant)
         rec_, giv_ = 0.0, 0.0
-        detail = []
+        detail, counted = [], set()
+        # portal "final mutation" rows where the applicant is the second party (recipient)
+        for r in final:
+            mn = next((first_num(v_) for k_, v_ in r.items() if re.search(r"mutation\s*no", k_, re.I)), "")
+            ty = next((v_ for k_, v_ in r.items() if re.search(r"type", k_, re.I)), "")
+            sp = next((v_ for k_, v_ in r.items() if re.search(r"second", k_, re.I)), "")
+            sp_t = name_tokens(sp)
+            if re.search(r"inherit|warasat", ty, re.I) or not (a_toks and sp_t and tok_match(sp_t[0], a_toks[0])):
+                continue
+            kk = next((num(v_) for k_, v_ in r.items() if re.fullmatch(r"\s*kanal\s*", k_, re.I)), None) or 0
+            mm = next((num(v_) for k_, v_ in r.items() if re.fullmatch(r"\s*marla\s*", k_, re.I)), None) or 0
+            sq = next((num(v_) for k_, v_ in r.items() if re.fullmatch(r"\s*sq\.?\s*ft\s*", k_, re.I)), None) or 0
+            got = 20 * kk + mm + sq / SQFT_PER_MARLA
+            if got:
+                rec_ += got
+                counted.add(mn)
+                detail.append(f"mutation {mn} ({ty}): received {km(got)} as per portal")
         for m_ in ai_muts:
+            if first_num(m_.get("number")) in counted:
+                if m_.get("from"):
+                    detail.append(f"breakup read from documents for mutation {m_.get('number')}: " + ", ".join(
+                        f"{t.get('name')} {km(num(t.get('area_marla'))) if num(t.get('area_marla')) is not None else '?'}" for t in m_["from"]))
+                continue
             to_me = any(a_toks and name_tokens(t.get("name")) and tok_match(name_tokens(t.get("name"))[0], a_toks[0]) for t in m_.get("to") or [])
             from_me = any(a_toks and name_tokens(t.get("name")) and tok_match(name_tokens(t.get("name"))[0], a_toks[0]) for t in m_.get("from") or [])
             if (m_.get("type") or "").startswith("inherit"):
@@ -706,7 +758,7 @@ def analyse(app, ai=None, ai_error=None):
                 giv_ += gv
                 detail.append(f"mutation {m_.get('number')}: gave {km(gv)}")
         if detail:
-            add(s3, "info", "Later transfers (read from documents): " + "; ".join(detail) + ".")
+            add(s3, "info", "Later transfers: " + "; ".join(detail) + ".")
         if holding is not None or rec_:
             total = (holding or 0) + rec_ - giv_
             add(s3, "info", f"Indicative holding in khasra {khasra}: inherited {km(holding or 0)} + received {km(rec_)} − given {km(giv_)} = <b>{km(total)}</b>.")
@@ -733,7 +785,13 @@ def analyse(app, ai=None, ai_error=None):
     # ── 4. Tatima / shaded portion
     s4 = rep.sec("Shaded portion (tatima) and Patwari's report")
     tt = ai.get("tatima") or {}
-    if tt.get("found"):
+    if free:
+        if applied is not None and cert_area is not None and abs(applied - cert_area) > 0.25:
+            add(s4, "amber", f"Area proposed ({km(applied)}) ≠ area on certificate ({km(cert_area)}).", "Reconcile area proposed with certificate area.", rep)
+        add(s4, "info", "Tatima and handwritten fard were not read (free mode) — check the shaded area, its side and dimensions on the tatima yourself"
+                        + (f"; the plot is about {p['m'].bounds[2] - p['m'].bounds[0]:.0f} m E–W × {p['m'].bounds[3] - p['m'].bounds[1]:.0f} m N–S" if p else "")
+                        + (f", so {km(applied)} is about {applied * MARLA_M2:.0f} m²" if applied else "") + ".")
+    elif tt.get("found"):
         add(s4, "info", f"Tatima reads: {tt.get('as_written') or '—'}; shaded side: {tt.get('shaded_side') or '—'}.")
         tot, sh, remn = num(tt.get("total_marla")), num(tt.get("shaded_marla")), num(tt.get("remaining_marla"))
         if jb and tot is not None and abs(tot - jb["area_marla"]) > 0.5:
@@ -797,6 +855,10 @@ def analyse(app, ai=None, ai_error=None):
         add(s4, "info", "Could not be read with confidence: " + "; ".join(map(str, ai["uncertain"]))[:600])
     if ai_error:
         add(rep.sections[0], "amber", ai_error)
+    if free:
+        add(rep.sections[0], "info", "Free mode: documents were scanned only for the printed GPS overlay. For handwritten fard/tatima, use “Copy case for Claude” and paste it into your Claude app with the documents.")
+        if ai.get("error"):
+            add(rep.sections[0], "amber", ai["error"])
     rep.p, rep.nbs, rep.jb, rep.v = p, nbs, jb, v
     return rep
 

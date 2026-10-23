@@ -8,3 +8,5 @@ pyproj==3.7.0
 pymupdf==1.24.13
 pillow==11.0.0
 requests==2.32.3
+rapidocr-onnxruntime==1.2.3
+onnxruntime==1.29.0
