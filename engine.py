@@ -67,6 +67,20 @@ def parse_area(text):
            (float(s.group(1)) / 9 if s else 0) + (float(f.group(1)) / SQFT_PER_MARLA if f else 0)
 
 
+def kn(s):
+    """Normalise a khasra number: '08' -> '8', '8 Min' -> '8min', ' 282 / 1 ' -> '282/1'."""
+    t = re.sub(r"\s+", "", str(s or "").lower())
+    t = re.sub(r"(?<!\d)0+(?=\d)", "", t)
+    return t.strip("/")
+
+
+def kparts(s):
+    """'828/301' -> (base '828', rest ['301']); '8min' -> ('8', ['min'])"""
+    t = kn(s)
+    nums = re.findall(r"\d+", t)
+    return (nums[0] if nums else ""), nums[1:], ("min" in t)
+
+
 def first_num(s):
     m = re.match(r"\s*(\d+)", str(s or ""))
     return m.group(1) if m else ""
@@ -179,6 +193,7 @@ def parse_jamabandi(path):
             "mut_no": mn or (kt_mut.get(cur_kt, ("", ""))[1]),
             "status": norm(g(r, "status")),
         }
+        cur_entry["khasra"] = ks = kn(ks)
         khasras.setdefault(ks, []).append(cur_entry)
     for kwid, txt in kw_owner.items():
         khewats.setdefault(kwid, {})["owners"] = txt
@@ -501,8 +516,9 @@ DIRS = ["North", "North-East", "East", "South-East", "South", "South-West", "Wes
 def parcel_for(v, khasra):
     if not v or not v["map"]:
         return None
+    khasra = kn(khasra)
     base = first_num(khasra) or str(khasra)
-    ps = [p for p in v["map"]["parcels"] if p["khasra"] == str(khasra)] or \
+    ps = [p for p in v["map"]["parcels"] if kn(p["khasra"]) == khasra] or \
          [p for p in v["map"]["parcels"] if p["khasra"] == base]
     if not ps:
         return None
@@ -543,8 +559,41 @@ def jb_info(v, khasra):
     if not v or not v["jb"]:
         return None
     ks = v["jb"]["khasras"]
-    k = str(khasra).strip()
+    k = kn(khasra)
     return ks.get(k) or ks.get(first_num(k))
+
+
+def khasra_family(v, khasra):
+    """All Jamabandi entries belonging to khasra K: K itself, K/1 K/2 sub-divisions, K min,
+    and new numbers carved out of K (e.g. 828/K, or old-khasra column = K)."""
+    if not v or not v["jb"]:
+        return []
+    K = first_num(kn(khasra))
+    if not K:
+        return []
+    out = []
+    for key, entries in v["jb"]["khasras"].items():
+        base, rest, is_min = kparts(key)
+        for e in entries:
+            old_nums = re.findall(r"\d+", kn(e.get("khasra_old")))
+            rel = None
+            if base == K and not rest and not is_min:
+                rel = "same number"
+            elif base == K and is_min:
+                rel = "part (min)"
+            elif base == K and rest:
+                rel = "sub-division of " + K
+            elif K in old_nums or (rest and rest[-1] == K and int(K) >= 10):
+                rel = "carved out of " + K
+            elif K in rest[:-1]:
+                rel = "carved out of " + K + " (via " + "/".join(rest) + ")"
+            if rel:
+                out.append(dict(e, relation=rel))
+    order = {"same number": 0, "part (min)": 1}
+    return sorted(out, key=lambda e: (order.get(e["relation"], 2), [int(x) for x in re.findall(r"\d+", e["khasra"])]))
+
+
+TRANSFER = re.compile(r"baya|bay'?a|sale|hiba|gift|tabadla|exchange|rehan|mortgage|lease|ijara|award|acquisition|hasool|sehat|family\s*settle|partition|taqseem|khangi", re.I)
 
 
 # ───────────────────────────── Owner / share parsing ─────────────────────────────
@@ -683,32 +732,64 @@ Rules: areas are kanal/marla/sqft (1 kanal = 20 marla, 1 marla = 272.25 sqft); c
 _ocr = None
 
 
+def _get_ocr():
+    global _ocr
+    if _ocr is None:
+        import onnxruntime as ort
+        import rapidocr_onnxruntime.utils as ru
+
+        class OneThread(ort.SessionOptions):          # Render free = a fraction of one CPU: avoid thread thrash
+            def __init__(self, *a, **k):
+                super().__init__(*a, **k)
+                self.intra_op_num_threads = 1
+                self.inter_op_num_threads = 1
+        ru.SessionOptions = OneThread
+        from rapidocr_onnxruntime import RapidOCR
+        _ocr = RapidOCR(use_angle_cls=False, det_model_path=None, det_limit_side_len=960, det_limit_type="max")
+    return _ocr
+
+
+GPS_RE = re.compile(r"Lat(?:itude)?\s*[:.]?\s*(\d{1,2}\.\d{3,})\s*°?\s*[NS]?\s*,?\s*Lon(?:g(?:itude)?)?\s*[:.]?\s*(\d{2,3}\.\d{3,})", re.I)
+
+
+def _colourfulness(im):
+    """Share of strongly coloured pixels — photos score high, scanned forms low."""
+    t = im.convert("HSV").resize((64, 64))
+    sat = list(t.getdata(1))
+    return sum(1 for x in sat if x > 70) / len(sat)
+
+
 def free_read(pages):
     """Free mode (no API key): OCR the printed GPS overlay of a geotagged photo. Handwriting is not read."""
-    global _ocr
     out = {"mode": "free", "photo": {"found": False}}
     try:
         import numpy as np
         from PIL import Image
-        if _ocr is None:
-            from rapidocr_onnxruntime import RapidOCR
-            _ocr = RapidOCR()
+        ocr = _get_ocr()
+        cands = []
         for p in pages:
             im = Image.open(io.BytesIO(base64.b64decode(p["data"]))).convert("RGB")
-            im.thumbnail((1100, 1100))
-            arr = np.array(im)
-            del im
-            res, _ = _ocr(arr)
-            del arr
-            trim_memory()
-            txt = " ".join(r[1] for r in (res or []))
-            m = re.search(r"Lat(?:itude)?\s*[:.]?\s*(\d{1,2}\.\d{3,})\s*°?\s*[NS]?\s*,?\s*Lon(?:g(?:itude)?)?\s*[:.]?\s*(\d{2,3}\.\d{3,})", txt, re.I)
-            if not m or not (6 <= float(m.group(1)) <= 38 and 68 <= float(m.group(2)) <= 98):
-                continue
-            dt = re.search(r"(\d{1,2}/\d{1,2}/\d{4})\s*(\d{1,2}:\d{2}\s*[AP]M)?", txt, re.I)
-            out["photo"] = {"found": True, "lat": float(m.group(1)), "lng": float(m.group(2)),
-                            "datetime": " ".join(x for x in dt.groups() if x) if dt else "", "label": p["label"]}
-            break
+            cands.append((_colourfulness(im), p, im))
+        cands.sort(key=lambda c: -c[0])
+        # photos first; plain scans (almost no colour) only if nothing found
+        tries = [c for c in cands if c[0] >= 0.08] + [c for c in cands if c[0] < 0.08]
+        for col, p, im in tries:
+            w, h = im.size
+            for box in ((0, int(h * 0.55), w, h), (0, 0, w, h)):   # bottom strip first, then whole page
+                crop = im.crop(box)
+                crop.thumbnail((1000, 1000))
+                res, _ = ocr(np.array(crop))
+                txt = " ".join(r[1] for r in (res or []))
+                m = GPS_RE.search(txt)
+                if m and 6 <= float(m.group(1)) <= 38 and 68 <= float(m.group(2)) <= 98:
+                    dt = re.search(r"(\d{1,2}/\d{1,2}/\d{4})\s*(\d{1,2}:\d{2}\s*[AP]M)?", txt, re.I)
+                    out["photo"] = {"found": True, "lat": float(m.group(1)), "lng": float(m.group(2)),
+                                    "datetime": " ".join(x for x in dt.groups() if x) if dt else "", "label": p["label"]}
+                    trim_memory()
+                    return out
+                if "gps" not in txt.lower() and box[1] > 0 and col < 0.08:
+                    break   # plain scan with no GPS text in the bottom strip: skip full-page OCR
+        trim_memory()
     except Exception as e:
         out["error"] = f"OCR failed: {e}"
     return out
@@ -769,7 +850,7 @@ def analyse(app, ai=None, ai_error=None):
     f = app.get("fields") or {}
     village = pf(f, "villageD") or norm(app.get("village"))
     khasra = pf(f, "cKhasra") if not is_pending(pf(f, "cKhasra")) else (pf(f, "aKhasra") or norm(app.get("khasra")))
-    khasra = norm(re.split(r"[,;]", khasra)[0]) if khasra else ""
+    khasra = kn(re.split(r"[,;]", khasra)[0]) if khasra else ""
     applicant = pf(f, "applicant") or norm(app.get("name"))
     owners_portal = pf(f, "owners") or pf(f, "ownRecords")
     parent_hint = ""
@@ -808,12 +889,89 @@ def analyse(app, ai=None, ai_error=None):
         add(s0, "info", f"Portal village “{village}” → folder villages/{v['name']} ({v.get('how', '')}): "
                         f"{len(v['jb']['khasras']) if v['jb'] else 0} khasras in Jamabandi, "
                         f"{len(v['map']['parcels']) if v['map'] else 0} parcels on map" + (f" from {v['map_source']}" if v.get('map_source') else "") + ".")
-        if v["jb"] and not jb:
-            add(s0, "red", f"Khasra {khasra} not found in the Jamabandi on file.", f"Check khasra number {khasra} — not in the village Jamabandi.", rep)
         if v["map"] and not p:
             add(s0, "amber", f"Khasra {khasra} not found on the village map (it may be an unnumbered parcel or a new sub-division).")
 
     # ── 1. Geotag
+    # ── Khasra family: K, K/1.., K min, numbers carved out of K
+    fam = khasra_family(v, khasra) if v else []
+    if v and v["jb"]:
+        K = first_num(khasra)
+        sf = rep.sec(f"Khasra {K} — all entries in the Jamabandi (sub-divisions, “min”, carved-out numbers)")
+        if not fam:
+            add(sf, "red", f"No entry for khasra {K} (or its sub-divisions) in the Jamabandi on file.",
+                f"Check khasra number {khasra} — not found in the village Jamabandi.", rep)
+        else:
+            if not jb:
+                jb = next((e for e in fam if e["relation"] == "same number"), fam[0])
+                jbs = [jb]
+            T = '<td style="padding:4px 6px;border-bottom:1px solid #eceef2;vertical-align:top">'
+            rows = ['<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px;margin:4px 0">'
+                    '<tr style="background:#f0f2f6"><th style="text-align:left;padding:4px 6px">Khasra</th><th style="text-align:left;padding:4px 6px">How related</th>'
+                    '<th style="text-align:left;padding:4px 6px">Khewat / Khata</th><th style="text-align:right;padding:4px 6px">Area</th>'
+                    '<th style="text-align:left;padding:4px 6px">Land type</th><th style="text-align:left;padding:4px 6px">Mutation</th>'
+                    '<th style="text-align:left;padding:4px 6px">Cultivator / possession</th></tr>']
+            total = alien = 0.0
+            alien_rows = []
+            for e in fam:
+                total += e["area_marla"] or 0
+                is_tr = bool(e["mut_type"]) and bool(TRANSFER.search(e["mut_type"])) and not re.search(r"inherit|warasat", e["mut_type"], re.I)
+                if is_tr:
+                    alien += e["area_marla"] or 0
+                    owners = v["jb"]["khewats"].get(e["khewat"], {}).get("owners", "")
+                    alien_rows.append((e, owners))
+                hl = "background:#fff7da;" if is_tr else ""
+                rows.append(f'<tr style="{hl}">{T}<b>{esc(e["khasra"])}</b>{(" <span style=color:#5b6475>(old " + esc(e["khasra_old"]) + ")</span>") if e.get("khasra_old") else ""}</td>'
+                            f'{T}{esc(e["relation"])}</td>{T}{esc(e["khewat_no"])} / {esc(e["khata_no"])}</td>'
+                            f'<td style="padding:4px 6px;border-bottom:1px solid #eceef2;text-align:right;white-space:nowrap">{km(e["area_marla"])}</td>'
+                            f'{T}{esc(e["qism"])}</td>{T}{esc((e["mut_no"] or "—") + (" " + e["mut_type"] if e["mut_type"] else ""))}</td>'
+                            f'{T}{esc(e["cultivator"][:140])}</td></tr>')
+            rows.append(f'<tr style="font-weight:700"><td colspan="3" style="padding:4px 6px">Total ({len(fam)} entr{"y" if len(fam) == 1 else "ies"})</td>'
+                        f'<td style="padding:4px 6px;text-align:right;white-space:nowrap">{km(total)}</td><td colspan="3"></td></tr></table></div>')
+            add(sf, "html", "".join(rows))
+            if applied is not None and applied > total + 0.25:
+                add(sf, "red", f"Area applied ({km(applied)}) is MORE than the whole recorded area of khasra {K} ({km(total)}).",
+                    f"Area applied {km(applied)} exceeds total area of khasra {K} ({km(total)}) — verify.", rep)
+            if len(fam) == 1:
+                add(sf, "info", f"Khasra {K} is not sub-divided in the Jamabandi: one entry of {km(total)}.")
+            else:
+                add(sf, "info", f"Khasra {K} appears as {len(fam)} entries: " + ", ".join(dict.fromkeys(e['khasra'] for e in fam)) + f"; total recorded area {km(total)}.")
+            if alien_rows:
+                add(sf, "info", f"Area that has passed by sale / gift / partition etc. (Jamabandi): <b>{km(alien)}</b> of {km(total)}:")
+                for e, owners in alien_rows:
+                    add(sf, "info", f"&nbsp;&nbsp;• {e['khasra']}: {km(e['area_marla'])} by mutation {e['mut_no'] or '—'} ({e['mut_type']}); possession: {e['cultivator'][:120] or '—'}; now owned by: {owner_entries(owners)[0][:90] if owners else '—'}"
+                        + (f" and {len(owner_entries(owners)) - 1} others" if owners and len(owner_entries(owners)) > 1 else ""))
+            else:
+                add(sf, "info", f"No sale / gift / partition mutation is recorded against khasra {K} in the Jamabandi on file (only {', '.join(sorted({e['mut_type'] or '—' for e in fam}))}).")
+            # portal mutations (who gave how much to whom)
+            pm = [r for r in ((app.get("mut") or {}).get("gist") or []) + ((app.get("mut") or {}).get("final") or [])
+                  if any(re.search(r"\d", str(x)) for x in r.values())]
+            for r in pm:
+                def g_(pat, r=r):
+                    return next((norm(v_) for k_, v_ in r.items() if re.search(pat, k_, re.I)), "")
+                q = 20 * (num(g_(r"^\s*kanal")) or 0) + (num(g_(r"^\s*marla")) or 0) + (num(g_(r"sq")) or 0) / SQFT_PER_MARLA
+                mno, mty, mdt = g_(r"mutation\s*no") or "—", g_(r"type") or "—", g_(r"date") or "—"
+                fp, sp = g_(r"first")[:160], g_(r"second")[:120]
+                add(sf, "info", f"Portal mutation {mno} ({mty}, {mdt}): by <b>{fp}</b> → in favour of <b>{sp}</b>; quantum {km(q) if q else '—'}.")
+                if q and q > total + 0.25:
+                    add(sf, "amber", f"Mutation {mno} quantum ({km(q)}) is more than the recorded area of khasra {K} ({km(total)}).",
+                        f"Mutation {mno} quantum {km(q)} exceeds khasra {K} area {km(total)} — check.", rep)
+            # map comparison
+            if v["map"]:
+                nums = {first_num(e["khasra"]) for e in fam} | {K}
+                on_map = [p_ for p_ in v["map"]["parcels"] if first_num(kn(p_["khasra"])) in nums]
+                if on_map:
+                    m2 = sum(p_["m"].area for p_ in on_map)
+                    diff = m2 / MARLA_M2 - total
+                    lvl = "green" if abs(diff) <= max(2, 0.08 * total) else "amber"
+                    add(sf, lvl, f"Map survey: parcel(s) {', '.join(sorted({kn(p_['khasra']) for p_ in on_map}, key=lambda x: int(first_num(x) or 0)))} measure "
+                                 f"{m2:.0f} m² ≈ {km(m2 / MARLA_M2)} vs Jamabandi {km(total)} (difference {km(diff) if diff >= 0 else '−' + km(-diff)}).")
+                    missing = sorted(nums - {first_num(kn(p_['khasra'])) for p_ in on_map}, key=lambda x: int(x))
+                    if missing:
+                        add(sf, "info", f"Not drawn separately on the map: {', '.join(missing)} (may lie inside the parent parcel).")
+                else:
+                    add(sf, "amber", f"Khasra {K} is not drawn on the village map.")
+
     s1 = rep.sec("Geotagged photograph")
     ph = ai.get("photo") or {}
     lat = num(pf(f, "lat")) or num(ph.get("lat"))
@@ -1087,13 +1245,12 @@ def analyse(app, ai=None, ai_error=None):
         add(s4, "amber", "Lambardar/Chowkidar statement still “Report Pending”.", "Record Lambardar/Chowkidar statement.", rep)
     mun = pf(f, "municipal")
     if mun and re.fullmatch(r"\s*(yes|no)\s*", mun, re.I):
-        add(s4, "info", f"“Within or outside Municipal limits” answered just “{mun}” — ambiguous.")
+        pass
     if ai.get("uncertain"):
         add(s4, "info", "Could not be read with confidence: " + "; ".join(map(str, ai["uncertain"]))[:600])
     if ai_error:
         add(rep.sections[0], "amber", ai_error)
     if free:
-        add(rep.sections[0], "info", "Free mode: documents were scanned only for the printed GPS overlay. For handwritten fard/tatima, use “Copy case for Claude” and paste it into your Claude app with the documents.")
         if ai.get("error"):
             add(rep.sections[0], "amber", ai["error"])
     rep.p, rep.nbs, rep.jb, rep.v = p, nbs, jb, v
@@ -1156,7 +1313,7 @@ def svg_map(rep, w=360, h=300):
 
 def render(rep):
     hd = rep.head
-    n_red = sum(1 for s in rep.sections for l, _ in s["items"] if l == "red")
+    n_red = sum(1 for s in rep.sections for l, _ in s["items"] if l == "red")  # html items ignored
     n_amb = sum(1 for s in rep.sections for l, _ in s["items"] if l == "amber")
     verdict = ("#b42318", f"{n_red} serious issue(s), {n_amb} to correct") if n_red else \
               (("#8a5300", f"{n_amb} point(s) to correct before issue") if n_amb else ("#145c36", "No issues found in the checks"))
@@ -1182,9 +1339,12 @@ def render(rep):
             continue
         h.append(f'<h3 style="font-size:15px;margin:14px 0 6px">{esc(s["title"])}</h3>')
         for lvl, text in s["items"]:
+            if lvl == "html":
+                h.append(text)
+                continue
             ic, col = ICON[lvl]
             # text may include <b> we added deliberately; escape everything else
-            safe = esc(text).replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
+            safe = esc(text).replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>").replace("&amp;nbsp;", "&nbsp;")
             h.append(f'<div style="margin:3px 0;color:{col if lvl != "info" else "#1d2330"}"><span style="color:{col}">{ic}</span> {safe}</div>')
     if rep.actions:
         seen, acts = set(), []

@@ -1915,7 +1915,7 @@
       ? new URL(f.replace(/^~\//, "/revenueplus/").replace(/\\/g, "/"), a).href
       : "";
   }
-  async function Ee(e, t) {
+  async function Ee(e, t, lab) {
     var a = await ye(e.appNo, e.svc);
     if (!a.row)
       throw new Error(
@@ -1924,10 +1924,20 @@
       );
     var r = await ue(a.row.form, a.baseUrl, [[a.row.btnName, a.row.btnValue]]),
       n = j(r.html),
-      i = F(n)[t];
+      allb = F(n),
+      byLab = lab
+        ? allb.filter(function (b) {
+            return D($(b)).toLowerCase() === D(lab).toLowerCase();
+          })
+        : [],
+      i = byLab.length === 1 ? byLab[0] : allb[t] || byLab[0];
     if (!i)
       throw new Error(
-        "Could not find this document button on the application page.",
+        "Could not find this document button on the application page (" +
+          allb.length +
+          " document buttons found: " +
+          allb.map($).join(", ") +
+          ").",
       );
     var o,
       s = i.form || i.closest("form") || n.forms[0],
@@ -2230,7 +2240,7 @@
         var d = list[i];
         st("Fetching document " + (i + 1) + " of " + list.length + ": " + d.label + " …");
         try {
-          var res = await Ee(e, d.i),
+          var res = await Ee(e, d.i, d.label),
             blob = res.blob.type ? res.blob : new Blob([res.blob], { type: res.type || "" });
           if (/zip/.test(res.type || blob.type)) throw new Error("ZIP skipped");
           if (size + blob.size > 30e6) throw new Error("too large to send");
@@ -3278,7 +3288,7 @@
                       '<div class="muted">Fetching document…</div>'),
                     (S.hidden = !1);
                   try {
-                    var i = await Ee(e, t.i),
+                    var i = await Ee(e, t.i, t.label),
                       o = i.type || i.blob.type || "",
                       s = i.blob.type
                         ? i.blob
