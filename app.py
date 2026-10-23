@@ -95,18 +95,17 @@ def analyse():
     t0 = time.time()
     data = request.get_json(force=True, silent=True) or {}
     appd = data.get("app") or {}
-    pages, skipped = [], []
-    for d in data.get("docs") or []:
+    pages, skipped, seen = [], [], set()
+    for d in data.pop("docs", None) or []:
         lab = d.get("label") or "Document"
         if not d.get("data"):
             skipped.append(f"{lab}: {d.get('error') or 'not fetched'}")
             continue
         try:
-            for pg in engine.doc_to_images(lab, d.get("type", ""), d["data"]):
-                if pg["hash"] not in {p["hash"] for p in pages}:
-                    pages.append(pg)
+            pages += engine.doc_to_images(lab, d.get("type", ""), d.pop("data"), seen=seen)
         except Exception as e:
             skipped.append(f"{lab}: {e}")
+    engine.trim_memory()
     f = appd.get("fields") or {}
     ctx = {"service": appd.get("service") or f.get("svcType") or "", "khasra": f.get("cKhasra") or appd.get("khasra") or "",
            "village": f.get("villageD") or appd.get("village") or "", "applicant": f.get("applicant") or appd.get("name") or "",
@@ -120,7 +119,9 @@ def analyse():
     if skipped:
         engine.add(rep.sections[0], "amber", "Some documents could not be opened: " + "; ".join(skipped))
     engine.add(rep.sections[0], "info", f"{len(pages)} distinct document page(s) read in {time.time() - t0:.0f} s.")
-    return jsonify(html=engine.render(rep), ai=ai)
+    out = jsonify(html=engine.render(rep), ai=ai)
+    engine.trim_memory()
+    return out
 
 
 LANDING = """<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

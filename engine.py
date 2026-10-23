@@ -582,38 +582,77 @@ def find_applicant_share(owner_text, applicant, parent_hint=""):
 
 
 # ───────────────────────────── Documents → images ─────────────────────────────
-def doc_to_images(label, mime, b64, max_side=1568):
+def trim_memory():
+    """Give freed memory back to the OS (glibc); keeps the Render free plan under its limit."""
+    import gc
+    gc.collect()
+    try:
+        import ctypes
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except Exception:
+        pass
+
+
+def doc_to_images(label, mime, b64, max_side=1400, seen=None):
+    """Render document pages one at a time (low memory), skipping duplicate pages early."""
+    import gc
     from PIL import Image
     raw = base64.b64decode(b64)
-    imgs = []
+    seen = seen if seen is not None else set()
+    out = []
+
+    def add_img(lab, im):
+        im = im.convert("RGB")
+        im.thumbnail((max_side, max_side))
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=80)
+        out.append({"label": lab, "data": base64.b64encode(buf.getvalue()).decode()})
+
     if "pdf" in (mime or "") or raw[:4] == b"%PDF":
         import fitz  # pymupdf
+        try:
+            fitz.TOOLS.store_maxsize = 20 * 1024 * 1024
+        except Exception:
+            pass
         doc = fitz.open(stream=raw, filetype="pdf")
+        del raw
         for i, page in enumerate(doc):
             if i >= 30:
                 break
-            zoom = min(2.0, max_side / max(page.rect.width, page.rect.height))
-            pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
-            imgs.append((f"{label} — page {i + 1}", Image.open(io.BytesIO(pix.tobytes("png"))).convert("RGB")))
+            # 1) tiny render to detect duplicate pages cheaply
+            tz = 48 / max(page.rect.width, page.rect.height)
+            tp = page.get_pixmap(matrix=fitz.Matrix(tz, tz), colorspace=fitz.csGRAY)
+            h = hashlib.md5(Image.frombytes("L", (tp.width, tp.height), tp.samples).resize((24, 24)).tobytes()).hexdigest()
+            del tp
+            if h in seen:
+                continue
+            seen.add(h)
+            # 2) real render at modest resolution
+            zoom = min(1.6, max_side / max(page.rect.width, page.rect.height))
+            pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), colorspace=fitz.csRGB, alpha=False)
+            im = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+            del pix
+            add_img(f"{label} — page {i + 1}", im)
+            del im
+            fitz.TOOLS.store_shrink(100)
+        doc.close()
+        trim_memory()
     else:
         try:
             im = Image.open(io.BytesIO(raw))
             frames = getattr(im, "n_frames", 1)
             for i in range(min(frames, 10)):
                 im.seek(i)
-                imgs.append((f"{label}" + (f" — page {i + 1}" if frames > 1 else ""), im.convert("RGB")))
+                fr = im.convert("RGB")
+                h = hashlib.md5(fr.convert("L").resize((24, 24)).tobytes()).hexdigest()
+                if h in seen:
+                    continue
+                seen.add(h)
+                add_img(f"{label}" + (f" — page {i + 1}" if frames > 1 else ""), fr)
         except Exception:
             return []
-    out, seen = [], set()
-    for lab, im in imgs:
-        im.thumbnail((max_side, max_side))
-        h = hashlib.md5(im.convert("L").resize((24, 24)).tobytes()).hexdigest()
-        if h in seen:
-            continue
-        seen.add(h)
-        buf = io.BytesIO()
-        im.save(buf, "JPEG", quality=82)
-        out.append({"label": lab, "hash": h, "data": base64.b64encode(buf.getvalue()).decode()})
+    for o in out:
+        o["hash"] = hashlib.md5(o["data"][:2000].encode()).hexdigest()
     return out
 
 
@@ -656,8 +695,12 @@ def free_read(pages):
             _ocr = RapidOCR()
         for p in pages:
             im = Image.open(io.BytesIO(base64.b64decode(p["data"]))).convert("RGB")
-            im.thumbnail((1200, 1200))
-            res, _ = _ocr(np.array(im))
+            im.thumbnail((1100, 1100))
+            arr = np.array(im)
+            del im
+            res, _ = _ocr(arr)
+            del arr
+            trim_memory()
             txt = " ".join(r[1] for r in (res or []))
             m = re.search(r"Lat(?:itude)?\s*[:.]?\s*(\d{1,2}\.\d{3,})\s*°?\s*[NS]?\s*,?\s*Lon(?:g(?:itude)?)?\s*[:.]?\s*(\d{2,3}\.\d{3,})", txt, re.I)
             if not m or not (6 <= float(m.group(1)) <= 38 and 68 <= float(m.group(2)) <= 98):

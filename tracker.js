@@ -1933,9 +1933,13 @@
       s = i.form || i.closest("form") || n.forms[0],
       l = i.getAttribute("href") || "",
       d = i.getAttribute("onclick") || "",
-      c = /__doPostBack\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]*)['"]/.exec(
-        l + " " + d,
-      ),
+      c =
+        /__doPostBack\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]*)['"]/.exec(
+          l + " " + d,
+        ) ||
+        /WebForm_PostBackOptions\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]*)['"]/.exec(
+          l + " " + d,
+        ),
       p = /open\(\s*['"]([^'"]+)['"]/.exec(d);
     if (c)
       o = await xe(s, r.url, [
@@ -2193,9 +2197,32 @@
         localStorage.setItem("rpApiKey", key);
       } catch (x) {}
     }
+    st("Connecting to the analyser …");
+    try {
+      var pr = await fetch(API + "/api/ping", { cache: "no-store" });
+      if (!pr.ok) throw new Error("HTTP " + pr.status);
+    } catch (err) {
+      st(
+        "Cannot reach the analyser at " +
+          API +
+          " from this page (" +
+          String((err && err.message) || err) +
+          "). If Render was asleep, wait 30–50 s and tap Run again. If it keeps failing, the portal is blocking the connection.",
+        !0,
+      );
+      acts.innerHTML = '<button id="rpaRe">Run again</button>';
+      y.getElementById("rpaRe").onclick = function () {
+        rpAnalyse(e, !0);
+      };
+      return;
+    }
+    var stage = "fetching documents";
     try {
       var list = (e.docs || []).filter(function (d) {
-          return !/^All documents/.test(d.label);
+          return (
+            !/^All documents/.test(d.label) &&
+            !/identity|aadhaar|aadhar|id proof|voter|pan card/i.test(d.label)
+          );
         }),
         docs = [],
         size = 0;
@@ -2214,6 +2241,7 @@
         }
         await C(400);
       }
+      stage = "sending to the analyser";
       st(
         "Reading " +
           docs.filter(function (d) {
@@ -2254,9 +2282,13 @@
       show(j.html);
     } catch (err) {
       st(
-        "Analysis failed: " +
+        "Analysis failed while " +
+          stage +
+          ": " +
           String((err && err.message) || err) +
-          ". If it says “Failed to fetch”, Render may be waking up (try again in 30 s) or the portal is blocking connections to the Render app.",
+          (stage === "sending to the analyser"
+            ? ". The analyser was reachable but dropped this request — usually it ran out of memory or time on Render. Tap Run again; if it repeats, send a screenshot of the Render Logs."
+            : "."),
         !0,
       );
       acts.innerHTML = '<button id="rpaRe">Run again</button>';
