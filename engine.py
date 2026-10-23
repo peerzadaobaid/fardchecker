@@ -50,21 +50,42 @@ def km(marla):
 
 
 def parse_area(text):
-    """'11 Marlas', '1K-5M', '0 kanal 11 marla 68 sqft', '05M 68sqfeet' -> marla (float) or None"""
-    t = str(text or "").lower()
+    """'11 Marlas', '1K-5M', '02k14m', '01k14', '01k', '0 kanal 11 marla 68 sqft', '05M 68sqfeet' -> marla (float) or None"""
+    t = str(text or "").lower().replace(",", " ")
     if not t or re.search(r"report\s*pending", t):
         return None
-    m = re.search(r"(\d+(?:\.\d+)?)\s*k(?:anal|nl)?\s*[-–/ ]\s*(\d+(?:\.\d+)?)\s*m", t)
+    f0 = re.search(r"(\d+(?:\.\d+)?)\s*(?:sq\.?\s*f(?:ee)?t|sqft|sqfeet|sft|square\s*feet)", t)
+    m = re.search(r"(\d+(?:\.\d+)?)\s*k(?:anal|nl|n)?s?\s*[-–/ ]\s*(\d+(?:\.\d+)?)\s*m", t)
     if m:
-        return 20 * float(m.group(1)) + float(m.group(2))
-    k = re.search(r"(\d+(?:\.\d+)?)\s*k(?:anal|nl)?\b", t)
-    mm = re.search(r"(\d+(?:\.\d+)?)\s*m(?:arla|arlas|rl)?\b", t)
-    s = re.search(r"(\d+(?:\.\d+)?)\s*s(?:arsai|rs)\b", t)
+        return 20 * float(m.group(1)) + float(m.group(2)) + (float(f0.group(1)) / SQFT_PER_MARLA if f0 else 0)
+    k = re.search(r"(\d+(?:\.\d+)?)\s*k(?:anal|nl|n)?s?(?![a-z])", t)
+    mm = re.search(r"(\d+(?:\.\d+)?)\s*m(?:arla|arlas|arala|rl)?s?(?![a-z])", t)
+    s_ = re.search(r"(\d+(?:\.\d+)?)\s*s(?:arsai|rs)(?![a-z])", t)
     f = re.search(r"(\d+(?:\.\d+)?)\s*(?:sq\.?\s*f(?:ee)?t|sqft|sqfeet|sft|square\s*feet)", t)
-    if not (k or mm or s or f):
+    if k and not mm:   # '01k14' → kanal followed by a bare number = marla
+        tail = re.match(r"\s*[-–/ ]?\s*(\d+(?:\.\d+)?)(?!\s*s(?:q|arsai|rs))", t[k.end():])
+        if tail:
+            return 20 * float(k.group(1)) + float(tail.group(1)) + (float(f.group(1)) / SQFT_PER_MARLA if f else 0)
+    if not (k or mm or s_ or f):
         return None
     return (20 * float(k.group(1)) if k else 0) + (float(mm.group(1)) if mm else 0) + \
-           (float(s.group(1)) / 9 if s else 0) + (float(f.group(1)) / SQFT_PER_MARLA if f else 0)
+           (float(s_.group(1)) / 9 if s_ else 0) + (float(f.group(1)) / SQFT_PER_MARLA if f else 0)
+
+def parse_date(s):
+    import datetime as _dt
+    s = norm(s)
+    for pat, fmts in ((r"\d{1,2}/\d{1,2}/\d{4}", ("%d/%m/%Y",)), (r"\d{1,2}[ -][A-Za-z]{3}[a-z]*[ -,]+\d{4}", ("%d %b %Y", "%d-%b-%Y")),
+                      (r"[A-Za-z]{3}[a-z]*\s+\d{1,2},?\s+\d{4}", ("%b %d %Y",))):
+        m = re.search(pat, s)
+        if m:
+            t = re.sub(r"[,]", "", m.group(0)).replace("-", " ")
+            t = re.sub(r"([A-Za-z]{3})[a-z]*", r"\1", t)
+            for f in fmts:
+                try:
+                    return _dt.datetime.strptime(t, f.replace("-", " "))
+                except Exception:
+                    pass
+    return None
 
 
 def kn(s):
@@ -91,6 +112,38 @@ def name_tokens(s):
             "son", "daughter", "wife", "of", "and", "r", "resident", "sakindeh", "sakin", "kaum",
             "pisar", "dukhter", "zoja", "byuh", "wd", "so", "do", "wo"}
     return [t for t in re.split(r"[^a-z]+", str(s or "").lower()) if t and t not in stop and len(t) > 1]
+
+
+ABBR = {"gh": "ghulam", "gul": "ghulam", "ghm": "ghulam", "mohd": "mohammad", "md": "mohammad", "mohmad": "mohammad",
+        "muhammad": "mohammad", "mohammed": "mohammad", "ab": "abdul", "abd": "abdul", "ali": "ali"}
+
+
+def name_key(s):
+    """'Gh Mohi ud din Wani' / 'ghulam mohuidin wani' -> comparable collapsed key"""
+    toks = [ABBR.get(t, t) for t in re.split(r"[^a-z]+", str(s or "").lower()) if t]
+    k = "".join(toks)
+    return re.sub(r"(.)\1+", r"\1", k.replace("uddin", "udin").replace("udeen", "udin").replace("uldin", "udin"))
+
+
+def parent_names(text):
+    """Names that follow 'son of / daughter of / s/o / d/o / w/o / pisar / dukhter' in a text."""
+    out = []
+    for m in re.finditer(r"(?:son|daughter|wife|widow)\s+of\s+|\b[sdw]/o\s*|\bpisar\s+|\bdukhter\s+", str(text or ""), re.I):
+        words = re.findall(r"[A-Za-z]+", text[m.end():m.end() + 60])[:4]
+        stop = {"as", "resident", "r", "kaum", "sakin", "sakindeh", "and", "in", "the", "is", "of", "caste"}
+        nm = []
+        for w_ in words:
+            if w_.lower() in stop:
+                break
+            nm.append(w_)
+        if nm:
+            out.append(" ".join(nm))
+    return out
+
+
+def same_name(a, b, cut=0.78):
+    ka, kb = name_key(a), name_key(b)
+    return bool(ka and kb) and (similar(ka, kb) >= cut or (len(ka) > 8 and (ka in kb or kb in ka)))
 
 
 def similar(a, b):
@@ -530,23 +583,41 @@ def parcel_for(v, khasra):
 
 
 def neighbours(v, p):
+    """Adjoining parcels with the compass side they lie on — taken from the direction the shared
+    boundary faces (outward normal), so long strips and diagonal plots get correct sides."""
+    from shapely.geometry.polygon import orient
+    from shapely.geometry import LineString
     t = p["m"]
-    c = t.centroid
+    polys = [orient(g_, 1.0) for g_ in getattr(t, "geoms", [t]) if g_.geom_type == "Polygon"]
+    segs = []
+    for pg in polys:
+        cs = list(pg.exterior.coords)
+        for (x1, y1), (x2, y2) in zip(cs, cs[1:]):
+            if (x1, y1) != (x2, y2):
+                segs.append(((x1, y1), (x2, y2), LineString([(x1, y1), (x2, y2)])))
     out = []
+    tb = t.buffer(1.5)
     for q in v["map"]["parcels"]:
-        if q is p or q["khasra"] == p["khasra"]:
+        if q is p or (q["khasra"] and q["khasra"] == p["khasra"]):
             continue
-        if not q["m"].intersects(t.buffer(1.5)):
+        if not q["m"].intersects(tb):
             continue
-        shared = q["m"].intersection(t.buffer(1.5)).length
+        zone = q["m"].buffer(1.5)
+        nx = ny = shared = 0.0
+        for (x1, y1), (x2, y2), ln in segs:
+            l_ = ln.intersection(zone).length
+            if l_ <= 0:
+                continue
+            L = math.hypot(x2 - x1, y2 - y1)
+            nx += (y2 - y1) / L * l_       # outward normal of a CCW ring = (dy, -dx)
+            ny += -(x2 - x1) / L * l_
+            shared += l_
         if shared < 1:
             continue
-        pt = q["m"].intersection(t.buffer(3)).centroid
-        ang = math.degrees(math.atan2(pt.x - c.x, pt.y - c.y)) % 360
+        ang = math.degrees(math.atan2(nx, ny)) % 360
         out.append({"khasra": q["khasra"] or "(no number)", "type": q["type"], "dir": DIRS[int(((ang + 22.5) % 360) // 45)],
                     "angle": ang, "shared_m": shared, "q": q})
     return sorted(out, key=lambda r: r["angle"])
-
 
 def locate_point(v, lat, lng, p):
     pm = Point(v["map"]["fwd"](lng, lat))
@@ -783,7 +854,9 @@ def free_read(pages):
                 m = GPS_RE.search(txt)
                 if m and 6 <= float(m.group(1)) <= 38 and 68 <= float(m.group(2)) <= 98:
                     dt = re.search(r"(\d{1,2}/\d{1,2}/\d{4})\s*(\d{1,2}:\d{2}\s*[AP]M)?", txt, re.I)
+                    pc = re.search(r"\b([23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,3})\b", txt.upper())
                     out["photo"] = {"found": True, "lat": float(m.group(1)), "lng": float(m.group(2)),
+                                    "pluscode": pc.group(1) if pc else "",
                                     "datetime": " ".join(x for x in dt.groups() if x) if dt else "", "label": p["label"]}
                     trim_memory()
                     return out
@@ -942,7 +1015,9 @@ def analyse(app, ai=None, ai_error=None):
                     add(sf, "info", f"&nbsp;&nbsp;• {e['khasra']}: {km(e['area_marla'])} by mutation {e['mut_no'] or '—'} ({e['mut_type']}); possession: {e['cultivator'][:120] or '—'}; now owned by: {owner_entries(owners)[0][:90] if owners else '—'}"
                         + (f" and {len(owner_entries(owners)) - 1} others" if owners and len(owner_entries(owners)) > 1 else ""))
             else:
-                add(sf, "info", f"No sale / gift / partition mutation is recorded against khasra {K} in the Jamabandi on file (only {', '.join(sorted({e['mut_type'] or '—' for e in fam}))}).")
+                kinds = sorted({e['mut_type'] for e in fam if e['mut_type']})
+                add(sf, "info", f"No sale / gift / partition mutation is recorded against khasra {K} in the Jamabandi on file"
+                                + (f" (only {', '.join(kinds)})." if kinds else " (no mutation reference at all — ownership as per settlement record)."))
             # portal mutations (who gave how much to whom)
             pm = [r for r in ((app.get("mut") or {}).get("gist") or []) + ((app.get("mut") or {}).get("final") or [])
                   if any(re.search(r"\d", str(x)) for x in r.values())]
@@ -972,6 +1047,76 @@ def analyse(app, ai=None, ai_error=None):
                 else:
                     add(sf, "amber", f"Khasra {K} is not drawn on the village map.")
 
+    # ── Application, Patwari report and remarks: consistency across the whole page
+    final = [r_ for r_ in ((app.get("mut") or {}).get("final") or []) if any(re.search(r"\w", str(x)) for x in r_.values())]
+    sc = rep.sec("Application, Patwari report and remarks")
+    hist = app.get("history") or []
+    if hist:
+        lines = []
+        for h_ in hist:
+            lines.append(f"{h_.get('date') or ''} — {h_.get('by') or ''}: {norm(h_.get('remark'))[:220]}")
+        add(sc, "info", "Movement: " + " | ".join(lines))
+    if jb:
+        for lab, key, want in (("Khewat", "aKhewat", jb["khewat_no"]), ("Khata", "aKhata", jb["khata_no"])):
+            for k2 in (key, "c" + key[1:]):
+                val = pf(f, k2)
+                if val and re.fullmatch(r"na|n/a|nil|-+|0", val, re.I):
+                    add(sc, "amber", f"{lab} entered as “{val}” ({'application' if k2 == key else 'certificate'}) though the Jamabandi has {lab.lower()} {want}.",
+                        f"Enter {lab.lower()} {want} instead of “{val}”.", rep)
+                    break
+    # alienated in khewat vs khasra
+    ak, akh = parse_area(pf(f, "alienKhewat")), parse_area(pf(f, "alienKhasra"))
+    if pf(f, "alienKhewat") and re.fullmatch(r"\s*0\s*", pf(f, "alienKhewat")):
+        ak = 0.0
+    if pf(f, "alienKhasra") and re.fullmatch(r"\s*0\s*", pf(f, "alienKhasra")):
+        akh = 0.0
+    if jb and v and v["jb"]:
+        kw_khasras = sorted({k for k, es in v["jb"]["khasras"].items() for e in es if e["khewat"] == jb["khewat"]})
+        transfers = [e for es in v["jb"]["khasras"].values() for e in es if e["khewat"] == jb["khewat"]
+                     and e["mut_type"] and TRANSFER.search(e["mut_type"]) and not re.search(r"inherit|warasat", e["mut_type"], re.I)]
+        if ak is not None and akh is not None and len(kw_khasras) == 1 and abs(ak - akh) > 0.25:
+            add(sc, "red", f"Report says {km(ak)} already alienated in the khewat but {km(akh)} in the khasra — khewat {jb['khewat_no']} contains only khasra {kw_khasras[0]}, so both must be the same.",
+                f"Rectify “area already alienated” (khewat {km(ak)} vs khasra {km(akh)}; khewat has only khasra {kw_khasras[0]}).", rep)
+        if ak and ak > 0.25 and not transfers:
+            add(sc, "amber", f"Report says {km(ak)} already alienated in khewat {jb['khewat_no']}, but the Jamabandi on file shows no sale/gift mutation in this khewat.",
+                f"Give the deed/mutation for the {km(ak)} already alienated.", rep)
+        skw, skh = parse_area(pf(f, "shareKhewat")), parse_area(pf(f, "shareKhasra"))
+        kw_area = v["jb"]["khewats"].get(jb["khewat"], {}).get("area_marla")
+        if skw is not None and kw_area and len(owner_entries(v["jb"]["khewats"].get(jb["khewat"], {}).get("owners", ""))) == 1 and abs(skw - kw_area) > 0.25:
+            add(sc, "amber", f"Share in khewat stated {km(skw)}; Jamabandi khewat {jb['khewat_no']} (single owner) is {km(kw_area)}.", "Reconcile share in khewat with Jamabandi.", rep)
+        if skh is not None and applied is not None and applied > skh + 0.25:
+            add(sc, "red", f"Area proposed ({km(applied)}) exceeds the applicant's stated share in the khasra ({km(skh)}).", "Area proposed exceeds share in khasra.", rep)
+    # possession
+    poss = pf(f, "possession")
+    cult = (jb or {}).get("cultivator", "")
+    rem_poss = [h_ for h_ in hist if re.search(r"possession|kashtkar|cultivat|girdawari", norm(h_.get("remark")), re.I)]
+    if re.match(r"\s*yes", poss, re.I) and rem_poss:
+        add(sc, "amber", f"Report says applicant is in possession, but a remark says: “{norm(rem_poss[0].get('remark'))[:200]}” ({rem_poss[0].get('by')}).",
+            "Clarify possession: report says “Yes” but remarks/Girdawari show another kashtkar.", rep)
+    if cult and not re.search(r"khud\s*kasht|self", cult, re.I) and re.match(r"\s*yes", poss, re.I):
+        add(sc, "info", f"Jamabandi cultivator column: “{cult[:120]}” — check against “applicant in possession: Yes”.")
+    # vendee relation to occupier
+    vparent = pf(f, "vendeeParent")
+    if vparent:
+        for h_ in rem_poss + ([{"remark": cult, "by": "Jamabandi cultivator column"}] if cult else []):
+            if any(same_name(vparent, pn) for pn in parent_names(h_.get("remark"))):
+                add(sc, "info", f"Vendee {pf(f, 'vendee') or ''} (d/o or s/o {vparent}) shares her parentage with the person shown in possession ({h_.get('by')}) — "
+                                "the vendee appears to be of the occupier's family; the sale may regularise existing possession. Verify the possession position before issue.")
+                break
+    # land type vs urban / eligibility
+    agri = jb and re.search(r"abi|abe|aabi|wari|bagh|baag|maidan|medani|khushk|nehri|chahi", jb["qism"], re.I)
+    if agri and (re.search(r"urban", pf(f, "areaType"), re.I) or re.match(r"\s*yes", pf(f, "municipal"), re.I)):
+        add(sc, "info", f"Land is agricultural ({jb['qism']}) and shown as Urban / within municipal limits — check land-use (conversion) requirements before alienation.")
+    if pf(f, "vendee") and agri and re.search(r"^\s*(nil|none|0)\s*$", pf(f, "landUT"), re.I):
+        add(sc, "info", f"Vendee owns no land in the UT (occupation: {pf(f, 'vendeeOcc') or '—'}) — verify eligibility to purchase agricultural land under the transfer restrictions (J&K Land Revenue Act s.133-B).")
+    av = pf(f, "vendeeAadhaarOk")
+    if av == "invalid":
+        add(sc, "red", "Vendee's Aadhaar number on the portal fails the Aadhaar check-digit test — it is mistyped or not genuine.", "Correct the vendee's Aadhaar number.", rep)
+    elif av == "valid":
+        add(sc, "green", "Vendee's Aadhaar number passes the Aadhaar check-digit test (format only — confirm with the QR code).")
+    if final and all(re.search(r"nil|na", " ".join(map(str, r_.values())), re.I) for r_ in final):
+        add(sc, "info", "Final mutation entered as NILL/NA (ownership from Misl Haqiyat / pre-settlement) — consistent only if the Jamabandi shows the applicant as owner.")
+
     s1 = rep.sec("Geotagged photograph")
     ph = ai.get("photo") or {}
     lat = num(pf(f, "lat")) or num(ph.get("lat"))
@@ -979,6 +1124,7 @@ def analyse(app, ai=None, ai_error=None):
     free = ai.get("mode") == "free"
     src = "Patwari report" if num(pf(f, "lat")) else (("photo overlay (" + ("read by free OCR" if free else "read by AI") + ")") if num(ph.get("lat")) else "")
     rep.point = None
+    rep.geo = (lat, lng) if lat is not None and lng is not None else None
     if lat is None or lng is None:
         add(s1, "amber", "No spot coordinates: latitude/longitude blank in the Patwari report and none read from a photo.",
             "Record latitude/longitude of the spot (geotagged photograph).", rep)
@@ -1002,6 +1148,29 @@ def analyse(app, ai=None, ai_error=None):
                 add(s1, "info", f"The point falls in khasra {inside['khasra'] or '(unnumbered)'}.")
             else:
                 add(s1, "red", "The point is not inside this village's map.", "Geotag is outside the village — verify.", rep)
+    if ph.get("found") and ph.get("pluscode") and lat is not None:
+        try:
+            import pluscode
+            plat, plng, _ = pluscode.recover(ph["pluscode"], lat, lng)
+            dpc = math.hypot((plat - lat) * 111000, (plng - lng) * 111000 * math.cos(math.radians(lat)))
+            if dpc <= 200:
+                add(s1, "green", f"Plus Code on the photo ({ph['pluscode']}) agrees with the printed lat/long ({dpc:.0f} m apart — normal for the camera app's address line).")
+            else:
+                add(s1, "red", f"Plus Code on the photo ({ph['pluscode']}) points {dpc:.0f} m away from the printed lat/long — the overlay may have been edited or the location set manually.",
+                    "Geotag overlay inconsistent (Plus Code vs lat/long) — get a fresh geotagged photo in presence of Patwari.", rep)
+        except Exception:
+            pass
+    if ph.get("found") and ph.get("datetime"):
+        pdt, adt = parse_date(ph["datetime"]), parse_date(app.get("appDate") or "")
+        if pdt and adt:
+            gap = (adt - pdt).days
+            if gap > 60:
+                add(s1, "amber", f"Photo is dated {pdt:%d %b %Y}, {gap} days before the application — not a recent spot photo.", "Get a recent geotagged photo of the spot.", rep)
+            elif gap < -1:
+                add(s1, "info", f"Photo dated {pdt:%d %b %Y}, after the application date (taken during processing).")
+    if ph.get("found"):
+        add(s1, "info", "Note: the GPS stamp is text drawn on the picture by a camera app; it can be faked with location-spoofing or edited. "
+                        "Rely on it only when the Plus Code, the mini-map and the scene agree, or have the Patwari capture the photo himself.")
     if ph.get("found") and free:
         add(s1, "info", f"Land shown in the photo was not assessed (free mode) — compare it yourself with on-spot position “{pf(f, 'onspot') or '—'}”.")
     elif ph.get("found"):
@@ -1229,6 +1398,11 @@ def analyse(app, ai=None, ai_error=None):
         rep.neigh_rows = rows
     else:
         rep.neigh_rows = []
+    if nbs:
+        have = {n_["dir"] for n_ in nbs}
+        empty = [d for d in ("North", "East", "South", "West") if not any(d in x for x in have)]
+        if empty:
+            add(s4, "info", f"No parcel is drawn against the {', '.join(empty)} side(s) on the map — likely a road, nallah or unmapped land; Patwari should state what bounds it there.")
     pend = [d for d, r in adj.items() if is_pending((r or {}).get("khasra")) or is_pending((r or {}).get("owner"))]
     if adj and pend:
         sugg = "; ".join(f"{n_['dir']} {n_['khasra']}" for n_ in nbs) if nbs else ""
@@ -1259,6 +1433,51 @@ def analyse(app, ai=None, ai_error=None):
 
 # ───────────────────────────── Rendering ─────────────────────────────
 ICON = {"red": ("●", "#b42318"), "amber": ("▲", "#8a5300"), "green": ("✓", "#145c36"), "info": ("ℹ", "#5b6475")}
+
+
+def coords_block(rep):
+    p = rep.p
+    if not p:
+        return ""
+    import urllib.parse
+    g = p["geom"]
+    c = g.representative_point()
+    sat = lambda la, lo: f"https://www.google.com/maps/@?api=1&map_action=map&center={la:.6f},{lo:.6f}&zoom=20&basemap=satellite"
+    pin = lambda la, lo: f"https://www.google.com/maps/search/?api=1&query={la:.6f},{lo:.6f}"
+    a = 'style="color:#12355b;font-weight:600"'
+    rows = [f'<div style="background:#fff;border:1px solid #e1e4ea;border-radius:10px;padding:10px 12px;margin:6px 0 10px;font-size:13px">'
+            f'<b>Exact location</b><div style="margin-top:4px">Khasra {esc(p["khasra"])} centre: <code>{c.y:.6f}, {c.x:.6f}</code> · '
+            f'<a {a} href="{sat(c.y, c.x)}" target="_blank" rel="noopener">Open in Google Maps (satellite)</a></div>']
+    if getattr(rep, "geo", None):
+        la, lo = rep.geo
+        rows.append(f'<div>Geotag of photo: <code>{la:.6f}, {lo:.6f}</code> · <a {a} href="{pin(la, lo)}" target="_blank" rel="noopener">Show point in Google Maps</a></div>')
+    simp = g.simplify(0.000004, preserve_topology=True)
+    ring = list((simp.geoms[0] if hasattr(simp, "geoms") else simp).exterior.coords)[:-1]
+    if 3 <= len(ring) <= 40:
+        pts = " · ".join(f"P{i + 1} {y:.6f}, {x:.6f}" for i, (x, y) in enumerate(ring))
+        rows.append(f'<details style="margin-top:4px"><summary style="cursor:pointer">Boundary points of khasra {esc(p["khasra"])} ({len(ring)})</summary>'
+                    f'<div style="font:12px/1.6 ui-monospace,monospace;color:#3b4456">{esc(pts)}</div></details>')
+    # KML (khasra + neighbours + geotag) as a download
+    def kml_poly(name, geom, colour):
+        out = ""
+        for pg in getattr(geom, "geoms", [geom]):
+            if pg.geom_type != "Polygon":
+                continue
+            cs = " ".join(f"{x:.7f},{y:.7f},0" for x, y in pg.exterior.coords)
+            out += (f"<Placemark><name>{esc(name)}</name><Style><LineStyle><color>{colour}</color><width>3</width></LineStyle>"
+                    f"<PolyStyle><fill>0</fill></PolyStyle></Style><Polygon><outerBoundaryIs><LinearRing><coordinates>{cs}</coordinates>"
+                    f"</LinearRing></outerBoundaryIs></Polygon></Placemark>")
+        return out
+    kml = '<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>'
+    kml += kml_poly(f"Khasra {p['khasra']}", g, "ff00d4ff")
+    for n_ in rep.nbs:
+        kml += kml_poly(f"Khasra {n_['khasra']}", n_["q"]["geom"], "ffb0b0b0")
+    if getattr(rep, "geo", None):
+        kml += f"<Placemark><name>Geotag</name><Point><coordinates>{rep.geo[1]:.7f},{rep.geo[0]:.7f},0</coordinates></Point></Placemark>"
+    kml += "</Document></kml>"
+    href = "data:application/vnd.google-earth.kml+xml;charset=utf-8," + urllib.parse.quote(kml)
+    rows.append(f'<div style="margin-top:4px"><a {a} download="khasra_{esc(p["khasra"])}.kml" href="{href}">Download KML (open in Google Earth)</a></div></div>')
+    return "".join(rows)
 
 
 def svg_map(rep, w=360, h=300):
@@ -1305,6 +1524,12 @@ def svg_map(rep, w=360, h=300):
     if pt is not None and p["m"].distance(pt) < 300:
         x, y = P(pt.x, pt.y)
         out.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="6" fill="#c62828" stroke="#fff" stroke-width="2"/>')
+    # scale bar (round number of metres ≈ 1/4 of width)
+    want = (w / 4) / s
+    step = next((x for x in (5, 10, 20, 25, 50, 100, 200, 250, 500, 1000) if x >= want), 1000)
+    bl = step * s
+    out.append(f'<path d="M10,{h - 12} h{bl:.1f}" stroke="#3b4456" stroke-width="3"/>'
+               f'<text x="{10 + bl / 2:.1f}" y="{h - 16}" font-size="10" text-anchor="middle" fill="#3b4456">{step} m</text>')
     out.append(f'<text x="{w - 14}" y="18" font-size="12" font-weight="700" fill="#3b4456" text-anchor="middle">N</text>'
                f'<path d="M{w - 14},22 L{w - 18},32 L{w - 10},32 Z" fill="#3b4456"/>')
     out.append("</svg>")
@@ -1334,6 +1559,7 @@ def render(rep):
                          f'<td style="padding:4px;border-bottom:1px solid #eceef2">{esc(t)}{("<br><span style=color:#5b6475>" + esc(c) + "</span>") if c else ""}</td></tr>')
             h.append("</table></div>")
         h.append("</div>")
+    h.append(coords_block(rep))
     for s in rep.sections:
         if not s["items"]:
             continue
