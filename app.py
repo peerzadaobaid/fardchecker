@@ -61,7 +61,7 @@ def ping():
 def villages():
     if not ok_key():
         return jsonify(error="Wrong or missing access key"), 401
-    return jsonify(engine.village_status())
+    return jsonify(engine.village_status(request.args.get("check")))
 
 
 @app.get("/api/khasra")
@@ -132,12 +132,20 @@ input{{font:inherit;padding:8px;border:1px solid #c9ced8;border-radius:8px}}
 <textarea readonly id="bmt">{bm_text}</textarea><button onclick="navigator.clipboard.writeText(document.getElementById('bmt').value);this.textContent='Copied ✓'">Copy bookmark code</button>
 <p class="m">First tap after a while may take ~30–50 s while Render wakes up.</p></div>
 <div class="c"><h2>2 · Use</h2><p>Log in to Revenue Plus → Dashboard → choose service type → View → tap <b>RP Tracker</b> → scan. Open an application row and tap <b>Analyse with village records</b>. The first time it asks for the access key (set as ACCESS_KEY on Render).</p></div>
-<div class="c"><h2>3 · Village data</h2><p class="m">In GitHub, folder <code>villages/&lt;Village name&gt;/</code> with the Jamabandi .xlsx and the shapefile (.shp .shx .dbf .prj). Folder name should match the village name on the portal.</p>
-<p><input id="k" placeholder="Access key" type="password"> <button onclick="load()">Show loaded villages</button></p><div id="vs"></div></div>
+<div class="c"><h2>3 · Village data</h2><p class="m">One folder per village in GitHub: <code>villages/&lt;Village name&gt;/</code> with the Jamabandi .xlsx and the shapefile (.shp .shx .dbf .prj). To add a village, open the <code>villages</code> folder on GitHub → Add file → Upload files → drag the whole village folder. Optional <code>aliases.txt</code> (one spelling per line) if the portal spells the village differently. A tehsil-wide shapefile with a Village column can go in <code>villages/_maps/</code> instead of a shapefile per village.</p>
+<p><input id="k" placeholder="Access key" type="password"> <button onclick="load()">Show villages</button> <button onclick="all_()" style="background:#12355b">Check all</button></p><div id="vs"></div></div>
 <script>
-async function load(){{var k=document.getElementById('k').value;var r=await fetch('/api/villages?key='+encodeURIComponent(k));var d=await r.json();
+var done={{}};function esc(s){{return String(s==null?'':s).replace(/[&<>"]/g,function(c){{return{{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}}[c]}})}}
+async function all_(){{await load();var names=Array.from(document.querySelectorAll('button[data-v]')).map(function(b){{return b.dataset.v}});for(var i=0;i<names.length;i++){{await load(names[i])}}}}
+async function load(chk){{var k=document.getElementById('k').value;var r=await fetch('/api/villages?key='+encodeURIComponent(k)+(chk?'&check='+encodeURIComponent(chk):''));var d=await r.json();
 if(!r.ok){{document.getElementById('vs').textContent=d.error;return}}
-document.getElementById('vs').innerHTML='<table><tr><th>Village</th><th>Khasras (Jamabandi)</th><th>Parcels (map)</th><th>Problems</th></tr>'+d.map(function(v){{return '<tr><td>'+v.village+'</td><td>'+v.khasras_jamabandi+'</td><td>'+v.parcels_map+'</td><td class=m>'+(v.errors.join('; ')||'—')+'</td></tr>'}}).join('')+'</table>'}}
+var h='<p class=m>'+d.villages.length+' village folders'+(d.shared_maps.length?' · shared maps: '+esc(d.shared_maps.join(', ')):'')+'</p>';
+if(Object.keys(d.clashes).length)h+='<p style="color:#b42318">Name clash (same spelling in two folders): '+esc(JSON.stringify(d.clashes))+'</p>';
+d.villages.forEach(function(v){{if(v.checked)done[v.village]=v}});d.villages=d.villages.map(function(v){{return done[v.village]||v}});
+h+='<table><tr><th>Village folder</th><th>Jamabandi</th><th>Shapefile</th><th>Check</th></tr>'+d.villages.map(function(v){{
+var c=v.checked?('<b>'+v.khasras_jamabandi+'</b> khasras · <b>'+v.parcels_map+'</b> parcels'+(v.errors.length?'<div style="color:#b42318">'+esc(v.errors.join('; '))+'</div>':'<div style="color:#145c36">OK</div>')+(v.on_map_not_in_jb.length?'<div class=m>On map, not in Jamabandi: '+esc(v.on_map_not_in_jb.join(', '))+'</div>':'')):'<button data-v="'+esc(v.village)+'">Check</button>';
+return '<tr><td>'+esc(v.village)+'<div class=m>matches: '+esc(v.aliases.join(', '))+'</div></td><td class=m>'+esc(v.jamabandi||'— missing')+'</td><td class=m>'+esc(v.shapefile||'— missing')+'</td><td>'+c+'</td></tr>'}}).join('')+'</table>';
+var el=document.getElementById('vs');el.innerHTML=h;el.querySelectorAll('button[data-v]').forEach(function(b){{b.onclick=function(){{b.textContent='Checking…';load(b.dataset.v)}}}})}}
 </script></div></body></html>"""
 
 

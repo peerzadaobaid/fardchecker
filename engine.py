@@ -192,21 +192,47 @@ def utm_for(lon, lat):
     return f"EPSG:{(32600 if lat >= 0 else 32700) + zone}"
 
 
-def parse_shapefile(path):
+def _reader(path):
+    for enc in ("utf-8", "latin-1"):
+        try:
+            rd = shapefile.Reader(path, encoding=enc)
+            fields = [f[0] for f in rd.fields[1:]]
+            recs = list(rd.iterShapeRecords())
+            return fields, recs
+        except UnicodeDecodeError:
+            continue
+    raise ValueError("Could not read shapefile text encoding")
+
+
+def village_field(fields):
+    return next((f for f in fields if re.search(r"^vill|village", f, re.I)), None)
+
+
+def shapefile_villages(path):
+    """Cheap: village names present in a shapefile's attribute table (dbf only)."""
     try:
-        rd = shapefile.Reader(path, encoding="utf-8")
-        fields = [f[0] for f in rd.fields[1:]]
-        recs = list(rd.iterShapeRecords())
-    except UnicodeDecodeError:
         rd = shapefile.Reader(path, encoding="latin-1")
         fields = [f[0] for f in rd.fields[1:]]
-        recs = list(rd.iterShapeRecords())
+        vcol = village_field(fields)
+        if not vcol:
+            return []
+        return sorted({norm(r[0]) for r in rd.iterRecords(fields=[vcol]) if norm(r[0])})
+    except Exception:
+        return []
+
+
+def parse_shapefile(path, only_village=None):
+    fields, recs = _reader(path)
     kcol = next((f for f in fields if re.search(r"khasra", f, re.I)), None)
     tcol = next((f for f in fields if re.search(r"kind|soil|qism|land.?use", f, re.I)), None)
     acol = next((f for f in fields if re.search(r"ror", f, re.I)), None)
+    vcol = village_field(fields)
     parcels = []
     for sr in recs:
         if sr.shape.shapeType == 0 or not sr.shape.points:
+            continue
+        rec = sr.record.as_dict()
+        if only_village and vcol and _key(rec.get(vcol)) != _key(only_village):
             continue
         try:
             geo = shape(sr.shape.__geo_interface__)
@@ -216,7 +242,6 @@ def parse_shapefile(path):
                 geo = make_valid(geo)
         except Exception:
             continue
-        rec = sr.record.as_dict()
         kv = rec.get(kcol) if kcol else None
         kn = ""
         if kv not in (None, ""):
@@ -227,17 +252,30 @@ def parse_shapefile(path):
         parcels.append({"khasra": kn, "geom": geo, "type": norm(rec.get(tcol)) if tcol else "",
                         "ror": rec.get(acol) if acol else None})
     if not parcels:
-        raise ValueError("No usable polygons in the shapefile")
+        raise ValueError("No usable polygons in the shapefile" + (f" for village {only_village}" if only_village else ""))
     c = parcels[0]["geom"].centroid
     crs = utm_for(c.x, c.y)
     fwd = Transformer.from_crs("EPSG:4326", crs, always_xy=True).transform
     for p in parcels:
         p["m"] = shp_transform(fwd, p["geom"])
-    return {"parcels": parcels, "fwd": fwd, "crs": crs, "khasra_col": kcol}
+    return {"parcels": parcels, "crs": crs, "khasra_col": kcol}
 
 
 # ───────────────────────────── Village registry ─────────────────────────────
-_cache, _lock = {}, threading.Lock()
+# Layout (all optional except the village folder):
+#   villages/<Village>/ *.xlsx            Jamabandi export
+#   villages/<Village>/ *.shp .shx .dbf .prj   parcels of this village
+#   villages/<Village>/aliases.txt        other spellings used on the portal, one per line
+#   villages/_maps/ *.shp ...             a tehsil/district-wide shapefile with a Village column,
+#                                         used for any village folder that has no .shp of its own
+# Only a few villages are kept in memory (MAX_VILLAGES_IN_MEMORY); others come from a disk cache.
+import pickle
+from collections import OrderedDict
+
+_cache, _lock = OrderedDict(), threading.RLock()
+MAX_MEM = int(os.environ.get("MAX_VILLAGES_IN_MEMORY", "4"))
+CACHE_DIR = os.environ.get("CACHE_DIR", "/tmp/rp_village_cache")
+_index = {"sig": None, "map": {}, "dirs": {}}
 
 
 def _key(s):
@@ -248,58 +286,200 @@ def village_dirs():
     if not os.path.isdir(VILLAGES_DIR):
         return {}
     return {d: os.path.join(VILLAGES_DIR, d) for d in sorted(os.listdir(VILLAGES_DIR))
-            if os.path.isdir(os.path.join(VILLAGES_DIR, d))}
+            if os.path.isdir(os.path.join(VILLAGES_DIR, d)) and not d.startswith(("_", "."))}
 
 
-def load_village(name):
+def shared_maps():
+    p = os.path.join(VILLAGES_DIR, "_maps")
+    return [os.path.join(p, f) for f in sorted(os.listdir(p)) if f.lower().endswith(".shp")] if os.path.isdir(p) else []
+
+
+def _files_sig(paths):
+    out = []
+    for d in paths:
+        for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+            fp = os.path.join(d, f)
+            if os.path.isfile(fp):
+                out.append((fp, os.path.getmtime(fp), os.path.getsize(fp)))
+    return tuple(out)
+
+
+def name_index():
+    """{normalised name -> folder} from folder names, aliases.txt and shapefile village names."""
     dirs = village_dirs()
-    if not dirs:
-        return None
-    k = _key(name)
-    hit = next((d for d in dirs if _key(d) == k), None)
-    if not hit:  # fuzzy (e.g. 'Wahidpora' vs 'Wahid Pora' or code suffix)
-        best = max(dirs, key=lambda d: similar(_key(d), k))
-        if similar(_key(best), k) >= 0.8 or (k and (k in _key(best) or _key(best) in k)):
-            hit = best
-    if not hit:
-        return None
-    path = dirs[hit]
-    files = os.listdir(path)
-    sig = tuple(sorted((f, os.path.getmtime(os.path.join(path, f))) for f in files))
+    sig = _files_sig(list(dirs.values()))
     with _lock:
-        c = _cache.get(hit)
-        if c and c["sig"] == sig:
-            return c
-        v = {"name": hit, "sig": sig, "errors": [], "jb": None, "map": None, "loaded": time.time()}
-        xl = [f for f in files if f.lower().endswith((".xlsx", ".xls"))]
-        shp = [f for f in files if f.lower().endswith(".shp")]
-        if xl:
-            try:
-                v["jb"] = parse_jamabandi(os.path.join(path, xl[0]))
-            except Exception as e:
-                v["errors"].append(f"Jamabandi: {e}")
-        else:
-            v["errors"].append("No Jamabandi .xlsx in folder")
+        if _index["sig"] == sig:
+            return _index
+        m, clash = {}, {}
+        explicit = {}
+
+        def put(name, folder, strong):
+            k = _key(name)
+            if not k:
+                return
+            if strong:
+                if k in explicit and explicit[k] != folder:
+                    clash.setdefault(k, {explicit[k]}).add(folder)
+                explicit[k] = folder
+                m[k] = folder
+            elif k not in explicit:            # shapefile names never override folder names / aliases
+                if k in m and m[k] != folder:
+                    clash.setdefault(k, {m[k]}).add(folder)
+                else:
+                    m[k] = folder
+
+        for d, path in dirs.items():
+            put(d, d, True)
+            put(re.sub(r"[_\-\s]*\d+$", "", d), d, True)          # 'Wahidpora_2815' -> 'Wahidpora'
+            al = os.path.join(path, "aliases.txt")
+            if os.path.isfile(al):
+                for line in open(al, encoding="utf-8", errors="ignore"):
+                    put(line.strip(), d, True)
+        for d, path in dirs.items():
+            for f in os.listdir(path):
+                if f.lower().endswith(".shp"):
+                    for vn in shapefile_villages(os.path.join(path, f)):
+                        put(vn, d, False)
+        _index.update(sig=sig, map=m, dirs=dirs, clash={k: sorted(v) for k, v in clash.items()})
+        return _index
+
+
+def match_village(name):
+    """Return (folder, how) or (None, message). Never guesses between two close names."""
+    idx = name_index()
+    if not idx["dirs"]:
+        return None, "No village folders in the repo yet."
+    k = _key(name)
+    if not k:
+        return None, "Village name missing on the application."
+    if k in idx["map"]:
+        return idx["map"][k], "exact"
+    if k in idx.get("clash", {}):
+        return None, f"“{name}” matches more than one folder ({', '.join(idx['clash'][k])}) — fix aliases.txt."
+    scored = sorted(((similar(k, kk), f) for kk, f in idx["map"].items()), reverse=True)
+    best = scored[0] if scored else (0, None)
+    second = next((s for s in scored if s[1] != best[1]), (0, None))
+    if best[0] >= 0.88 and best[0] - second[0] >= 0.08:
+        return best[1], f"close spelling ({best[0]:.0%})"
+    near = ", ".join(dict.fromkeys(f for _, f in scored[:3]))
+    return None, (f"No village folder matches “{name}”. Closest: {near}. Add the portal spelling to that folder's aliases.txt."
+                  if near else f"No village folder matches “{name}”.")
+
+
+def _build(folder, path):
+    v = {"name": folder, "errors": [], "jb": None, "map": None, "map_source": ""}
+    files = sorted(os.listdir(path))
+    xl = [f for f in files if f.lower().endswith((".xlsx", ".xls")) and not f.startswith("~$")]
+    shp = [f for f in files if f.lower().endswith(".shp")]
+    if len(xl) > 1:
+        v["errors"].append(f"{len(xl)} Excel files in folder — using {xl[0]}; keep only the Jamabandi.")
+    if xl:
+        try:
+            v["jb"] = parse_jamabandi(os.path.join(path, xl[0]))
+        except Exception as e:
+            v["errors"].append(f"Jamabandi ({xl[0]}): {e}")
+    else:
+        v["errors"].append("No Jamabandi .xlsx in folder")
+    try:
         if shp:
-            try:
-                v["map"] = parse_shapefile(os.path.join(path, shp[0]))
-            except Exception as e:
-                v["errors"].append(f"Shapefile: {e}")
+            v["map"] = parse_shapefile(os.path.join(path, shp[0]))
+            v["map_source"] = shp[0]
+            inside = shapefile_villages(os.path.join(path, shp[0]))
+            mine = {_key(folder), _key(re.sub(r"[_\-\s]*\d+$", "", folder))}
+            if os.path.isfile(os.path.join(path, "aliases.txt")):
+                mine |= {_key(l) for l in open(os.path.join(path, "aliases.txt"), encoding="utf-8", errors="ignore") if l.strip()}
+            if inside and not ({_key(x) for x in inside} & mine):
+                v["errors"].append(f"Shapefile {shp[0]} says village “{', '.join(inside[:3])}”, not {folder} — wrong file? "
+                                   f"(If it is only a spelling difference, add that spelling to aliases.txt.)")
+            for ext in (".shx", ".dbf"):
+                if not os.path.exists(os.path.join(path, shp[0][:-4] + ext)):
+                    v["errors"].append(f"{shp[0][:-4]}{ext} missing")
         else:
-            v["errors"].append("No .shp in folder")
-        _cache[hit] = v
+            names = [folder] + [l.strip() for l in open(os.path.join(path, "aliases.txt"), encoding="utf-8", errors="ignore")
+                                if l.strip()] if os.path.isfile(os.path.join(path, "aliases.txt")) else [folder]
+            for sp in shared_maps():
+                have = {_key(x): x for x in shapefile_villages(sp)}
+                hit = next((have[_key(n)] for n in names if _key(n) in have), None)
+                if hit:
+                    v["map"] = parse_shapefile(sp, only_village=hit)
+                    v["map_source"] = f"_maps/{os.path.basename(sp)} (village “{hit}”)"
+                    break
+            if not v["map"]:
+                v["errors"].append("No shapefile for this village (none in folder, not found in _maps)")
+    except Exception as e:
+        v["errors"].append(f"Shapefile: {e}")
+    return v
+
+
+def _attach(v):
+    if v.get("map"):
+        v["map"]["fwd"] = Transformer.from_crs("EPSG:4326", v["map"]["crs"], always_xy=True).transform
+    return v
+
+
+def load_village(name, exact_folder=False):
+    folder, how = (name, "folder") if exact_folder else match_village(name)
+    if not folder or folder not in village_dirs():
+        return None
+    path = village_dirs()[folder]
+    sig = _files_sig([path] + ([os.path.join(VILLAGES_DIR, "_maps")] if not any(
+        f.lower().endswith(".shp") for f in os.listdir(path)) else []))
+    with _lock:
+        c = _cache.get(folder)
+        if c and c["sig"] == sig:
+            _cache.move_to_end(folder)
+            c["how"] = how
+            return c
+        h = hashlib.md5(repr(sig).encode()).hexdigest()
+        cp = os.path.join(CACHE_DIR, f"{_key(folder)}_{h}.pkl")
+        v = None
+        if os.path.exists(cp):
+            try:
+                with open(cp, "rb") as fh:
+                    v = pickle.load(fh)
+            except Exception:
+                v = None
+        if v is None:
+            v = _build(folder, path)
+            try:
+                os.makedirs(CACHE_DIR, exist_ok=True)
+                for old in os.listdir(CACHE_DIR):
+                    if old.startswith(_key(folder) + "_"):
+                        os.remove(os.path.join(CACHE_DIR, old))
+                with open(cp, "wb") as fh:
+                    pickle.dump(v, fh, protocol=pickle.HIGHEST_PROTOCOL)
+            except Exception:
+                pass
+        v = _attach(v)
+        v["sig"], v["how"] = sig, how
+        _cache[folder] = v
+        _cache.move_to_end(folder)
+        while len(_cache) > MAX_MEM:
+            _cache.popitem(last=False)
         return v
 
 
-def village_status():
+def village_status(check=None):
+    """Light listing of all folders; full parse only for the one asked to check."""
+    idx = name_index()
     out = []
-    for d in village_dirs():
-        v = load_village(d)
-        out.append({"village": d,
-                    "khasras_jamabandi": len(v["jb"]["khasras"]) if v and v["jb"] else 0,
-                    "parcels_map": len(v["map"]["parcels"]) if v and v["map"] else 0,
-                    "errors": v["errors"] if v else ["not loaded"]})
-    return out
+    for d, path in idx["dirs"].items():
+        files = os.listdir(path)
+        row = {"village": d,
+               "jamabandi": next((f for f in files if f.lower().endswith((".xlsx", ".xls"))), ""),
+               "shapefile": next((f for f in files if f.lower().endswith(".shp")), "") or ("(_maps)" if shared_maps() else ""),
+               "aliases": [k for k, f in idx["map"].items() if f == d],
+               "checked": False}
+        if check and _key(check) == _key(d):
+            v = load_village(d, exact_folder=True)
+            row.update(checked=True, khasras_jamabandi=len(v["jb"]["khasras"]) if v["jb"] else 0,
+                       parcels_map=len(v["map"]["parcels"]) if v["map"] else 0, errors=v["errors"],
+                       map_source=v.get("map_source", ""),
+                       on_map_not_in_jb=sorted({p["khasra"] for p in v["map"]["parcels"] if p["khasra"]} - set(v["jb"]["khasras"]),
+                                               key=lambda x: (len(x), x))[:30] if v["jb"] and v["map"] else [])
+        out.append(row)
+    return {"villages": out, "clashes": idx.get("clash", {}), "shared_maps": [os.path.basename(p) for p in shared_maps()]}
 
 
 # ───────────────────────────── Map lookups ─────────────────────────────
@@ -565,12 +745,14 @@ def analyse(app, ai=None, ai_error=None):
     # ── 0. village data
     s0 = rep.sec("Village records used")
     if not v:
-        add(s0, "red", f"No village data found for “{village}”. Add a folder villages/{village or '<Village>'}/ with the Jamabandi .xlsx and the shapefile to the GitHub repo.")
+        _, why = match_village(village)
+        add(s0, "red", why + f" (Repo folder: villages/<Village>/ with the Jamabandi .xlsx and shapefile.)")
     else:
         for e in v["errors"]:
             add(s0, "amber", e)
-        add(s0, "info", f"Using villages/{v['name']}: {len(v['jb']['khasras']) if v['jb'] else 0} khasras in Jamabandi, "
-                        f"{len(v['map']['parcels']) if v['map'] else 0} parcels on map.")
+        add(s0, "info", f"Portal village “{village}” → folder villages/{v['name']} ({v.get('how', '')}): "
+                        f"{len(v['jb']['khasras']) if v['jb'] else 0} khasras in Jamabandi, "
+                        f"{len(v['map']['parcels']) if v['map'] else 0} parcels on map" + (f" from {v['map_source']}" if v.get('map_source') else "") + ".")
         if v["jb"] and not jb:
             add(s0, "red", f"Khasra {khasra} not found in the Jamabandi on file.", f"Check khasra number {khasra} — not in the village Jamabandi.", rep)
         if v["map"] and not p:
