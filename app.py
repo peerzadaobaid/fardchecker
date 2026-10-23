@@ -54,7 +54,15 @@ def tracker_js():
 
 @app.get("/api/ping")
 def ping():
-    return jsonify(ok=True, key_ok=ok_key(), ai=bool(os.environ.get("ANTHROPIC_API_KEY")))
+    import sys, importlib.metadata as md
+    vers = {}
+    for p in ("shapely", "pyshp", "pandas", "numpy", "pymupdf", "rapidocr-onnxruntime"):
+        try:
+            vers[p] = md.version(p)
+        except Exception:
+            vers[p] = None
+    return jsonify(ok=True, key_ok=ok_key(), ai=bool(os.environ.get("ANTHROPIC_API_KEY")),
+                   python=sys.version.split()[0], versions=vers)
 
 
 @app.get("/api/villages")

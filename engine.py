@@ -8,7 +8,6 @@ import base64, difflib, hashlib, html, io, json, math, os, re, threading, time
 
 import pandas as pd
 import shapefile  # pyshp
-from pyproj import Transformer
 from shapely.geometry import Point, shape
 from shapely.ops import transform as shp_transform
 from shapely.validation import make_valid
@@ -187,9 +186,22 @@ def parse_jamabandi(path):
 
 
 # ───────────────────────────── Shapefile ─────────────────────────────
-def utm_for(lon, lat):
-    zone = int((lon + 180) // 6) + 1
-    return f"EPSG:{(32600 if lat >= 0 else 32700) + zone}"
+def local_metres(lon0, lat0):
+    """Plain-Python projection to metres around a village centre (error < 0.1% within a few km)."""
+    phi = math.radians(lat0)
+    k_lat = 111132.92 - 559.82 * math.cos(2 * phi) + 1.175 * math.cos(4 * phi)
+    k_lon = 111412.84 * math.cos(phi) - 93.5 * math.cos(3 * phi)
+
+    def fwd(x, y, z=None):
+        return ((x - lon0) * k_lon, (y - lat0) * k_lat)
+    return fwd
+
+
+def _where(e):
+    import traceback
+    tb = traceback.extract_tb(e.__traceback__)
+    last = tb[-1] if tb else None
+    return f"{type(e).__name__}: {e}" + (f" [{os.path.basename(last.filename)}:{last.lineno} {last.name}]" if last else "")
 
 
 def _reader(path):
@@ -254,8 +266,8 @@ def parse_shapefile(path, only_village=None):
     if not parcels:
         raise ValueError("No usable polygons in the shapefile" + (f" for village {only_village}" if only_village else ""))
     c = parcels[0]["geom"].centroid
-    crs = utm_for(c.x, c.y)
-    fwd = Transformer.from_crs("EPSG:4326", crs, always_xy=True).transform
+    crs = (round(c.x, 6), round(c.y, 6))
+    fwd = local_metres(*crs)
     for p in parcels:
         p["m"] = shp_transform(fwd, p["geom"])
     return {"parcels": parcels, "crs": crs, "khasra_col": kcol}
@@ -378,7 +390,7 @@ def _build(folder, path):
         try:
             v["jb"] = parse_jamabandi(os.path.join(path, xl[0]))
         except Exception as e:
-            v["errors"].append(f"Jamabandi ({xl[0]}): {e}")
+            v["errors"].append(f"Jamabandi ({xl[0]}): {_where(e)}")
     else:
         v["errors"].append("No Jamabandi .xlsx in folder")
     try:
@@ -408,13 +420,13 @@ def _build(folder, path):
             if not v["map"]:
                 v["errors"].append("No shapefile for this village (none in folder, not found in _maps)")
     except Exception as e:
-        v["errors"].append(f"Shapefile: {e}")
+        v["errors"].append(f"Shapefile: {_where(e)}")
     return v
 
 
 def _attach(v):
     if v.get("map"):
-        v["map"]["fwd"] = Transformer.from_crs("EPSG:4326", v["map"]["crs"], always_xy=True).transform
+        v["map"]["fwd"] = local_metres(*v["map"]["crs"])
     return v
 
 
