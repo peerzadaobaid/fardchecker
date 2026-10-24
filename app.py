@@ -4,6 +4,8 @@ Environment variables (Render → Environment):
   ACCESS_KEY         a password of your choice; the tracker asks for it once per browser
   ANTHROPIC_API_KEY  OPTIONAL Claude API key (paid) to also read handwritten fard/tatima
   CLAUDE_MODEL       optional, default claude-opus-5-5
+  GEMINI_API_KEY     OPTIONAL Google Gemini key (free tier available) — reads handwriting/tatima/photo when no Claude key
+  GEMINI_MODEL       optional, default gemini-3.8-flash
   (Without ANTHROPIC_API_KEY the app runs in free mode: GPS overlay read by free OCR, handwriting not read.)
 """
 import hmac, html, os, time
@@ -61,7 +63,9 @@ def ping():
             vers[p] = md.version(p)
         except Exception:
             vers[p] = None
-    return jsonify(ok=True, key_ok=ok_key(), ai=bool(os.environ.get("ANTHROPIC_API_KEY")),
+    reader = "claude" if os.environ.get("ANTHROPIC_API_KEY") else ("gemini" if os.environ.get("GEMINI_API_KEY") else "free-ocr")
+    return jsonify(ok=True, key_ok=ok_key(), ai=reader != "free-ocr", reader=reader,
+                   gemini_model=os.environ.get("GEMINI_MODEL", "gemini-3.8-flash") if reader == "gemini" else None,
                    python=sys.version.split()[0], versions=vers)
 
 
@@ -113,6 +117,11 @@ def analyse():
     ai, ai_err = (None, None)
     if os.environ.get("ANTHROPIC_API_KEY") and data.get("read_docs", True):
         ai, ai_err = engine.read_documents(pages, ctx)
+        ai = engine.merge_ocr(ai, engine.free_read(pages)) if ai else engine.free_read(pages)
+    elif os.environ.get("GEMINI_API_KEY") and data.get("read_docs", True):
+        ocr = engine.free_read(pages)
+        ai, ai_err = engine.read_documents_gemini(pages, ctx)
+        ai = engine.merge_ocr(ai, ocr) if ai else ocr
     else:
         ai = engine.free_read(pages)
     rep = engine.analyse(appd, ai, ai_err)

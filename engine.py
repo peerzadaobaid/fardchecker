@@ -868,6 +868,53 @@ def free_read(pages):
     return out
 
 
+def read_documents_gemini(pages, ctx):
+    """Read documents with Google Gemini (free or paid key). Same JSON shape as the Claude reader."""
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        return None, "GEMINI_API_KEY is not set."
+    if not pages:
+        return None, "No readable documents were received."
+    import requests
+    model = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+    parts = []
+    for p in pages[:int(os.environ.get("MAX_PAGES", "16"))]:
+        parts.append({"text": f"[{p['label']}]"})
+        parts.append({"inline_data": {"mime_type": "image/jpeg", "data": p["data"]}})
+    parts.append({"text": READ_PROMPT.format(**ctx)})
+    body = {"contents": [{"role": "user", "parts": parts}],
+            "generationConfig": {"temperature": 0, "responseMimeType": "application/json", "maxOutputTokens": 8000}}
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    try:
+        r = requests.post(url, json=body, timeout=170, headers={"x-goog-api-key": key, "content-type": "application/json"})
+        if r.status_code == 429:
+            return None, "Gemini free-tier limit reached for now — try again later (record checks below are unaffected)."
+        if r.status_code != 200:
+            return None, f"Gemini error {r.status_code}: {r.text[:300]}"
+        cands = r.json().get("candidates") or []
+        txt = "".join(p_.get("text", "") for c in cands[:1] for p_ in (c.get("content") or {}).get("parts", []))
+        m = re.search(r"\{.*\}", txt, re.S)
+        if not m:
+            return None, "Gemini returned no readable result (the documents may have been blocked or unreadable)."
+        out = json.loads(m.group(0))
+        out["mode"] = "gemini"
+        return out, None
+    except Exception as e:
+        return None, f"Gemini reading failed: {e}"
+
+
+def merge_ocr(ai, ocr):
+    """Use exact OCR numbers for the GPS stamp; keep the AI's description of the photo."""
+    ai = ai or {}
+    o = (ocr or {}).get("photo") or {}
+    if o.get("found"):
+        ph = ai.get("photo") or {}
+        ph.update({k: o[k] for k in ("lat", "lng", "pluscode", "datetime") if o.get(k) not in (None, "")})
+        ph["found"], ph["source"] = True, "OCR"
+        ai["photo"] = ph
+    return ai
+
+
 def read_documents(pages, ctx):
     key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
@@ -889,7 +936,9 @@ def read_documents(pages, ctx):
             return None, f"Claude API error {r.status_code}: {r.text[:300]}"
         txt = "".join(b.get("text", "") for b in r.json().get("content", []) if b.get("type") == "text")
         m = re.search(r"\{.*\}", txt, re.S)
-        return json.loads(m.group(0)), None
+        out = json.loads(m.group(0))
+        out["mode"] = "claude"
+        return out, None
     except Exception as e:
         return None, f"Document reading failed: {e}"
 
@@ -1122,7 +1171,8 @@ def analyse(app, ai=None, ai_error=None):
     lat = num(pf(f, "lat")) or num(ph.get("lat"))
     lng = num(pf(f, "lng")) or num(ph.get("lng"))
     free = ai.get("mode") == "free"
-    src = "Patwari report" if num(pf(f, "lat")) else (("photo overlay (" + ("read by free OCR" if free else "read by AI") + ")") if num(ph.get("lat")) else "")
+    reader = {"gemini": "Gemini", "claude": "Claude"}.get(ai.get("mode"), "AI")
+    src = "Patwari report" if num(pf(f, "lat")) else (("photo overlay (" + ("read by OCR" if (free or ph.get("source") == "OCR") else f"read by {reader}") + ")") if num(ph.get("lat")) else "")
     rep.point = None
     rep.geo = (lat, lng) if lat is not None and lng is not None else None
     if lat is None or lng is None:
@@ -1234,7 +1284,7 @@ def analyse(app, ai=None, ai_error=None):
         if mn:
             known.add(mn)
     for m_ in ai_muts:
-        add(s2, "info", f"From documents: mutation {m_.get('number') or '—'} ({m_.get('type') or '—'}{', ' + m_['date'] if m_.get('date') else ''}): {m_.get('summary') or ''}")
+        add(s2, "info", f"Read by {reader} from documents: mutation {m_.get('number') or '—'} ({m_.get('type') or '—'}{', ' + m_['date'] if m_.get('date') else ''}): {m_.get('summary') or ''}")
         if first_num(m_.get("number")):
             known.add(first_num(m_.get("number")))
     if not final:
@@ -1245,7 +1295,7 @@ def analyse(app, ai=None, ai_error=None):
     fd = ai.get("fard") or {}
     if fd.get("found"):
         for i, rmk in enumerate(fd.get("remarks") or [], 1):
-            add(s2, "info", f"Fard remark {i} (AI translation): {rmk}")
+            add(s2, "info", f"Fard remark {i} ({reader} translation — confirm): {rmk}")
         if fd.get("versions_differ"):
             add(s2, "info", f"Two fard versions attached: {fd['versions_differ']}")
         if jb and fd.get("area_marla") is not None:
@@ -1356,7 +1406,7 @@ def analyse(app, ai=None, ai_error=None):
                         + (f"; the plot is about {p['m'].bounds[2] - p['m'].bounds[0]:.0f} m E–W × {p['m'].bounds[3] - p['m'].bounds[1]:.0f} m N–S" if p else "")
                         + (f", so {km(applied)} is about {applied * MARLA_M2:.0f} m²" if applied else "") + ".")
     elif tt.get("found"):
-        add(s4, "info", f"Tatima reads: {tt.get('as_written') or '—'}; shaded side: {tt.get('shaded_side') or '—'}.")
+        add(s4, "info", f"Tatima as read by {reader}: {tt.get('as_written') or '—'}; shaded side: {tt.get('shaded_side') or '—'} (confirm on the sketch).")
         tot, sh, remn = num(tt.get("total_marla")), num(tt.get("shaded_marla")), num(tt.get("remaining_marla"))
         if jb and tot is not None and abs(tot - jb["area_marla"]) > 0.5:
             add(s4, "amber", f"Total on tatima ({km(tot)}) ≠ Jamabandi area ({km(jb['area_marla'])}).", "Correct total area on tatima.", rep)
@@ -1428,6 +1478,7 @@ def analyse(app, ai=None, ai_error=None):
         if ai.get("error"):
             add(rep.sections[0], "amber", ai["error"])
     rep.p, rep.nbs, rep.jb, rep.v = p, nbs, jb, v
+    rep.ai, rep.reader, rep.free = ai, reader, free
     return rep
 
 
@@ -1536,6 +1587,56 @@ def svg_map(rep, w=360, h=300):
     return "".join(out)
 
 
+def case_text(rep):
+    """Plain-text case for pasting into a Claude chat (final review). No ID or phone numbers."""
+    hd = rep.head
+    L = ["Please review this Revenue Plus application as a Naib Tehsildar in J&K would, and make the final call.",
+         "Below are automated record checks (village Jamabandi + map) and values read from the uploaded documents "
+         f"by {getattr(rep, 'reader', 'AI') if not getattr(rep, 'free', False) else 'OCR (GPS stamp only)'}. "
+         "If I attach the documents, verify the AI-read values against them. Give: (1) final assessment, (2) discrepancies by severity, "
+         "(3) anything the checks missed, (4) a remark I can enter on the portal.", "",
+         f"## Application: {hd.get('service') or ''} — khasra {hd.get('khasra')}, village {hd.get('village')}; applicant {hd.get('applicant')}; "
+         f"app. no. {hd.get('appNo')}; area applied {km(hd['applied']) if hd.get('applied') is not None else '—'}"]
+    sym = {"red": "[SERIOUS]", "amber": "[CORRECT]", "green": "[OK]", "info": "-"}
+    for s in rep.sections:
+        if not s["items"]:
+            continue
+        L.append("")
+        L.append("## " + s["title"])
+        for lvl, text in s["items"]:
+            if lvl == "html":
+                rows = re.findall(r"<tr[^>]*>(.*?)</tr>", text, re.S)
+                for r_ in rows:
+                    cells = [norm(re.sub(r"<[^>]+>", " ", c)) for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", r_, re.S)]
+                    if any(cells):
+                        L.append("  | " + " | ".join(cells))
+                continue
+            L.append(f"{sym[lvl]} " + html.unescape(re.sub(r"<[^>]+>", "", text)).replace("\xa0", " "))
+    if getattr(rep, "neigh_rows", None):
+        L.append("")
+        L.append("## Adjoining khasras (map)")
+        for d, k, t, c, sm in rep.neigh_rows:
+            L.append(f"- {d}: {k} — {t}{'; ' + c if c else ''}")
+    ai = getattr(rep, "ai", None) or {}
+    if ai and not getattr(rep, "free", False):
+        keep = {k: ai.get(k) for k in ("fard", "mutations", "tatima", "uncertain") if ai.get(k)}
+        if ai.get("photo"):
+            keep["photo"] = {k: v for k, v in ai["photo"].items() if k in ("lat", "lng", "pluscode", "datetime", "land_description", "built_up", "person_present")}
+        if keep:
+            L.append("")
+            L.append(f"## Raw values read by {getattr(rep, 'reader', 'AI')} (unverified)")
+            L.append(json.dumps(keep, ensure_ascii=False, indent=1)[:6000])
+    if rep.actions:
+        L.append("")
+        L.append("## Remark suggested by the checks")
+        for i, a in enumerate(dict.fromkeys(rep.actions), 1):
+            L.append(f"{i}. {a}")
+    out = "\n".join(L)
+    out = re.sub(r"\b\d{4}\s?\d{4}\s?\d{4}\b", "[number removed]", out)    # never carry Aadhaar-like numbers
+    out = re.sub(r"\b[6-9]\d{9}\b", "[number removed]", out)                    # or mobile numbers
+    return out
+
+
 def render(rep):
     hd = rep.head
     n_red = sum(1 for s in rep.sections for l, _ in s["items"] if l == "red")  # html items ignored
@@ -1581,7 +1682,13 @@ def render(rep):
         note = "Returned to Patwari for the following:\n" + "\n".join(f"{i}. {a}" for i, a in enumerate(acts, 1))
         h.append('<h3 style="font-size:15px;margin:16px 0 6px">Suggested remark</h3>')
         h.append(f'<pre id="rpa-note" style="white-space:pre-wrap;background:#fff;border:1px solid #e1e4ea;border-radius:8px;padding:10px;font:13px/1.5 system-ui,sans-serif">{esc(note)}</pre>')
-        h.append('<button data-copy="rpa-note" style="font:inherit;border:0;border-radius:8px;padding:8px 14px;background:#1a7f5a;color:#fff;cursor:pointer">Copy remark</button>')
-    h.append('<p style="color:#5b6475;font-size:12px;margin-top:14px">Values marked “AI translation” or “read from documents” were read from handwritten/scanned documents by Claude — confirm them against the originals. '
+        h.append('<button data-copy="rpa-note" style="font:inherit;border:0;border-radius:8px;padding:8px 14px;background:#1a7f5a;color:#fff;cursor:pointer">Copy remark</button> ')
+    h.append(f'<pre id="rpa-case" style="display:none">{esc(case_text(rep))}</pre>')
+    h.append('<div style="margin-top:12px;padding:10px 12px;background:#fff;border:1px solid #e1e4ea;border-radius:10px">'
+             '<b>Final review by Claude</b><div style="font-size:13px;color:#5b6475;margin:2px 0 8px">Copies all findings and AI-read values (no Aadhaar or phone numbers). '
+             'Paste into a Claude chat — attach the fard, tatima and photo for Claude to verify — and ask for the final call.</div>'
+             '<button data-copy="rpa-case" style="font:inherit;border:0;border-radius:8px;padding:8px 14px;background:#12355b;color:#fff;cursor:pointer">Copy full case for Claude</button></div>')
+    rd = getattr(rep, "reader", "AI")
+    h.append(f'<p style="color:#5b6475;font-size:12px;margin-top:14px">Values marked “{rd} translation” or “read by {rd}” were read from handwritten/scanned documents by AI — confirm them against the originals. '
              'Shares are indicative and assume the khasra is in the predecessor\'s possession as recorded. Nothing is submitted to the portal.</p></div>')
     return "".join(h)
