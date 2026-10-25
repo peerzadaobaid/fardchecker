@@ -2146,7 +2146,7 @@
   var rpAnaCache = {},
     rpChain = Promise.resolve(),
     rpCurrent = null,
-    rpBG = { gen: 0, paused: !1, running: !1, queue: [], done: 0, total: 0, failed: 0, cur: "" },
+    rpBG = { gen: 0, paused: !1, running: !1, queue: [], done: 0, total: 0, failed: 0, cur: "", userWaiting: 0 },
     RP_LS = "rpAnaCache2";
   function rpBlobB64(b) {
     return new Promise(function (ok, bad) {
@@ -2225,13 +2225,23 @@
     return p;
   }
   // Core: fetch documents of application e, send to Render, return report html
-  async function rpCore(e, key, status) {
+  function rpAbortErr() {
+    var x = new Error("stopped to give way to your request");
+    x.stage = "aborted";
+    return x;
+  }
+  async function rpCore(e, key, status, ctl) {
     var API = window.__rpApiBase || "",
       stage = "connecting";
+    ctl = ctl || { aborted: !1, ac: null };
+    function chk() {
+      if (ctl.aborted) throw rpAbortErr();
+    }
     try {
-      var pr = await fetch(API + "/api/ping", { cache: "no-store" });
+      var pr = await fetch(API + "/api/ping", { cache: "no-store", signal: ctl.ac && ctl.ac.signal });
       if (!pr.ok) throw new Error("HTTP " + pr.status);
     } catch (err) {
+      if (ctl.aborted) throw rpAbortErr();
       var x = new Error(
         "Cannot reach the analyser (" + String((err && err.message) || err) + "). If Render was asleep, wait 30–50 s and try again; if it keeps failing, the portal is blocking the connection.",
       );
@@ -2246,6 +2256,7 @@
         docs = [],
         size = 0;
       for (var i = 0; i < list.length; i++) {
+        chk();
         var d = list[i];
         status("Fetching document " + (i + 1) + " of " + list.length + ": " + d.label + " …");
         try {
@@ -2260,6 +2271,7 @@
         }
         await C(400);
       }
+      chk();
       stage = "sending to the analyser";
       status(
         "Reading " +
@@ -2269,6 +2281,7 @@
           " document(s) and checking the village Jamabandi and map … this can take up to a minute.",
       );
       var resp = await fetch(API + "/api/analyse", {
+        signal: ctl.ac && ctl.ac.signal,
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Access-Key": key },
         body: JSON.stringify({
@@ -2293,25 +2306,55 @@
       rpMarkButtons();
       return j.html;
     } catch (err) {
+      if (ctl.aborted) throw rpAbortErr();
       err.stage = err.stage || stage;
       throw err;
     }
   }
-  function rpRunFor(e, status) {
+  // bg = true for background jobs. A request from you stops a running background job (it is re-queued) and goes first.
+  function rpRunFor(e, status, bg) {
     var ck = rpKey(e);
-    if (rpCurrent && rpCurrent.ck === ck) return rpCurrent.promise; // already being analysed in background
+    if (rpCurrent && rpCurrent.ck === ck) {
+      if (!bg) rpCurrent.bg = !1; // you asked for the one already running: let it finish
+      return rpCurrent.promise;
+    }
+    if (!bg) {
+      rpBG.userWaiting++;
+      if (rpCurrent && rpCurrent.bg) {
+        rpCurrent.ctl.aborted = !0;
+        try {
+          rpCurrent.ctl.ac && rpCurrent.ctl.ac.abort();
+        } catch (x) {}
+      }
+    }
     var key = rpGetKey(!1);
-    return rpSerial(async function () {
+    var job = rpSerial(async function () {
       var hit = rpCacheGet(e);
       if (hit) return hit.html;
-      var p = rpCore(e, key, status);
-      rpCurrent = { ck: ck, promise: p };
+      if (bg && rpBG.userWaiting) throw rpAbortErr(); // let your request go first
+      var ctl = { aborted: !1, ac: window.AbortController ? new AbortController() : null };
+      var p = rpCore(e, key, status, ctl);
+      rpCurrent = { ck: ck, promise: p, bg: !!bg, ctl: ctl };
       try {
         return await p;
       } finally {
         rpCurrent = null;
       }
     });
+    if (!bg)
+      job.then(
+        function () {
+          rpBG.userWaiting--, rpKick();
+        },
+        function () {
+          rpBG.userWaiting--, rpKick();
+        },
+      );
+    return job;
+  }
+  function rpKick() {
+    // resume background after your request is done
+    !rpBG.userWaiting && !rpBG.running && !rpBG.paused && rpBG.queue.length && !rpBG.needKey && rpLoop(rpBG.gen);
   }
   async function rpAnalyse(e, force) {
     var API = window.__rpApiBase || "";
@@ -2374,8 +2417,8 @@
       } catch (x) {}
     }
     st(
-      rpCurrent && rpCurrent.ck !== rpKey(e)
-        ? "Waiting for the background analysis of another application to finish (one at a time) …"
+      rpCurrent && rpCurrent.ck !== rpKey(e) && rpCurrent.bg
+        ? "Stopping the background analysis to take up your application first …"
         : "Connecting to the analyser …",
     );
     try {
@@ -2432,6 +2475,7 @@
       b.total +
       " ready" +
       (b.failed ? ", " + b.failed + " failed" : "") +
+      (b.userWaiting && left ? '<div style="opacity:.85">Paused for your request — resumes automatically.</div>' : "") +
       (b.cur && !b.paused ? '<div style="opacity:.85">Now: ' + L(b.cur) + "</div>" : "") +
       (left && !b.paused
         ? '<div style="opacity:.85;font-size:12px;margin-top:2px">Don’t process applications on the portal in another tab until this finishes.</div>'
@@ -2487,7 +2531,7 @@
     if (rpBG.running) return;
     rpBG.running = !0;
     try {
-      while (rpBG.queue.length && !rpBG.paused && gen === rpBG.gen && !A) {
+      while (rpBG.queue.length && !rpBG.paused && gen === rpBG.gen && !A && !rpBG.userWaiting) {
         var e = rpBG.queue.shift();
         if (rpCacheGet(e)) {
           rpBG.done++;
@@ -2496,9 +2540,15 @@
         rpBG.cur = (e.name || e.appNo) + (e.village ? " · " + e.village : "") + (e.khasra ? " · khasra " + e.khasra : "");
         rpPanel();
         try {
-          await rpRunFor(e, function () {});
+          await rpRunFor(e, function () {}, !0);
           rpBG.done++;
         } catch (err) {
+          if (err && err.stage === "aborted") {
+            rpBG.queue.unshift(e); // put it back; resume after your request
+            rpBG.cur = "";
+            rpPanel();
+            break;
+          }
           rpBG.failed++;
           if (err && err.stage === "key") {
             rpBG.needKey = !0;

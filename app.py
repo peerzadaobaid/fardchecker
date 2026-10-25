@@ -131,10 +131,23 @@ def khasra():
                    neighbours=[{k2: n[k2] for k2 in ("dir", "khasra", "type")} for n in nb])
 
 
+import threading
+_one_at_a_time = threading.Lock()   # free plan: never run two analyses together (memory)
+
+
 @app.post("/api/analyse")
 def analyse():
     if not ok_key():
         return jsonify(error="Wrong or missing access key"), 401
+    if not _one_at_a_time.acquire(timeout=170):
+        return jsonify(error="Analyser busy — try again in a minute"), 503
+    try:
+        return _analyse()
+    finally:
+        _one_at_a_time.release()
+
+
+def _analyse():
     t0 = time.time()
     data = request.get_json(force=True, silent=True) or {}
     appd = data.get("app") or {}
