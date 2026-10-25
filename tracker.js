@@ -2468,6 +2468,21 @@
           appDate: ob.applied ? new Date(ob.applied).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : (e.appDate || "").split("/")[0],
           resub: ob.resub ? new Date(ob.resub).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "",
           stage: e.stage, holder: e.holder, revert: e.revert,
+          withSince: (function () {
+            var hh = e.history || [], w = e.lastT || (hh.length && hh[hh.length - 1].t) || ob.base;
+            return w ? new Date(w).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "";
+          })(),
+          withDays: (function () {
+            var hh = e.history || [], w = e.lastT || (hh.length && hh[hh.length - 1].t) || ob.base;
+            if (!w) return null;
+            try {
+              var td = new Date();
+              td.setHours(0, 0, 0, 0);
+              return ie(w, td.getTime());
+            } catch (x) {
+              return null;
+            }
+          })(),
           dayNow: c && c.dayNow != null ? c.dayNow : null,
           cur: cur ? { role: cur.role, limit: cur.limit, days: cur.days, over: cur.over || 0, left: cur.left, status: cur.status } : null,
           late: c ? c.late.map(function (v) { return { who: v.by || v.role, over: v.over }; }) : [],

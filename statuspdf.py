@@ -148,31 +148,8 @@ def build(payload):
     lv_rows.append([P("<b>Total</b>"), P(f"<b>{len(pending)}</b>"), P(f"<b>{len(pending) - len(over)}</b>"),
                     P(f'<font color="{RED.hexval()}"><b>{len(over)}</b></font>'), P("")])
 
-    hold = defaultdict(lambda: {"n": 0, "ok": 0, "over": 0, "max": 0, "lv": ""})
-    for i in pending:
-        h = i.get("holder") or level_of(i)
-        r = hold[h]
-        r["n"] += 1
-        r["lv"] = level_of(i)
-        s = status_of(i)
-        if s[1] == "over":
-            r["over"] += 1
-            r["max"] = max(r["max"], (i.get("cur") or {}).get("over") or 0)
-        elif s[1] == "ok":
-            r["ok"] += 1
-    of_rows = [[P("Officer / holder", "hcell"), P("Files", "hcell"), P("Within time", "hcell"), P("Overdue", "hcell"), P("Max. overdue (days)", "hcell")]]
-    of_style = []
-    for h, r in sorted(hold.items(), key=lambda kv: (-kv[1]["over"], -kv[1]["max"], -kv[1]["n"])):
-        of_rows.append([P(f"<b>{esc(h)}</b>"), P(r["n"]), P(r["ok"]), P(f'<font color="{RED.hexval()}"><b>{r["over"]}</b></font>' if r["over"] else "0"), P(r["max"] or "—")])
-        if r["lv"] in LEVEL_BG:
-            of_style.append(("BACKGROUND", (0, len(of_rows) - 1), (0, len(of_rows) - 1), LEVEL_BG[r["lv"]]))
-    half = (W - 8 * mm) / 2
-    cw = [half * 0.36, half * 0.15, half * 0.16, half * 0.14, half * 0.19]
-    left = [P("Level-wise", "h"), table(lv_rows, cw, extra=lv_style + [("LINEABOVE", (0, -1), (-1, -1), 0.8, NAVY)])]
-    right = [P("Officer-wise", "h"), table(of_rows, cw, extra=of_style)]
-    two = Table([[left, "", right]], colWidths=[half, 8 * mm, half])
-    two.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0)]))
-    story.append(two)
+    cw = [W * f for f in (0.32, 0.17, 0.17, 0.17, 0.17)]
+    story.append(KeepTogether([P("Level-wise", "h"), table(lv_rows, cw, extra=lv_style + [("LINEABOVE", (0, -1), (-1, -1), 0.8, NAVY)])]))
 
     # Village-wise
     vil = defaultdict(lambda: defaultdict(int))
@@ -195,41 +172,43 @@ def build(payload):
 
     # Application list
     story.append(P("Applications (most overdue first)", "h"))
-    hdr = ["#", "Application no.", "Applicant", "Village", "Khasra", "Service / purpose", "Applied", "Pending with",
-           "Working days", "Limit", "Status", "Earlier delays"]
+    hdr = ["#", "Application no.", "Applicant", "Village", "Khasra", "Service / purpose", "Pending with",
+           "With official since", "Total working days", "Status", "Earlier delays"]
     rows = [[P(h, "hcell") for h in hdr]]
     sty = []
 
     def sort_key(i):
         c = i.get("cur") or {}
         return (0 if status_of(i)[1] == "over" else (1 if level_of(i) != "Applicant" else 2), -(c.get("over") or 0),
-                -(i.get("dayNow") or 0), i.get("village") or "")
+                -(i.get("withDays") or 0), -(i.get("dayNow") or 0), i.get("village") or "")
 
     for n, i in enumerate(sorted(items, key=sort_key), 1):
-        c = i.get("cur") or {}
         txt, kind, col = status_of(i)
         lv = level_of(i)
         late = ", ".join(f"{esc(x.get('who'))} +{x.get('over')}d" for x in (i.get("late") or []) if x.get("over"))
-        applied = esc(i.get("appDate") or "")
-        if i.get("resub"):
-            applied += f"<br/><font color='{MUTED.hexval()}'>resub. {esc(i['resub'])}</font>"
+        wd = i.get("withDays")
+        since = (f"{esc(i.get('withSince'))}<br/><b>{wd} day{'s' if wd != 1 else ''}</b>" if i.get("withSince") and wd is not None
+                 else esc(i.get("withSince") or "—"))
         rows.append([P(n), P(esc(i.get("appNo"))), P(esc(i.get("name"))), P(esc(i.get("village"))), P(esc(i.get("khasra"))),
-                     P(esc(" / ".join(x for x in (i.get("service"), i.get("purpose")) if x))), P(applied),
+                     P(esc(" / ".join(x for x in (i.get("service"), i.get("purpose")) if x))),
                      P(f"<b>{esc(lv if lv != 'Applicant' else 'Returned to applicant')}</b>" + (f"<br/><font color='{MUTED.hexval()}'>{esc(i.get('holder'))}</font>" if i.get("holder") and lv != "Applicant" else "")),
-                     P(i.get("dayNow") if i.get("dayNow") is not None else "—"), P(c.get("limit") or "—"),
+                     P(since),
+                     P(i.get("dayNow") if i.get("dayNow") is not None else "—"),
                      P(f'<font color="{col.hexval()}"><b>{esc(txt)}</b></font>'), P(late or "—")])
         r_ = len(rows) - 1
         if kind == "over":
-            sty.append(("BACKGROUND", (10, r_), (10, r_), RED_BG))
+            sty.append(("BACKGROUND", (9, r_), (9, r_), RED_BG))
         elif kind == "ok":
-            sty.append(("BACKGROUND", (10, r_), (10, r_), GREEN_BG))
+            sty.append(("BACKGROUND", (9, r_), (9, r_), GREEN_BG if txt != "Due today" else AMBER_BG))
         if lv in LEVEL_BG:
-            sty.append(("BACKGROUND", (7, r_), (7, r_), LEVEL_BG[lv]))
-    fr = [0.03, 0.125, 0.12, 0.085, 0.055, 0.095, 0.075, 0.115, 0.055, 0.04, 0.11, 0.095]
+            sty.append(("BACKGROUND", (6, r_), (6, r_), LEVEL_BG[lv]))
+    fr = [0.03, 0.13, 0.125, 0.09, 0.055, 0.1, 0.13, 0.1, 0.07, 0.1, 0.07]
     story.append(table(rows, [W * f for f in fr], extra=sty, long=True))
     story.append(Spacer(1, 5))
-    story.append(P("Working days = days since the application (or resubmission) date, excluding Sundays and holidays. "
-                   "Status compares these with the limit of the level the file is pending at; “Earlier delays” lists levels that acted after their limit. "
+    story.append(P("With official since = date the file reached the present official (last action by the previous level, or the application date) and the "
+                   "working days since then. Total working days = since the application (or resubmission) date, excluding Sundays and holidays; "
+                   f"Status compares these with the limit of the level the file is pending at (Patwari {lp}, Girdawar {lg}, Naib Tehsildar {ln}). "
+                   "“Earlier delays” lists levels that acted after their limit. "
                    "Prepared from the Revenue Plus portal; status only.", "note"))
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
     return buf.getvalue()
