@@ -108,6 +108,18 @@ def test_reader():
         return jsonify(ok=False, error=str(e)), 200
 
 
+@app.post("/api/status-pdf")
+def status_pdf():
+    """Pendency status PDF from the tracker's last scan (status fields only)."""
+    if not ok_key():
+        return jsonify(error="Wrong or missing access key"), 401
+    import statuspdf
+    data = request.get_json(force=True, silent=True) or {}
+    pdf = statuspdf.build(data)
+    return Response(pdf, mimetype="application/pdf",
+                    headers={"Content-Disposition": "attachment; filename=Pendency_Status.pdf", "Cache-Control": "no-store"})
+
+
 @app.get("/api/villages")
 def villages():
     if not ok_key():

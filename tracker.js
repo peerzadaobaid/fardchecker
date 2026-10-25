@@ -2439,6 +2439,73 @@
       again();
     }
   }
+  // ───── Status PDF (pendency only — no remarks, documents or analysis) ─────
+  var rpScanAt = 0;
+  async function rpStatusPdf(items, btn) {
+    var API = window.__rpApiBase || "";
+    if (!API) return alert("Status PDF needs the tracker loaded from the Render app.");
+    var key = rpGetKey(!0);
+    if (!key) return;
+    var old = btn.textContent;
+    btn.textContent = "Preparing PDF …";
+    btn.disabled = !0;
+    try {
+      var set = ee(),
+        office = "";
+      items.some(function (e) {
+        var tf = e.fields && e.fields.tehsil;
+        return tf && (office = "Tehsil " + tf.replace(/\s*\/.*$/, ""));
+      });
+      var rows = items.map(function (e) {
+        var c = null;
+        try {
+          c = ce(e, set);
+        } catch (x) {}
+        var cur = c && c.cur ? c.cur : null,
+          ob = oe(e);
+        return {
+          appNo: e.appNo, name: e.name, village: e.village, khasra: e.khasra, service: e.service, purpose: e.purpose,
+          appDate: ob.applied ? new Date(ob.applied).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : (e.appDate || "").split("/")[0],
+          resub: ob.resub ? new Date(ob.resub).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "",
+          stage: e.stage, holder: e.holder, revert: e.revert,
+          dayNow: c && c.dayNow != null ? c.dayNow : null,
+          cur: cur ? { role: cur.role, limit: cur.limit, days: cur.days, over: cur.over || 0, left: cur.left, status: cur.status } : null,
+          late: c ? c.late.map(function (v) { return { who: v.by || v.role, over: v.over }; }) : [],
+        };
+      });
+      var resp = await fetch(API + "/api/status-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Access-Key": key },
+        body: JSON.stringify({ scanAt: rpScanAt || Date.now(), office: office, limits: { pat: +set.pat, gir: +set.gir, nt: +set.nt }, mode: set.mode, items: rows }),
+      });
+      if (401 === resp.status) {
+        try {
+          localStorage.removeItem("rpApiKey");
+        } catch (x) {}
+        throw new Error("Wrong access key — tap again to re-enter it.");
+      }
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      var blob = await resp.blob(),
+        a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "Pendency_Status_" + new Date(rpScanAt || Date.now()).toISOString().slice(0, 10) + ".pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () {
+        URL.revokeObjectURL(a.href);
+      }, 5000);
+      btn.textContent = "PDF downloaded ✓";
+    } catch (err) {
+      btn.textContent = "PDF failed";
+      prompt("Status PDF could not be made:", String((err && err.message) || err));
+    } finally {
+      btn.disabled = !1;
+      setTimeout(function () {
+        btn.textContent = old;
+      }, 3000);
+    }
+  }
   // ───── Background pre-analysis while the tracker stays open ─────
   function rpEligible(e) {
     var docs = (e.docs || []).filter(function (d) {
@@ -2577,6 +2644,7 @@
   }
   function Ne(e) {
     var t = e.items;
+    rpScanAt = e.at;
     function r(e) {
       return t.filter(e).length;
     }
@@ -2745,7 +2813,7 @@
           : e.partial
             ? " (stopped early)"
             : "") +
-        '</span><span style="flex:1"></span><button id="csv">Download Excel (CSV)</button><button id="json">Download all data</button><button id="wa">Copy summary</button><button id="again">New scan</button></div>' +
+        '</span><span style="flex:1"></span><button id="stpdf" style="background:#12355b;color:#fff">Status PDF</button><button id="csv">Download Excel (CSV)</button><button id="json">Download all data</button><button id="wa">Copy summary</button><button id="again">New scan</button></div>' +
         l +
         (t.some(function (e) {
           return e.level;
@@ -3528,6 +3596,13 @@
           };
         }),
         rpMarkButtons(),
+        (function () {
+          var sb = y.getElementById("stpdf");
+          sb &&
+            (sb.onclick = function () {
+              rpStatusPdf(t, sb);
+            });
+        })(),
         Array.prototype.forEach.call(
           w.querySelectorAll(".docbtn"),
           function (e) {

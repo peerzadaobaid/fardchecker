@@ -9,3 +9,4 @@ pillow==11.0.0
 requests==2.32.3
 rapidocr-onnxruntime==1.2.3
 onnxruntime==1.29.0
+reportlab==4.2.5
