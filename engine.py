@@ -868,39 +868,84 @@ def free_read(pages):
     return out
 
 
+GEMINI_FALLBACKS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
+_gemini_ok_model = None      # remembered after the first model that works
+
+
+def gemini_models():
+    first = os.environ.get("GEMINI_MODEL", "").strip()
+    order = ([_gemini_ok_model] if _gemini_ok_model else []) + ([first] if first else []) + GEMINI_FALLBACKS
+    return list(dict.fromkeys(m for m in order if m))
+
+
+def gemini_error(r):
+    """Readable reason from a Gemini error response (quota metric, limit, retry delay)."""
+    try:
+        err = r.json().get("error", {})
+    except Exception:
+        return f"HTTP {r.status_code}: {r.text[:200]}"
+    msg = norm(err.get("message", ""))[:160]
+    bits = []
+    for d in err.get("details", []) or []:
+        for v_ in d.get("violations", []) or []:
+            qid = v_.get("quotaId") or v_.get("quotaMetric") or ""
+            per = "per day" if "PerDay" in qid else ("per minute" if "PerMinute" in qid else "")
+            bits.append(f"limit {v_.get('quotaValue', '?')} requests {per}".strip() + (" (free tier)" if "FreeTier" in qid else ""))
+        if d.get("retryDelay"):
+            bits.append(f"retry after {d['retryDelay']}")
+    return (f"HTTP {r.status_code}: " + "; ".join(dict.fromkeys(bits))) if bits else f"HTTP {r.status_code}: {msg}"
+
+
+def gemini_call(parts, json_out=True, max_tokens=8000, timeout=170):
+    """Try the configured model, then other free-tier models if one has no quota. Returns (text, model, error)."""
+    global _gemini_ok_model
+    import requests
+    key = os.environ.get("GEMINI_API_KEY")
+    errors = []
+    for model in gemini_models():
+        body = {"contents": [{"role": "user", "parts": parts}], "generationConfig": {"temperature": 0, "maxOutputTokens": max_tokens}}
+        if json_out:
+            body["generationConfig"]["responseMimeType"] = "application/json"
+        try:
+            r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", json=body, timeout=timeout,
+                              headers={"x-goog-api-key": key, "content-type": "application/json"})
+        except Exception as e:
+            errors.append(f"{model}: {e}")
+            continue
+        if r.status_code == 200:
+            cands = r.json().get("candidates") or []
+            txt = "".join(p_.get("text", "") for c in cands[:1] for p_ in (c.get("content") or {}).get("parts", []))
+            _gemini_ok_model = model
+            return txt, model, None
+        errors.append(f"{model}: {gemini_error(r)}")
+        if r.status_code in (400, 401, 403):      # key problem — other models won't help
+            break
+    return None, None, " | ".join(errors)
+
+
 def read_documents_gemini(pages, ctx):
     """Read documents with Google Gemini (free or paid key). Same JSON shape as the Claude reader."""
-    key = os.environ.get("GEMINI_API_KEY")
-    if not key:
+    if not os.environ.get("GEMINI_API_KEY"):
         return None, "GEMINI_API_KEY is not set."
     if not pages:
         return None, "No readable documents were received."
-    import requests
-    model = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
     parts = []
     for p in pages[:int(os.environ.get("MAX_PAGES", "16"))]:
         parts.append({"text": f"[{p['label']}]"})
         parts.append({"inline_data": {"mime_type": "image/jpeg", "data": p["data"]}})
     parts.append({"text": READ_PROMPT.format(**ctx)})
-    body = {"contents": [{"role": "user", "parts": parts}],
-            "generationConfig": {"temperature": 0, "responseMimeType": "application/json", "maxOutputTokens": 8000}}
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    txt, model, err = gemini_call(parts)
+    if err:
+        return None, ("Gemini quota exhausted for every free model — " if "429" in err else "Gemini error — ") + err[:500]
+    m = re.search(r"\{.*\}", txt or "", re.S)
+    if not m:
+        return None, f"Gemini ({model}) returned no readable result (documents blocked or unreadable)."
     try:
-        r = requests.post(url, json=body, timeout=170, headers={"x-goog-api-key": key, "content-type": "application/json"})
-        if r.status_code == 429:
-            return None, "Gemini free-tier limit reached for now — try again later (record checks below are unaffected)."
-        if r.status_code != 200:
-            return None, f"Gemini error {r.status_code}: {r.text[:300]}"
-        cands = r.json().get("candidates") or []
-        txt = "".join(p_.get("text", "") for c in cands[:1] for p_ in (c.get("content") or {}).get("parts", []))
-        m = re.search(r"\{.*\}", txt, re.S)
-        if not m:
-            return None, "Gemini returned no readable result (the documents may have been blocked or unreadable)."
         out = json.loads(m.group(0))
-        out["mode"] = "gemini"
-        return out, None
-    except Exception as e:
-        return None, f"Gemini reading failed: {e}"
+    except Exception:
+        return None, f"Gemini ({model}) returned malformed data."
+    out["mode"], out["model"] = "gemini", model
+    return out, None
 
 
 def merge_ocr(ai, ocr):

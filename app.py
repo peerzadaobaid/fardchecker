@@ -86,13 +86,23 @@ def test_reader():
             reply = "".join(b.get("text", "") for b in r.json().get("content", [])) if ok else r.text[:300]
             return jsonify(reader="Claude", model=model, ok=ok, status=r.status_code, reply=reply, secs=round(time.time() - t0, 1))
         if os.environ.get("GEMINI_API_KEY"):
-            model = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
-            r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", timeout=60,
-                              headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"], "content-type": "application/json"},
-                              json={"contents": [{"role": "user", "parts": [{"text": "Reply with just: OK"}]}]})
-            ok = r.status_code == 200
-            reply = "".join(p.get("text", "") for c in (r.json().get("candidates") or [])[:1] for p in (c.get("content") or {}).get("parts", [])) if ok else r.text[:300]
-            return jsonify(reader="Gemini", model=model, ok=ok, status=r.status_code, reply=reply, secs=round(time.time() - t0, 1))
+            import requests as rq
+            tried = []
+            for model in engine.gemini_models():
+                r = rq.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", timeout=60,
+                            headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"], "content-type": "application/json"},
+                            json={"contents": [{"role": "user", "parts": [{"text": "Reply with just: OK"}]}]})
+                if r.status_code == 200:
+                    engine._gemini_ok_model = model
+                    tried.append({"model": model, "ok": True})
+                    break
+                tried.append({"model": model, "ok": False, "why": engine.gemini_error(r)})
+                if r.status_code in (400, 401, 403):
+                    break
+            good = next((t for t in tried if t["ok"]), None)
+            return jsonify(reader="Gemini", ok=bool(good), model=good["model"] if good else None, tried=tried,
+                           status=200 if good else 429, secs=round(time.time() - t0, 1),
+                           reply=("Working with " + good["model"]) if good else "No Gemini model answered — see details.")
         return jsonify(reader="Free OCR only", ok=True, reply="No GEMINI_API_KEY or ANTHROPIC_API_KEY set — handwriting is not read.")
     except Exception as e:
         return jsonify(ok=False, error=str(e)), 200
@@ -153,7 +163,7 @@ def analyse():
     elif os.environ.get("GEMINI_API_KEY") and data.get("read_docs", True):
         ocr = engine.free_read(pages)
         ai, ai_err = engine.read_documents_gemini(pages, ctx)
-        used = "Gemini (" + os.environ.get("GEMINI_MODEL", "gemini-3.8-flash") + ")"
+        used = "Gemini (" + ((ai or {}).get("model") or engine.gemini_models()[0]) + ")"
         ai = engine.merge_ocr(ai, ocr) if ai else ocr
     else:
         ai = engine.free_read(pages)
@@ -192,7 +202,7 @@ input{{font:inherit;padding:8px;border:1px solid #c9ced8;border-radius:8px}}
 <script>async function testReader(){{var o=document.getElementById('tr');o.textContent='Testing…';try{{var r=await fetch('/api/test-reader?key='+encodeURIComponent(document.getElementById('k2').value));var d=await r.json();
 if(!r.ok){{o.innerHTML='<span style="color:#b42318">'+(d.error||r.status)+'</span>';return}}
 o.innerHTML=(d.ok?'<b style="color:#145c36">✓ Working</b>':'<b style="color:#b42318">✗ Not working</b>')+' — '+(d.reader||'')+(d.model?' ('+d.model+')':'')+(d.secs!=null?' · '+d.secs+' s':'')+'<div class=m>'+String(d.reply||d.error||'').replace(/[<>&]/g,'')+'</div>'+
-(d.status==429?'<div class=m>Free daily/minute limit reached — try later.</div>':'')+(d.status==404?'<div class=m>Model name not found — set GEMINI_MODEL on Render to a current model.</div>':'')+(d.status==400||d.status==403?'<div class=m>Check the API key value on Render.</div>':'')}}catch(e){{o.textContent='Error: '+e}}}}</script></div>
+(d.tried?'<div class=m>'+d.tried.map(function(t){{return (t.ok?'✓ ':'✗ ')+t.model+(t.why?' — '+String(t.why).replace(/[<>&]/g,''):'')}}).join('<br>')+'</div>':'')+(d.tried&&!d.ok&&d.tried.every(function(t){{return /limit 0/.test(t.why||'')}})?'<div class=m><b>All free limits show 0</b> — this key\'s Google project has no free quota. Create the key in a <b>new project</b> at aistudio.google.com (Get API key → Create API key in new project), or enable billing on the project.</div>':'')+(d.status==404?'<div class=m>Model name not found — set GEMINI_MODEL on Render to a current model.</div>':'')+(d.status==400||d.status==403?'<div class=m>Check the API key value on Render.</div>':'')}}catch(e){{o.textContent='Error: '+e}}}}</script></div>
 <div class="c"><h2>3 · Village data</h2><p class="m">One folder per village in GitHub: <code>villages/&lt;Village name&gt;/</code> with the Jamabandi .xlsx and the shapefile (.shp .shx .dbf .prj). To add a village, open the <code>villages</code> folder on GitHub → Add file → Upload files → drag the whole village folder. Optional <code>aliases.txt</code> (one spelling per line) if the portal spells the village differently. A tehsil-wide shapefile with a Village column can go in <code>villages/_maps/</code> instead of a shapefile per village.</p>
 <p><input id="k" placeholder="Access key" type="password"> <button onclick="load()">Show villages</button> <button onclick="all_()" style="background:#12355b">Check all</button></p><div id="vs"></div></div>
 <script>
