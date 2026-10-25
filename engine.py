@@ -1648,6 +1648,15 @@ def render(rep):
     h.append(f'<div style="color:#5b6475;font-size:13px">Applicant: {esc(hd["applicant"] or "—")} · App. no. {esc(hd["appNo"] or "—")}'
              f'{" · Area applied: " + km(hd["applied"]) if hd["applied"] is not None else ""}</div>')
     h.append(f'<div style="margin:10px 0;padding:10px 12px;border-radius:10px;background:#fff;border:1px solid #e1e4ea;border-left:6px solid {verdict[0]};font-weight:600">{verdict[1]}</div>')
+    rs = getattr(rep, "reader_status", None)
+    if rs:
+        if rs.get("error"):
+            col, txt = "#b42318", f"✗ {rs['used']} could not read the documents: {rs['error']}"
+        elif rs["used"].startswith("Free"):
+            col, txt = "#5b6475", f"Documents: {rs['used']}"
+        else:
+            col, txt = "#145c36", f"✓ Documents read by {rs['used']}: {', '.join(rs['read']) or 'nothing recognisable'}"
+        h.append(f'<div style="margin:-4px 0 10px;font-size:12.5px;color:{col}">{esc(txt)} · {rs["pages"]} page(s), {rs["secs"]} s</div>')
     m = svg_map(rep)
     if m:
         h.append('<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;margin-bottom:8px">'

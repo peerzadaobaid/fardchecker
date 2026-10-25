@@ -1664,7 +1664,7 @@
       var l = y.getElementById("showlast");
       l &&
         (l.onclick = function () {
-          Ne(i);
+          Ne(i), rpStartBackground(i.items);
         });
     } else {
       w.innerHTML =
@@ -1677,7 +1677,7 @@
       var d = y.getElementById("showlast");
       d &&
         (d.onclick = function () {
-          Ne(i);
+          Ne(i), rpStartBackground(i.items);
         });
     }
   }
@@ -1989,6 +1989,7 @@
     }
   }
   async function Se(a) {
+    rpBG.gen++, (rpBG.queue = []), (rpBG.total = 0);
     if (!A) {
       (A = !0), (T = !1);
       var r = [];
@@ -2138,10 +2139,15 @@
         localStorage.setItem(t, JSON.stringify(M));
       } catch (e) {}
       Ne(M);
+      rpStartBackground(M.items);
     }
   }
   // ───── Analyse with village records (hosted version) ─────
-  var rpAnaCache = {};
+  var rpAnaCache = {},
+    rpChain = Promise.resolve(),
+    rpCurrent = null,
+    rpBG = { gen: 0, paused: !1, running: !1, queue: [], done: 0, total: 0, failed: 0, cur: "" },
+    RP_LS = "rpAnaCache2";
   function rpBlobB64(b) {
     return new Promise(function (ok, bad) {
       var fr = new FileReader();
@@ -2154,103 +2160,94 @@
       fr.readAsDataURL(b);
     });
   }
-  async function rpAnalyse(e, force) {
-    var API = window.__rpApiBase || "";
-    S = y.getElementById("modal");
-    var ttl = y.getElementById("mtitle"),
-      body = y.getElementById("mbody"),
-      acts = y.getElementById("macts"),
-      ck = e.appNo + "|" + e.service;
-    ttl.textContent = "Analysis — " + (e.name || e.appNo);
-    acts.innerHTML = "";
-    S.hidden = !1;
-    function st(msg, err) {
-      body.innerHTML =
-        '<div style="padding:18px;max-width:640px;align-self:flex-start;' +
-        (err ? "color:#b42318" : "color:#5b6475") +
-        '">' +
-        L(msg) +
-        "</div>";
+  function rpKey(e) {
+    return e.appNo + "|" + e.service;
+  }
+  function rpVer(e) {
+    // changes when the file moves, the Patwari report changes or documents change → old analysis is not reused
+    return [(e.history || []).length, e.patReport || "", (e.docs || []).length, e.appDate || ""].join("|");
+  }
+  function rpCacheGet(e) {
+    var k = rpKey(e),
+      c = rpAnaCache[k];
+    if (!c) {
+      try {
+        c = (JSON.parse(localStorage.getItem(RP_LS) || "{}") || {})[k];
+      } catch (x) {}
     }
-    function show(html) {
-      body.innerHTML =
-        '<div style="align-self:flex-start;width:100%;background:#f4f5f7">' +
-        html +
-        "</div>";
-      Array.prototype.forEach.call(
-        body.querySelectorAll("[data-copy]"),
-        function (b) {
-          b.onclick = function () {
-            var el = body.querySelector("#" + b.dataset.copy),
-              txt = el ? el.textContent : "";
-            navigator.clipboard && navigator.clipboard.writeText
-              ? navigator.clipboard.writeText(txt).then(
-                  function () {
-                    b.textContent = "Copied ✓";
-                  },
-                  function () {
-                    prompt("Copy this:", txt);
-                  },
-                )
-              : prompt("Copy this:", txt);
-          };
-        },
-      );
-      acts.innerHTML = '<button id="rpaRe">Run again</button>';
-      y.getElementById("rpaRe").onclick = function () {
-        rpAnalyse(e, !0);
-      };
-    }
-    if (!force && rpAnaCache[ck]) return show(rpAnaCache[ck]);
-    if (!API) return st("This tracker was not loaded from the Render app.", !0);
-    if (!e.fields)
-      return st(
-        "Run a new scan first — this application was read by an older tracker version.",
-        !0,
-      );
+    return c && c.ver === rpVer(e) ? c : null;
+  }
+  function rpCachePut(e, html) {
+    var k = rpKey(e),
+      c = { ver: rpVer(e), html: html, at: Date.now() };
+    rpAnaCache[k] = c;
+    try {
+      var all = JSON.parse(localStorage.getItem(RP_LS) || "{}") || {};
+      all[k] = c;
+      var keys = Object.keys(all).sort(function (a, b) {
+        return all[b].at - all[a].at;
+      });
+      keys.slice(25).forEach(function (x) {
+        delete all[x];
+      });
+      for (var n = 0; n < 5; n++) {
+        try {
+          localStorage.setItem(RP_LS, JSON.stringify(all));
+          break;
+        } catch (q) {
+          keys = Object.keys(all).sort(function (a, b) {
+            return all[a].at - all[b].at;
+          });
+          if (!keys.length) break;
+          delete all[keys[0]];
+        }
+      }
+    } catch (x) {}
+  }
+  function rpGetKey(ask) {
     var key = "";
     try {
       key = localStorage.getItem("rpApiKey") || "";
     } catch (x) {}
-    if (!key) {
+    if (!key && ask) {
       key = (prompt("Access key for the analyser (the ACCESS_KEY set on Render):") || "").trim();
-      if (!key) return (S.hidden = !0), void 0;
-      try {
-        localStorage.setItem("rpApiKey", key);
-      } catch (x) {}
+      if (key)
+        try {
+          localStorage.setItem("rpApiKey", key);
+        } catch (x) {}
     }
-    st("Connecting to the analyser …");
+    return key;
+  }
+  // One analysis at a time (the portal session can only have one application open)
+  function rpSerial(fn) {
+    var p = rpChain.then(fn, fn);
+    rpChain = p.catch(function () {});
+    return p;
+  }
+  // Core: fetch documents of application e, send to Render, return report html
+  async function rpCore(e, key, status) {
+    var API = window.__rpApiBase || "",
+      stage = "connecting";
     try {
       var pr = await fetch(API + "/api/ping", { cache: "no-store" });
       if (!pr.ok) throw new Error("HTTP " + pr.status);
     } catch (err) {
-      st(
-        "Cannot reach the analyser at " +
-          API +
-          " from this page (" +
-          String((err && err.message) || err) +
-          "). If Render was asleep, wait 30–50 s and tap Run again. If it keeps failing, the portal is blocking the connection.",
-        !0,
+      var x = new Error(
+        "Cannot reach the analyser (" + String((err && err.message) || err) + "). If Render was asleep, wait 30–50 s and try again; if it keeps failing, the portal is blocking the connection.",
       );
-      acts.innerHTML = '<button id="rpaRe">Run again</button>';
-      y.getElementById("rpaRe").onclick = function () {
-        rpAnalyse(e, !0);
-      };
-      return;
+      x.stage = stage;
+      throw x;
     }
-    var stage = "fetching documents";
     try {
+      stage = "fetching documents";
       var list = (e.docs || []).filter(function (d) {
-          return (
-            !/^All documents/.test(d.label) &&
-            !/identity|aadhaar|aadhar|id proof|voter|pan card/i.test(d.label)
-          );
+          return !/^All documents/.test(d.label) && !/identity|aadhaar|aadhar|id proof|voter|pan card/i.test(d.label);
         }),
         docs = [],
         size = 0;
       for (var i = 0; i < list.length; i++) {
         var d = list[i];
-        st("Fetching document " + (i + 1) + " of " + list.length + ": " + d.label + " …");
+        status("Fetching document " + (i + 1) + " of " + list.length + ": " + d.label + " …");
         try {
           var res = await Ee(e, d.i, d.label),
             blob = res.blob.type ? res.blob : new Blob([res.blob], { type: res.type || "" });
@@ -2264,30 +2261,20 @@
         await C(400);
       }
       stage = "sending to the analyser";
-      st(
+      status(
         "Reading " +
           docs.filter(function (d) {
             return d.data;
           }).length +
-          " document(s) with Claude and checking the village Jamabandi and map … this can take up to a minute.",
+          " document(s) and checking the village Jamabandi and map … this can take up to a minute.",
       );
       var resp = await fetch(API + "/api/analyse", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Access-Key": key },
         body: JSON.stringify({
           app: {
-            appNo: e.appNo,
-            name: e.name,
-            village: e.village,
-            khasra: e.khasra,
-            service: e.service,
-            purpose: e.purpose,
-            appDate: e.appDate,
-            area: e.area,
-            fields: e.fields,
-            adj: e.adj,
-            mut: e.mut,
-            history: e.history,
+            appNo: e.appNo, name: e.name, village: e.village, khasra: e.khasra, service: e.service,
+            purpose: e.purpose, appDate: e.appDate, area: e.area, fields: e.fields, adj: e.adj, mut: e.mut, history: e.history,
           },
           docs: docs,
         }),
@@ -2296,27 +2283,243 @@
         try {
           localStorage.removeItem("rpApiKey");
         } catch (x) {}
-        return st("Wrong access key. Tap “Run again” to enter it again.", !0), (acts.innerHTML = '<button id="rpaRe">Run again</button>'), void (y.getElementById("rpaRe").onclick = function () { rpAnalyse(e, !0); });
+        var k = new Error("Wrong access key.");
+        k.stage = "key";
+        throw k;
       }
       var j = await resp.json();
       if (!resp.ok) throw new Error(j.error || "HTTP " + resp.status);
-      rpAnaCache[ck] = j.html;
-      show(j.html);
+      rpCachePut(e, j.html);
+      rpMarkButtons();
+      return j.html;
     } catch (err) {
-      st(
-        "Analysis failed while " +
-          stage +
-          ": " +
-          String((err && err.message) || err) +
-          (stage === "sending to the analyser"
-            ? ". The analyser was reachable but dropped this request — usually it ran out of memory or time on Render. Tap Run again; if it repeats, send a screenshot of the Render Logs."
-            : "."),
-        !0,
-      );
+      err.stage = err.stage || stage;
+      throw err;
+    }
+  }
+  function rpRunFor(e, status) {
+    var ck = rpKey(e);
+    if (rpCurrent && rpCurrent.ck === ck) return rpCurrent.promise; // already being analysed in background
+    var key = rpGetKey(!1);
+    return rpSerial(async function () {
+      var hit = rpCacheGet(e);
+      if (hit) return hit.html;
+      var p = rpCore(e, key, status);
+      rpCurrent = { ck: ck, promise: p };
+      try {
+        return await p;
+      } finally {
+        rpCurrent = null;
+      }
+    });
+  }
+  async function rpAnalyse(e, force) {
+    var API = window.__rpApiBase || "";
+    S = y.getElementById("modal");
+    var ttl = y.getElementById("mtitle"),
+      body = y.getElementById("mbody"),
+      acts = y.getElementById("macts");
+    ttl.textContent = "Analysis — " + (e.name || e.appNo);
+    acts.innerHTML = "";
+    S.hidden = !1;
+    function st(msg, err) {
+      body.innerHTML =
+        '<div style="padding:18px;max-width:640px;align-self:flex-start;' + (err ? "color:#b42318" : "color:#5b6475") + '">' + L(msg) + "</div>";
+    }
+    function again() {
       acts.innerHTML = '<button id="rpaRe">Run again</button>';
       y.getElementById("rpaRe").onclick = function () {
         rpAnalyse(e, !0);
       };
+    }
+    function show(html, cachedAt) {
+      body.innerHTML =
+        '<div style="align-self:flex-start;width:100%;background:#f4f5f7">' +
+        (cachedAt
+          ? '<div style="max-width:900px;margin:8px auto 0;padding:0 14px;font-size:12px;color:#5b6475">Prepared in the background at ' +
+            L(new Date(cachedAt).toLocaleTimeString()) +
+            " · tap “Run again” for a fresh analysis</div>"
+          : "") +
+        html +
+        "</div>";
+      Array.prototype.forEach.call(body.querySelectorAll("[data-copy]"), function (b) {
+        b.onclick = function () {
+          var el = body.querySelector("#" + b.dataset.copy),
+            txt = el ? el.textContent : "";
+          navigator.clipboard && navigator.clipboard.writeText
+            ? navigator.clipboard.writeText(txt).then(
+                function () {
+                  b.textContent = "Copied ✓";
+                },
+                function () {
+                  prompt("Copy this:", txt);
+                },
+              )
+            : prompt("Copy this:", txt);
+        };
+      });
+      again();
+    }
+    if (!API) return st("This tracker was not loaded from the Render app.", !0);
+    if (!e.fields) return st("Run a new scan first — this application was read by an older tracker version.", !0);
+    var hit = !force && rpCacheGet(e);
+    if (hit) return show(hit.html, hit.at);
+    if (!rpGetKey(!0)) return (S.hidden = !0), void 0;
+    if (force) {
+      delete rpAnaCache[rpKey(e)];
+      try {
+        var all = JSON.parse(localStorage.getItem(RP_LS) || "{}") || {};
+        delete all[rpKey(e)];
+        localStorage.setItem(RP_LS, JSON.stringify(all));
+      } catch (x) {}
+    }
+    st(
+      rpCurrent && rpCurrent.ck !== rpKey(e)
+        ? "Waiting for the background analysis of another application to finish (one at a time) …"
+        : "Connecting to the analyser …",
+    );
+    try {
+      var html = await rpRunFor(e, st);
+      show(html);
+      rpStartBackground(); // key may have just been entered
+    } catch (err) {
+      st(
+        "Analysis failed while " +
+          (err.stage || "working") +
+          ": " +
+          String((err && err.message) || err) +
+          (err.stage === "sending to the analyser"
+            ? " The analyser was reachable but dropped this request — usually it ran out of memory or time on Render. Tap Run again; if it repeats, send a screenshot of the Render Logs."
+            : ""),
+        !0,
+      );
+      again();
+    }
+  }
+  // ───── Background pre-analysis while the tracker stays open ─────
+  function rpEligible(e) {
+    var docs = (e.docs || []).filter(function (d) {
+      return !/^All documents/.test(d.label);
+    });
+    return (
+      !!e.fields &&
+      "Submitted" === e.patReport &&
+      docs.some(function (d) {
+        return /tatima/i.test(d.label);
+      }) &&
+      docs.some(function (d) {
+        return !/tatima/i.test(d.label) && !/identity|aadhaar|aadhar|id proof|voter|pan card/i.test(d.label);
+      })
+    );
+  }
+  function rpPanel() {
+    var p = y.getElementById("rpbg");
+    if (!p) {
+      p = document.createElement("div");
+      p.id = "rpbg";
+      p.style.cssText =
+        "position:fixed;left:12px;bottom:12px;z-index:5;max-width:min(420px,calc(100vw - 24px));background:#12355b;color:#fff;border-radius:10px;padding:10px 12px;font:13px/1.4 system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.25)";
+      y.appendChild(p);
+    }
+    var b = rpBG,
+      left = b.queue.length + (b.cur ? 1 : 0);
+    if (!b.total) return (p.style.display = "none"), p;
+    p.style.display = "block";
+    p.innerHTML =
+      "<b>Background analysis</b> — " +
+      b.done +
+      " of " +
+      b.total +
+      " ready" +
+      (b.failed ? ", " + b.failed + " failed" : "") +
+      (b.cur && !b.paused ? '<div style="opacity:.85">Now: ' + L(b.cur) + "</div>" : "") +
+      (left && !b.paused
+        ? '<div style="opacity:.85;font-size:12px;margin-top:2px">Don’t process applications on the portal in another tab until this finishes.</div>'
+        : "") +
+      (b.needKey ? '<div style="margin-top:2px">Tap “Analyse” on any application once to enter the access key — background analysis starts after that.</div>' : "") +
+      '<div style="margin-top:6px;display:flex;gap:6px">' +
+      (left
+        ? '<button id="rpbgP" style="padding:5px 10px;font-size:12px">' + (b.paused ? "Resume" : "Pause") + "</button>"
+        : "") +
+      '<button id="rpbgX" style="padding:5px 10px;font-size:12px">Hide</button></div>';
+    var pb = y.getElementById("rpbgP");
+    pb &&
+      (pb.onclick = function () {
+        b.paused = !b.paused;
+        rpPanel();
+        b.paused || rpLoop(b.gen);
+      });
+    y.getElementById("rpbgX").onclick = function () {
+      p.style.display = "none";
+    };
+    return p;
+  }
+  function rpMarkButtons() {
+    Array.prototype.forEach.call(w.querySelectorAll(".ana"), function (btn) {
+      var it = (rpBG.items || []).filter(function (t) {
+        return rpKey(t) === btn.dataset.k;
+      })[0];
+      if (!it) return;
+      var ready = rpCacheGet(it);
+      btn.textContent = ready ? "Open analysis ✓ (ready)" : "Analyse with village records";
+      btn.style.background = ready ? "#1a7f5a" : "#12355b";
+    });
+  }
+  function rpStartBackground(items) {
+    if (!window.__rpApiBase) return;
+    if (items) {
+      rpBG.gen++;
+      rpBG.items = items;
+      rpBG.queue = items.filter(function (e) {
+        return rpEligible(e) && !rpCacheGet(e);
+      });
+      rpBG.total = items.filter(rpEligible).length;
+      rpBG.done = rpBG.total - rpBG.queue.length;
+      rpBG.failed = 0;
+      rpBG.paused = !1;
+    }
+    rpBG.needKey = !rpGetKey(!1) && rpBG.queue.length > 0;
+    rpPanel();
+    rpMarkButtons();
+    if (!rpBG.needKey && !rpBG.running) rpLoop(rpBG.gen);
+  }
+  async function rpLoop(gen) {
+    if (rpBG.running) return;
+    rpBG.running = !0;
+    try {
+      while (rpBG.queue.length && !rpBG.paused && gen === rpBG.gen && !A) {
+        var e = rpBG.queue.shift();
+        if (rpCacheGet(e)) {
+          rpBG.done++;
+          continue;
+        }
+        rpBG.cur = (e.name || e.appNo) + (e.village ? " · " + e.village : "") + (e.khasra ? " · khasra " + e.khasra : "");
+        rpPanel();
+        try {
+          await rpRunFor(e, function () {});
+          rpBG.done++;
+        } catch (err) {
+          rpBG.failed++;
+          if (err && err.stage === "key") {
+            rpBG.needKey = !0;
+            rpBG.queue.unshift(e);
+            break;
+          }
+          if (err && err.stage === "connecting") {
+            rpBG.queue.unshift(e);
+            rpBG.failed--;
+            await C(30000); // Render waking up — retry in 30 s
+          }
+        }
+        rpBG.cur = "";
+        rpPanel();
+        rpMarkButtons();
+        await C(1500);
+      }
+    } finally {
+      rpBG.running = !1;
+      rpBG.cur = "";
+      rpPanel();
     }
   }
   function Re(e) {
@@ -3274,6 +3477,7 @@
             r && rpAnalyse(r, !1);
           };
         }),
+        rpMarkButtons(),
         Array.prototype.forEach.call(
           w.querySelectorAll(".docbtn"),
           function (e) {

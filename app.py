@@ -69,6 +69,35 @@ def ping():
                    python=sys.version.split()[0], versions=vers)
 
 
+@app.get("/api/test-reader")
+def test_reader():
+    """Checks that the configured document reader (Gemini / Claude) answers — tiny text-only request."""
+    if not ok_key():
+        return jsonify(error="Wrong or missing access key"), 401
+    import requests
+    t0 = time.time()
+    try:
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            model = os.environ.get("CLAUDE_MODEL", "claude-opus-5-5")
+            r = requests.post("https://api.anthropic.com/v1/messages", timeout=60,
+                              headers={"x-api-key": os.environ["ANTHROPIC_API_KEY"], "anthropic-version": "2023-06-01", "content-type": "application/json"},
+                              json={"model": model, "max_tokens": 10, "messages": [{"role": "user", "content": "Reply with just: OK"}]})
+            ok = r.status_code == 200
+            reply = "".join(b.get("text", "") for b in r.json().get("content", [])) if ok else r.text[:300]
+            return jsonify(reader="Claude", model=model, ok=ok, status=r.status_code, reply=reply, secs=round(time.time() - t0, 1))
+        if os.environ.get("GEMINI_API_KEY"):
+            model = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+            r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", timeout=60,
+                              headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"], "content-type": "application/json"},
+                              json={"contents": [{"role": "user", "parts": [{"text": "Reply with just: OK"}]}]})
+            ok = r.status_code == 200
+            reply = "".join(p.get("text", "") for c in (r.json().get("candidates") or [])[:1] for p in (c.get("content") or {}).get("parts", [])) if ok else r.text[:300]
+            return jsonify(reader="Gemini", model=model, ok=ok, status=r.status_code, reply=reply, secs=round(time.time() - t0, 1))
+        return jsonify(reader="Free OCR only", ok=True, reply="No GEMINI_API_KEY or ANTHROPIC_API_KEY set — handwriting is not read.")
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 200
+
+
 @app.get("/api/villages")
 def villages():
     if not ok_key():
@@ -115,16 +144,24 @@ def analyse():
            "village": f.get("villageD") or appd.get("village") or "", "applicant": f.get("applicant") or appd.get("name") or "",
            "area": f.get("areaProposed") or appd.get("area") or ""}
     ai, ai_err = (None, None)
+    t1 = time.time()
+    used = "Free OCR (GPS stamp only — handwriting not read)"
     if os.environ.get("ANTHROPIC_API_KEY") and data.get("read_docs", True):
         ai, ai_err = engine.read_documents(pages, ctx)
+        used = "Claude (" + os.environ.get("CLAUDE_MODEL", "claude-opus-5-5") + ")"
         ai = engine.merge_ocr(ai, engine.free_read(pages)) if ai else engine.free_read(pages)
     elif os.environ.get("GEMINI_API_KEY") and data.get("read_docs", True):
         ocr = engine.free_read(pages)
         ai, ai_err = engine.read_documents_gemini(pages, ctx)
+        used = "Gemini (" + os.environ.get("GEMINI_MODEL", "gemini-3.8-flash") + ")"
         ai = engine.merge_ocr(ai, ocr) if ai else ocr
     else:
         ai = engine.free_read(pages)
+    reader_status = {"used": used, "ok": ai_err is None, "error": ai_err, "pages": len(pages), "secs": round(time.time() - t1),
+                     "read": [k for k in ("fard", "tatima", "mutations") if (ai or {}).get(k) and (not isinstance(ai.get(k), dict) or ai[k].get("found"))]
+                             + (["GPS stamp"] if ((ai or {}).get("photo") or {}).get("lat") else [])}
     rep = engine.analyse(appd, ai, ai_err)
+    rep.reader_status = reader_status
     if skipped:
         engine.add(rep.sections[0], "amber", "Some documents could not be opened: " + "; ".join(skipped))
     engine.add(rep.sections[0], "info", f"{len(pages)} distinct document page(s) read in {time.time() - t0:.0f} s.")
@@ -150,6 +187,12 @@ input{{font:inherit;padding:8px;border:1px solid #c9ced8;border-radius:8px}}
 <textarea readonly id="bmt">{bm_text}</textarea><button onclick="navigator.clipboard.writeText(document.getElementById('bmt').value);this.textContent='Copied ✓'">Copy bookmark code</button>
 <p class="m">First tap after a while may take ~30–50 s while Render wakes up.</p></div>
 <div class="c"><h2>2 · Use</h2><p>Log in to Revenue Plus → Dashboard → choose service type → View → tap <b>RP Tracker</b> → scan. Open an application row and tap <b>Analyse with village records</b>. The first time it asks for the access key (set as ACCESS_KEY on Render).</p></div>
+<div class="c"><h2>Document reader (AI)</h2><p class="m">Shows which AI reads handwritten fards / tatimas and whether it answers right now.</p>
+<p><input id="k2" placeholder="Access key" type="password"> <button onclick="testReader()">Test document reader</button></p><div id="tr"></div>
+<script>async function testReader(){{var o=document.getElementById('tr');o.textContent='Testing…';try{{var r=await fetch('/api/test-reader?key='+encodeURIComponent(document.getElementById('k2').value));var d=await r.json();
+if(!r.ok){{o.innerHTML='<span style="color:#b42318">'+(d.error||r.status)+'</span>';return}}
+o.innerHTML=(d.ok?'<b style="color:#145c36">✓ Working</b>':'<b style="color:#b42318">✗ Not working</b>')+' — '+(d.reader||'')+(d.model?' ('+d.model+')':'')+(d.secs!=null?' · '+d.secs+' s':'')+'<div class=m>'+String(d.reply||d.error||'').replace(/[<>&]/g,'')+'</div>'+
+(d.status==429?'<div class=m>Free daily/minute limit reached — try later.</div>':'')+(d.status==404?'<div class=m>Model name not found — set GEMINI_MODEL on Render to a current model.</div>':'')+(d.status==400||d.status==403?'<div class=m>Check the API key value on Render.</div>':'')}}catch(e){{o.textContent='Error: '+e}}}}</script></div>
 <div class="c"><h2>3 · Village data</h2><p class="m">One folder per village in GitHub: <code>villages/&lt;Village name&gt;/</code> with the Jamabandi .xlsx and the shapefile (.shp .shx .dbf .prj). To add a village, open the <code>villages</code> folder on GitHub → Add file → Upload files → drag the whole village folder. Optional <code>aliases.txt</code> (one spelling per line) if the portal spells the village differently. A tehsil-wide shapefile with a Village column can go in <code>villages/_maps/</code> instead of a shapefile per village.</p>
 <p><input id="k" placeholder="Access key" type="password"> <button onclick="load()">Show villages</button> <button onclick="all_()" style="background:#12355b">Check all</button></p><div id="vs"></div></div>
 <script>
