@@ -272,16 +272,82 @@ def _where(e):
     return f"{type(e).__name__}: {e}" + (f" [{os.path.basename(last.filename)}:{last.lineno} {last.name}]" if last else "")
 
 
+class _SR:
+    def __init__(self, shape, record):
+        self.shape, self.record = shape, record
+
+
 def _reader(path):
+    """Read all shape+record pairs, skipping blank/corrupt parcels instead of failing."""
     for enc in ("utf-8", "latin-1"):
         try:
             rd = shapefile.Reader(path, encoding=enc)
             fields = [f[0] for f in rd.fields[1:]]
-            recs = list(rd.iterShapeRecords())
-            return fields, recs
+            recs, skipped = [], 0
+            for i in range(len(rd)):
+                try:
+                    recs.append(_SR(rd.shape(i), rd.record(i)))
+                except UnicodeDecodeError:
+                    raise
+                except Exception:
+                    skipped += 1
+            return fields, recs, skipped
         except UnicodeDecodeError:
             continue
     raise ValueError("Could not read shapefile text encoding")
+
+
+def read_prj(shp_path):
+    """Return a function (x, y) -> (lon, lat) for the shapefile's coordinate system, or None if already lat/long."""
+    prj = shp_path[:-4] + ".prj"
+    txt = open(prj, encoding="latin-1").read() if os.path.exists(prj) else ""
+    if not txt or not txt.strip().upper().startswith("PROJCS"):
+        return None, "lat/long (WGS 84)"
+    if "TRANSVERSE_MERCATOR" not in txt.upper().replace(" ", "_"):
+        raise ValueError("Map projection not supported (only lat/long or UTM / Transverse Mercator): " + txt[:80])
+
+    def par(name, default):
+        m = re.search(r'PARAMETER\["' + name + r'",\s*(-?[\d.]+)', txt, re.I)
+        return float(m.group(1)) if m else default
+    lon0 = par("Central_Meridian", None)
+    if lon0 is None:
+        mz = re.search(r"UTM[_ ]Zone[_ ](\d+)", txt, re.I)
+        lon0 = (int(mz.group(1)) - 1) * 6 - 180 + 3 if mz else 75.0
+    k0, fe, fn, lat0 = par("Scale_Factor", 0.9996), par("False_Easting", 500000.0), par("False_Northing", 0.0), par("Latitude_Of_Origin", 0.0)
+    unit = re.findall(r'UNIT\["[^"]*",\s*([\d.]+)\]', txt)
+    to_m = float(unit[-1]) if unit else 1.0
+    name = (re.search(r'PROJCS\["([^"]+)"', txt) or [None, "Transverse Mercator"])[1]
+    a, f_ = 6378137.0, 1 / 298.257223563          # WGS 84
+    e2 = f_ * (2 - f_)
+    ep2 = e2 / (1 - e2)
+    import numpy as np
+
+    def M(phi):
+        return a * ((1 - e2 / 4 - 3 * e2 ** 2 / 64 - 5 * e2 ** 3 / 256) * phi - (3 * e2 / 8 + 3 * e2 ** 2 / 32 + 45 * e2 ** 3 / 1024) * np.sin(2 * phi)
+                    + (15 * e2 ** 2 / 256 + 45 * e2 ** 3 / 1024) * np.sin(4 * phi) - (35 * e2 ** 3 / 3072) * np.sin(6 * phi))
+    M0 = M(math.radians(lat0))
+    e1 = (1 - math.sqrt(1 - e2)) / (1 + math.sqrt(1 - e2))
+
+    def inv(x, y, z=None):
+        x = (np.asarray(x, dtype=float) * to_m - fe)
+        y = (np.asarray(y, dtype=float) * to_m - fn)
+        Mv = M0 + y / k0
+        mu = Mv / (a * (1 - e2 / 4 - 3 * e2 ** 2 / 64 - 5 * e2 ** 3 / 256))
+        phi1 = (mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * np.sin(2 * mu) + (21 * e1 ** 2 / 16 - 55 * e1 ** 4 / 32) * np.sin(4 * mu)
+                + (151 * e1 ** 3 / 96) * np.sin(6 * mu) + (1097 * e1 ** 4 / 512) * np.sin(8 * mu))
+        C1 = ep2 * np.cos(phi1) ** 2
+        T1 = np.tan(phi1) ** 2
+        N1 = a / np.sqrt(1 - e2 * np.sin(phi1) ** 2)
+        R1 = a * (1 - e2) / (1 - e2 * np.sin(phi1) ** 2) ** 1.5
+        D = x / (N1 * k0)
+        lat = phi1 - (N1 * np.tan(phi1) / R1) * (D ** 2 / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 ** 2 - 9 * ep2) * D ** 4 / 24
+                                                 + (61 + 90 * T1 + 298 * C1 + 45 * T1 ** 2 - 252 * ep2 - 3 * C1 ** 2) * D ** 6 / 720)
+        lon = (D - (1 + 2 * T1 + C1) * D ** 3 / 6 + (5 - 2 * C1 + 28 * T1 - 3 * C1 ** 2 + 8 * ep2 + 24 * T1 ** 2) * D ** 5 / 120) / np.cos(phi1)
+        lo, la = np.degrees(lon) + lon0, np.degrees(lat)
+        if lo.ndim == 0:
+            return float(lo), float(la)
+        return lo, la
+    return inv, name
 
 
 def village_field(fields):
@@ -302,7 +368,8 @@ def shapefile_villages(path):
 
 
 def parse_shapefile(path, only_village=None):
-    fields, recs = _reader(path)
+    fields, recs, skipped = _reader(path)
+    to_ll, crs_name = read_prj(path)
     kcol = next((f for f in fields if re.search(r"khasra", f, re.I)), None)
     tcol = next((f for f in fields if re.search(r"kind|soil|qism|land.?use", f, re.I)), None)
     acol = next((f for f in fields if re.search(r"ror", f, re.I)), None)
@@ -318,6 +385,8 @@ def parse_shapefile(path, only_village=None):
             geo = shape(sr.shape.__geo_interface__)
             if geo.has_z:
                 geo = shp_transform(lambda x, y, z=None: (x, y), geo)
+            if to_ll:
+                geo = shp_transform(to_ll, geo)
             if not geo.is_valid:
                 geo = make_valid(geo)
         except Exception:
@@ -334,11 +403,13 @@ def parse_shapefile(path, only_village=None):
     if not parcels:
         raise ValueError("No usable polygons in the shapefile" + (f" for village {only_village}" if only_village else ""))
     c = parcels[0]["geom"].centroid
+    if not (-180 <= c.x <= 180 and -90 <= c.y <= 90) or not (60 <= c.x <= 100 and 5 <= c.y <= 40):
+        raise ValueError(f"Map coordinates don't look like India in lat/long after reading the .prj ({crs_name}); check the .prj file")
     crs = (round(c.x, 6), round(c.y, 6))
     fwd = local_metres(*crs)
     for p in parcels:
         p["m"] = shp_transform(fwd, p["geom"])
-    return {"parcels": parcels, "crs": crs, "khasra_col": kcol}
+    return {"parcels": parcels, "crs": crs, "khasra_col": kcol, "skipped": skipped, "crs_name": crs_name}
 
 
 # ───────────────────────────── Village registry ─────────────────────────────
@@ -464,12 +535,18 @@ def _build(folder, path):
     try:
         if shp:
             v["map"] = parse_shapefile(os.path.join(path, shp[0]))
-            v["map_source"] = shp[0]
+            v["map_source"] = shp[0] + (f" ({v['map']['crs_name']}, converted)" if v["map"].get("crs_name", "").startswith(("WGS_1984_UTM", "UTM")) or "Mercator" in v["map"].get("crs_name", "") else "")
+            if v["map"].get("skipped"):
+                v.setdefault("notes", []).append(f"{v['map']['skipped']} blank parcel record(s) in {shp[0]} skipped — rest of the map is fine.")
             inside = shapefile_villages(os.path.join(path, shp[0]))
             mine = {_key(folder), _key(re.sub(r"[_\-\s]*\d+$", "", folder))}
             if os.path.isfile(os.path.join(path, "aliases.txt")):
                 mine |= {_key(l) for l in open(os.path.join(path, "aliases.txt"), encoding="utf-8", errors="ignore") if l.strip()}
-            if inside and not ({_key(x) for x in inside} & mine):
+            def _close(a_, b_):
+                a_, b_ = a_.rstrip("*"), b_.rstrip("*")
+                return bool(a_ and b_) and (a_ == b_ or similar(a_, b_) >= 0.8 or
+                                            (min(len(a_), len(b_)) >= 5 and (a_.startswith(b_) or b_.startswith(a_))))
+            if inside and not any(_close(_key(x) + ("*" if x.endswith("*") else ""), m_) for x in inside for m_ in mine):
                 v["errors"].append(f"Shapefile {shp[0]} says village “{', '.join(inside[:3])}”, not {folder} — wrong file? "
                                    f"(If it is only a spelling difference, add that spelling to aliases.txt.)")
             for ext in (".shx", ".dbf"):
@@ -554,7 +631,7 @@ def village_status(check=None):
         if check and _key(check) == _key(d):
             v = load_village(d, exact_folder=True)
             row.update(checked=True, khasras_jamabandi=len(v["jb"]["khasras"]) if v["jb"] else 0,
-                       parcels_map=len(v["map"]["parcels"]) if v["map"] else 0, errors=v["errors"],
+                       parcels_map=len(v["map"]["parcels"]) if v["map"] else 0, errors=v["errors"], notes=v.get("notes", []),
                        map_source=v.get("map_source", ""),
                        on_map_not_in_jb=sorted({p["khasra"] for p in v["map"]["parcels"] if p["khasra"]} - set(v["jb"]["khasras"]),
                                                key=lambda x: (len(x), x))[:30] if v["jb"] and v["map"] else [])
@@ -1053,6 +1130,8 @@ def analyse(app, ai=None, ai_error=None):
     else:
         for e in v["errors"]:
             add(s0, "amber", e)
+        for e in v.get("notes", []):
+            add(s0, "info", e)
         add(s0, "info", f"Portal village “{village}” → folder villages/{v['name']} ({v.get('how', '')}): "
                         f"{len(v['jb']['khasras']) if v['jb'] else 0} khasras in Jamabandi, "
                         f"{len(v['map']['parcels']) if v['map'] else 0} parcels on map" + (f" from {v['map_source']}" if v.get('map_source') else "") + ".")
