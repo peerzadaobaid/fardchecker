@@ -1068,6 +1068,11 @@
         })
       : "";
   }
+  // An officer's remark field (bottom of the page) is filled although Members Remarks has no entry yet
+  function rpFieldDone(o, role) {
+    var v = "Girdawar" === role ? o.gir : "Naib Tehsildar" === role ? o.nt : null;
+    return !!v && !M(v) && !/^\s*report\s*pending/i.test(v) && D(v).length > 8;
+  }
   function Q(e) {
     return e && e.ok
       ? e.history && e.history.length
@@ -1093,6 +1098,13 @@
                         ? "Applicant"
                         : "Patwari"
                       : "";
+            var fieldNote = "";
+            for (var hop = 0; hop < 2; hop++) {
+              if ("Girdawar" === a && t && rpFieldDone(t, "Girdawar"))
+                (a = "Naib Tehsildar"), (fieldNote = "Girdawar");
+              else if ("Naib Tehsildar" === a && t && rpFieldDone(t, "Naib Tehsildar"))
+                (a = "Tehsildar"), (fieldNote = "Naib Tehsildar");
+            }
             for (
               var s =
                   "Applicant" === a
@@ -1135,15 +1147,17 @@
                   " acted but Patwari report is “Report Pending”",
               );
             c && h.push("Sent back " + c + "×");
+            fieldNote &&
+              h.push(fieldNote + " remark is on the page but not yet in Members Remarks — treated as done");
             "Tehsildar" !== n &&
               o.test(i) &&
               h.push(Y(r.by) + " suggests revert/rejection");
             var b = "Tehsildar" === X(e[0].by) ? e.slice(1) : e.slice(),
               y = b.length ? b[b.length - 1] : null;
             return {
-              level: y ? X(y.by) || "Other" : "None",
-              levelBy: y ? Y(y.by) : "",
-              levelT: y ? y.t : 0,
+              level: fieldNote ? fieldNote : y ? X(y.by) || "Other" : "None",
+              levelBy: fieldNote ? fieldNote : y ? Y(y.by) : "",
+              levelT: fieldNote ? 0 : y ? y.t : 0,
               stage: s,
               holder: l,
               flag: h.join("; "),
@@ -1338,6 +1352,13 @@
               (h.days = ie(r.base, c.t)),
               (h.over = Math.max(0, h.days - i)),
               (h.status = h.over ? "late" : "ontime");
+          else if (!r.earlier && rpFieldDone(e, n))
+            (h.by = re(n, e)),
+              (h.acted = !0),
+              (h.days = null),
+              (h.over = 0),
+              (h.status = "reported"),
+              (h.note = "remark recorded on the application page; its date is not yet in Members Remarks");
           else if ("Patwari" !== n || r.earlier || "Submitted" !== e.patReport)
             r.earlier
               ? ((h.by = re(n, e)),

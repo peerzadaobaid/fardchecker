@@ -64,6 +64,8 @@ def status_of(it):
     c = it.get("cur") or {}
     if level_of(it) == "Applicant":
         return ("Returned to applicant", None, MUTED)
+    if level_of(it) == "Tehsildar":
+        return ("With Tehsildar for final order", None, NAVY)
     if c.get("over"):
         return (f"Overdue by {c['over']} day{'s' if c['over'] != 1 else ''}", "over", RED)
     if c.get("left") == 0 and c.get("status") == "running":
