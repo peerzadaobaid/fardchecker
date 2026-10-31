@@ -197,6 +197,10 @@ def _analyse():
                              + (["GPS stamp"] if ((ai or {}).get("photo") or {}).get("lat") else [])}
     rep = engine.analyse(appd, ai, ai_err)
     rep.reader_status = reader_status
+    try:
+        rep.tatima = engine.pick_tatima_page(pages)
+    except Exception:
+        rep.tatima = None
     if skipped:
         engine.add(rep.sections[0], "amber", "Some documents could not be opened: " + "; ".join(skipped))
     engine.add(rep.sections[0], "info", f"{len(pages)} distinct document page(s) read in {time.time() - t0:.0f} s.")

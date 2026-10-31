@@ -1610,6 +1610,76 @@ def analyse(app, ai=None, ai_error=None):
 ICON = {"red": ("●", "#b42318"), "amber": ("▲", "#8a5300"), "green": ("✓", "#145c36"), "info": ("ℹ", "#5b6475")}
 
 
+def pick_tatima_page(pages):
+    """Last page of the Patwari's tatima upload (falls back to rough sketch / shajra / aks uploads)."""
+    from PIL import Image
+    for pat in (r"tatima", r"rough\s*sketch|sketch|shajra|aks|massavi|latha|map"):
+        cand = [p for p in pages if re.search(pat, p["label"], re.I)]
+        if cand:
+            def pno(p):
+                m = re.search(r"page\s*(\d+)", p["label"])
+                return int(m.group(1)) if m else 0
+            last = max(cand, key=pno)
+            im = Image.open(io.BytesIO(base64.b64decode(last["data"]))).convert("RGB")
+            im.thumbnail((1100, 1100))
+            buf = io.BytesIO()
+            im.save(buf, "JPEG", quality=72)
+            return {"label": last["label"], "data": base64.b64encode(buf.getvalue()).decode(), "w": im.width, "h": im.height}
+    return None
+
+
+def build_kml(rep, image_name=None):
+    p = rep.p
+    g = p["geom"]
+
+    def kml_poly(name, geom, colour, desc=""):
+        out = ""
+        for pg in getattr(geom, "geoms", [geom]):
+            if pg.geom_type != "Polygon":
+                continue
+            cs = " ".join(f"{x:.7f},{y:.7f},0" for x, y in pg.exterior.coords)
+            out += (f"<Placemark><name>{esc(name)}</name>{desc}<Style><LineStyle><color>{colour}</color><width>3</width></LineStyle>"
+                    f"<PolyStyle><fill>0</fill></PolyStyle></Style><Polygon><outerBoundaryIs><LinearRing><coordinates>{cs}</coordinates>"
+                    f"</LinearRing></outerBoundaryIs></Polygon></Placemark>")
+        return out
+
+    def label(name, geom, scale="1.1", colour="ffffffff"):
+        c = geom.representative_point()
+        return (f"<Placemark><name>{esc(name)}</name><Style><IconStyle><scale>0</scale></IconStyle><LabelStyle><color>{colour}</color>"
+                f"<scale>{scale}</scale></LabelStyle></Style><Point><coordinates>{c.x:.7f},{c.y:.7f},0</coordinates></Point></Placemark>")
+    desc = ""
+    if image_name:
+        desc = (f"<description><![CDATA[<b>Patwari's tatima / shajra</b> ({esc(rep.tatima['label'])})<br>"
+                f"<img src=\"{image_name}\" width=\"520\"><br><i>Sketch is not to scale — compare the shaded part with this outline.</i>]]></description>")
+    kml = '<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>'
+    kml += f"<name>Khasra {esc(p['khasra'])}</name>"
+    c = g.representative_point()
+    kml += (f"<LookAt><longitude>{c.x:.7f}</longitude><latitude>{c.y:.7f}</latitude><altitude>0</altitude>"
+            f"<range>{max(120, min(900, (g.bounds[2] - g.bounds[0]) * 111000 * 4)):.0f}</range><tilt>0</tilt><heading>0</heading></LookAt>")
+    kml += kml_poly(f"Khasra {p['khasra']}", g, "ff00d4ff", desc)
+    kml += label(p["khasra"], g, "1.4", "ff00d4ff")
+    for n_ in rep.nbs:
+        kml += kml_poly(f"Khasra {n_['khasra']}", n_["q"]["geom"], "ffb0b0b0")
+        kml += label(n_["khasra"], n_["q"]["geom"])
+    if getattr(rep, "geo", None):
+        kml += f"<Placemark><name>Geotag</name><Point><coordinates>{rep.geo[1]:.7f},{rep.geo[0]:.7f},0</coordinates></Point></Placemark>"
+    if image_name:
+        kml += (f"<ScreenOverlay><name>Patwari's tatima (untick to hide)</name><Icon><href>{image_name}</href></Icon>"
+                f"<overlayXY x=\"0\" y=\"1\" xunits=\"fraction\" yunits=\"fraction\"/><screenXY x=\"0.01\" y=\"0.98\" xunits=\"fraction\" yunits=\"fraction\"/>"
+                f"<size x=\"0.36\" y=\"0\" xunits=\"fraction\" yunits=\"fraction\"/></ScreenOverlay>")
+    kml += "</Document></kml>"
+    return kml
+
+
+def build_kmz(rep):
+    import zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("doc.kml", build_kml(rep, "files/tatima.jpg"))
+        z.writestr("files/tatima.jpg", base64.b64decode(rep.tatima["data"]))
+    return base64.b64encode(buf.getvalue()).decode()
+
+
 def coords_block(rep):
     p = rep.p
     if not p:
@@ -1632,26 +1702,16 @@ def coords_block(rep):
         pts = " · ".join(f"P{i + 1} {y:.6f}, {x:.6f}" for i, (x, y) in enumerate(ring))
         rows.append(f'<details style="margin-top:4px"><summary style="cursor:pointer">Boundary points of khasra {esc(p["khasra"])} ({len(ring)})</summary>'
                     f'<div style="font:12px/1.6 ui-monospace,monospace;color:#3b4456">{esc(pts)}</div></details>')
-    # KML (khasra + neighbours + geotag) as a download
-    def kml_poly(name, geom, colour):
-        out = ""
-        for pg in getattr(geom, "geoms", [geom]):
-            if pg.geom_type != "Polygon":
-                continue
-            cs = " ".join(f"{x:.7f},{y:.7f},0" for x, y in pg.exterior.coords)
-            out += (f"<Placemark><name>{esc(name)}</name><Style><LineStyle><color>{colour}</color><width>3</width></LineStyle>"
-                    f"<PolyStyle><fill>0</fill></PolyStyle></Style><Polygon><outerBoundaryIs><LinearRing><coordinates>{cs}</coordinates>"
-                    f"</LinearRing></outerBoundaryIs></Polygon></Placemark>")
-        return out
-    kml = '<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>'
-    kml += kml_poly(f"Khasra {p['khasra']}", g, "ff00d4ff")
-    for n_ in rep.nbs:
-        kml += kml_poly(f"Khasra {n_['khasra']}", n_["q"]["geom"], "ffb0b0b0")
-    if getattr(rep, "geo", None):
-        kml += f"<Placemark><name>Geotag</name><Point><coordinates>{rep.geo[1]:.7f},{rep.geo[0]:.7f},0</coordinates></Point></Placemark>"
-    kml += "</Document></kml>"
-    href = "data:application/vnd.google-earth.kml+xml;charset=utf-8," + urllib.parse.quote(kml)
-    rows.append(f'<div style="margin-top:4px"><a {a} download="khasra_{esc(p["khasra"])}.kml" href="{href}">Download KML (open in Google Earth)</a></div></div>')
+    # KML / KMZ downloads (KMZ also carries the Patwari's tatima page)
+    href = "data:application/vnd.google-earth.kml+xml;charset=utf-8," + urllib.parse.quote(build_kml(rep))
+    links = f'<a {a} download="khasra_{esc(p["khasra"])}.kml" href="{href}">Download KML</a>'
+    if getattr(rep, "tatima", None):
+        try:
+            kmz = "data:application/vnd.google-earth.kmz;base64," + build_kmz(rep)
+            links = (f'<a {a} download="khasra_{esc(p["khasra"])}_with_tatima.kmz" href="{kmz}">Download KMZ with Patwari\'s tatima</a> · ' + links)
+        except Exception:
+            pass
+    rows.append(f'<div style="margin-top:4px">{links} <span style="color:#5b6475">(open in Google Earth)</span></div></div>')
     return "".join(rows)
 
 
@@ -1782,17 +1842,26 @@ def render(rep):
             col, txt = "#145c36", f"✓ Documents read by {rs['used']}: {', '.join(rs['read']) or 'nothing recognisable'}"
         h.append(f'<div style="margin:-4px 0 10px;font-size:12.5px;color:{col}">{esc(txt)} · {rs["pages"]} page(s), {rs["secs"]} s</div>')
     m = svg_map(rep)
-    if m:
-        h.append('<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;margin-bottom:8px">'
-                 f'<div style="flex:1;min-width:240px">{m}<div style="font-size:12px;color:#5b6475">Yellow: khasra {esc(hd["khasra"])} · grey: adjoining khasras · red dot: geotag</div></div>')
-        if rep.neigh_rows:
-            h.append('<div style="flex:1;min-width:240px"><b>Adjoining khasras (from map)</b><table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:4px">'
-                     '<tr style="background:#f0f2f6"><th style="text-align:left;padding:4px">Side</th><th style="text-align:left;padding:4px">Khasra</th><th style="text-align:left;padding:4px">Type / cultivator</th></tr>')
-            for d, k, t, c, sm in rep.neigh_rows:
-                h.append(f'<tr><td style="padding:4px;border-bottom:1px solid #eceef2">{esc(d)}</td><td style="padding:4px;border-bottom:1px solid #eceef2"><b>{esc(k)}</b></td>'
-                         f'<td style="padding:4px;border-bottom:1px solid #eceef2">{esc(t)}{("<br><span style=color:#5b6475>" + esc(c) + "</span>") if c else ""}</td></tr>')
-            h.append("</table></div>")
-        h.append("</div>")
+    tat = getattr(rep, "tatima", None)
+    nb_html = ""
+    if m and rep.neigh_rows:
+        nb_html = ('<div style="flex:1;min-width:240px"><b>Adjoining khasras (from map)</b><table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:4px">'
+                   '<tr style="background:#f0f2f6"><th style="text-align:left;padding:4px">Side</th><th style="text-align:left;padding:4px">Khasra</th><th style="text-align:left;padding:4px">Type / cultivator</th></tr>')
+        for d, k, t, c, sm in rep.neigh_rows:
+            nb_html += (f'<tr><td style="padding:4px;border-bottom:1px solid #eceef2">{esc(d)}</td><td style="padding:4px;border-bottom:1px solid #eceef2"><b>{esc(k)}</b></td>'
+                        f'<td style="padding:4px;border-bottom:1px solid #eceef2">{esc(t)}{("<br><span style=color:#5b6475>" + esc(c) + "</span>") if c else ""}</td></tr>')
+        nb_html += "</table></div>"
+    map_html = (f'<div style="flex:1;min-width:240px">{m}<div style="font-size:12px;color:#5b6475">Yellow: khasra {esc(hd["khasra"])} · grey: adjoining khasras · red dot: geotag</div></div>') if m else ""
+    if tat:
+        tat_html = (f'<div style="flex:1;min-width:240px"><div style="background:#fff;border:1px solid #e1e4ea;border-radius:8px;padding:4px;text-align:center">'
+                    f'<img alt="Patwari tatima" src="data:image/jpeg;base64,{tat["data"]}" style="max-width:100%;max-height:420px;object-fit:contain"></div>'
+                    f'<div style="font-size:12px;color:#5b6475">Patwari\'s tatima / shajra — last page of “{esc(tat["label"].split(" — ")[0])}”. '
+                    f'Compare its shaded part with the yellow khasra on the map (sketches are not to scale).</div></div>')
+        h.append('<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;margin-bottom:8px">' + map_html + tat_html + '</div>')
+        if nb_html:
+            h.append('<div style="display:flex;margin-bottom:8px">' + nb_html + '</div>')
+    elif m:
+        h.append('<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;margin-bottom:8px">' + map_html + nb_html + '</div>')
     h.append(coords_block(rep))
     for s in rep.sections:
         if not s["items"]:

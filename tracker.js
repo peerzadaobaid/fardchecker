@@ -2208,7 +2208,7 @@
       var keys = Object.keys(all).sort(function (a, b) {
         return all[b].at - all[a].at;
       });
-      keys.slice(25).forEach(function (x) {
+      keys.slice(12).forEach(function (x) {
         delete all[x];
       });
       for (var n = 0; n < 5; n++) {
