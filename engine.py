@@ -871,7 +871,9 @@ Read them carefully and return ONLY a JSON object, no other text, in exactly thi
                  "to": [{{"name": "", "area_marla": number|null, "share": ""}}], "summary": "<one line in English>"}}],
  "tatima": {{"found": bool, "khasra": "", "total_marla": number|null, "shaded_marla": number|null, "remaining_marla": number|null,
              "as_written": "<the area figures exactly as written, e.g. 1K-5M / 0-14 / 0-11>", "shaded_side": "north|south|east|west|centre|unclear",
-             "dimensions_marked": bool, "neighbours_marked": {{"north": "", "east": "", "south": "", "west": ""}}, "note": ""}},
+             "dimensions_marked": bool, "neighbours_marked": {{"north": "", "east": "", "south": "", "west": ""}}, "note": "",
+             "box_2d": [ymin, xmin, ymax, xmax] of the outline of the applied khasra on the LAST tatima page, normalised 0-1000, or null,
+             "north_at": "top|bottom|left|right|unclear" — the side of that page where North (شمال / N) is written}},
  "uncertain": ["<anything you could not read with confidence>"]
 }}
 Rules: areas are kanal/marla/sqft (1 kanal = 20 marla, 1 marla = 272.25 sqft); convert to marla numbers in *_marla fields. Read Urdu numerals carefully. Do NOT output Aadhaar, phone or any ID numbers. Be honest in "uncertain" rather than guessing."""
@@ -1663,6 +1665,11 @@ def build_kml(rep, image_name=None):
         kml += label(n_["khasra"], n_["q"]["geom"])
     if getattr(rep, "geo", None):
         kml += f"<Placemark><name>Geotag</name><Point><coordinates>{rep.geo[1]:.7f},{rep.geo[0]:.7f},0</coordinates></Point></Placemark>"
+    ov = getattr(rep, "overlay", None)
+    if image_name and ov:
+        kml += (f"<GroundOverlay><name>Patwari's sketch on the map (70% opaque, approximate — adjust in Properties)</name><color>b3ffffff</color>"
+                f"<Icon><href>files/sketch.png</href></Icon><LatLonBox><north>{ov['north']:.8f}</north><south>{ov['south']:.8f}</south>"
+                f"<east>{ov['east']:.8f}</east><west>{ov['west']:.8f}</west></LatLonBox></GroundOverlay>")
     if image_name:
         kml += (f"<ScreenOverlay><name>Patwari's tatima (untick to hide)</name><Icon><href>{image_name}</href></Icon>"
                 f"<overlayXY x=\"0\" y=\"1\" xunits=\"fraction\" yunits=\"fraction\"/><screenXY x=\"0.01\" y=\"0.98\" xunits=\"fraction\" yunits=\"fraction\"/>"
@@ -1671,12 +1678,114 @@ def build_kml(rep, image_name=None):
     return kml
 
 
+def detect_sketch_box(rgb):
+    """Find the khasra rectangle drawn on a tatima page (prefers the one with red shading). Returns (x, y, w, h) or None."""
+    import cv2
+    import numpy as np
+    H, W = rgb.shape[:2]
+    hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
+    g = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
+    ink = cv2.adaptiveThreshold(g, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 31, 12)
+    red = (((hsv[:, :, 0] < 12) | (hsv[:, :, 0] > 160)) & (hsv[:, :, 1] > 60) & (hsv[:, :, 2] > 60)).astype(np.uint8)
+    L = max(12, int(min(W, H) * 0.035))
+    hl = cv2.morphologyEx(ink, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (L, 1)))
+    vl = cv2.morphologyEx(ink, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (1, L)))
+    lines = cv2.dilate(cv2.bitwise_or(hl, vl), np.ones((5, 5), np.uint8))
+    cs, _ = cv2.findContours(lines, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    hd, vd = cv2.dilate(hl, np.ones((1, 9), np.uint8)), cv2.dilate(vl, np.ones((9, 1), np.uint8))
+    best = None
+    for c in cs:
+        x, y, w, h = cv2.boundingRect(c)
+        if w < L * 1.2 or h < L * 1.2 or w > W * 0.8 or h > H * 0.6 or not 0.15 < w / h < 6:
+            continue
+        bd = max(8, int(min(w, h) * 0.15))
+        sides = min(hd[y:y + bd, x:x + w].any(axis=0).mean(), hd[y + h - bd:y + h, x:x + w].any(axis=0).mean(),
+                    vd[y:y + h, x:x + bd].any(axis=1).mean(), vd[y:y + h, x + w - bd:x + w].any(axis=1).mean())
+        if sides < 0.4:
+            continue
+        redin = red[y:y + h, x:x + w].mean()
+        score = sides + (2 if redin > 0.01 else 0) + 0.2 * min(1, (w * h) / (W * H * 0.01))
+        if not best or score > best[0]:
+            best = (score, (x, y, w, h))
+    return best[1] if best else None
+
+
+def sketch_overlay(rep):
+    """Sketch cropped around the drawn khasra, white made transparent, placed on the surveyed khasra's extent (north up)."""
+    tat, p = getattr(rep, "tatima", None), rep.p
+    if not tat or not p:
+        return None
+    import numpy as np
+    from PIL import Image
+    im = Image.open(io.BytesIO(base64.b64decode(tat["data"]))).convert("RGB")
+    rgb = np.array(im)
+    H, W = rgb.shape[:2]
+    tt = (getattr(rep, "ai", None) or {}).get("tatima") or {}
+    box, how = None, ""
+    try:
+        box = detect_sketch_box(rgb)
+        how = "outline found automatically"
+    except Exception:
+        box = None
+    bx = tt.get("box_2d")
+    if not box and isinstance(bx, (list, tuple)) and len(bx) == 4:
+        try:
+            y0, x0, y1, x1 = [float(v) for v in bx]
+            box = (int(x0 / 1000 * W), int(y0 / 1000 * H), max(4, int((x1 - x0) / 1000 * W)), max(4, int((y1 - y0) / 1000 * H)))
+            how = "outline located by " + {"gemini": "Gemini", "claude": "Claude"}.get((rep.ai or {}).get("mode"), "AI")
+        except Exception:
+            box = None
+    if not box:
+        return None
+    x, y, w, h = box
+    m = int(max(w, h) * 0.9)                             # keep the surroundings (neighbour numbers, arrows)
+    cx0, cy0, cx1, cy1 = max(0, x - m), max(0, y - m), min(W, x + w + m), min(H, y + h + m)
+    crop = Image.fromarray(rgb[cy0:cy1, cx0:cx1]).convert("RGBA")
+    # white paper → transparent, ink stays
+    a = np.array(crop)
+    lum = a[:, :, :3].mean(axis=2)
+    sat = a[:, :, :3].max(axis=2) - a[:, :, :3].min(axis=2)
+    paper = (lum > 200) & (sat < 40)
+    a[:, :, :3] = (a[:, :, :3].astype(float) * 0.65).astype(np.uint8)          # darker ink so it reads at 50%
+    a[:, :, 3] = np.where(paper, 0, 255).astype(np.uint8)
+    from PIL import ImageFilter
+    crop = Image.fromarray(a)
+    alpha = crop.split()[3].filter(ImageFilter.MaxFilter(3))                  # slightly thicker strokes
+    crop.putalpha(alpha)
+    # rotate so that north is up (only when the AI told us where North is written)
+    north = (tt.get("north_at") or "top").lower()
+    rot = {"top": 0, "right": 90, "bottom": 180, "left": 270}.get(north, 0)
+    bxl, byt, bxr, byb = x - cx0, y - cy0, x - cx0 + w, y - cy0 + h       # box inside the crop
+    cw, ch = crop.size
+    if rot:
+        crop = crop.rotate(rot, expand=True)               # counter-clockwise
+        for _ in range(rot // 90):                          # rotate the box coordinates the same way
+            bxl, byt, bxr, byb = byt, cw - bxr, byb, cw - bxl
+            cw, ch = ch, cw
+    # geographic placement: drawn box → khasra extent
+    minx, miny, maxx, maxy = p["geom"].bounds
+    lon_px = (maxx - minx) / max(1, bxr - bxl)
+    lat_px = (maxy - miny) / max(1, byb - byt)
+    west = minx - bxl * lon_px
+    east = maxx + (cw - bxr) * lon_px
+    north_ = maxy + byt * lat_px
+    south = miny - (ch - byb) * lat_px
+    crop.thumbnail((900, 900))
+    buf = io.BytesIO()
+    crop.save(buf, "PNG", optimize=True)
+    return {"png": base64.b64encode(buf.getvalue()).decode(), "north": north_, "south": south, "east": east, "west": west,
+            "how": how + ("" if not rot else f"; turned so North is up (North was written at the {north})"),
+            "north_known": bool(tt.get("north_at")) and north in ("top", "bottom", "left", "right")}
+
+
 def build_kmz(rep):
     import zipfile
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("doc.kml", build_kml(rep, "files/tatima.jpg"))
         z.writestr("files/tatima.jpg", base64.b64decode(rep.tatima["data"]))
+        if getattr(rep, "overlay", None):
+            z.writestr("files/sketch.png", base64.b64decode(rep.overlay["png"]))
     return base64.b64encode(buf.getvalue()).decode()
 
 
@@ -1708,7 +1817,8 @@ def coords_block(rep):
     if getattr(rep, "tatima", None):
         try:
             kmz = "data:application/vnd.google-earth.kmz;base64," + build_kmz(rep)
-            links = (f'<a {a} download="khasra_{esc(p["khasra"])}_with_tatima.kmz" href="{kmz}">Download KMZ with Patwari\'s tatima</a> · ' + links)
+            links = (f'<a {a} download="khasra_{esc(p["khasra"])}_with_tatima.kmz" href="{kmz}">Download KMZ with Patwari\'s tatima'
+                     + (" (sketch laid over the map)" if getattr(rep, "overlay", None) else "") + '</a> · ' + links)
         except Exception:
             pass
     rows.append(f'<div style="margin-top:4px">{links} <span style="color:#5b6475">(open in Google Earth)</span></div></div>')
@@ -1745,14 +1855,24 @@ def svg_map(rep, w=360, h=300):
                 d += "M" + " L".join(f"{a:.1f},{b:.1f}" for a, b in pts) + " Z "
         return d
 
-    out = [f'<svg viewBox="0 0 {w} {h}" width="100%" style="max-width:{w}px;background:#f7f9fc;border:1px solid #e1e4ea;border-radius:8px">']
+    out = [f'<svg viewBox="0 0 {w} {h}" width="100%" style="max-width:{w}px;background:#f7f9fc;border:1px solid #e1e4ea;border-radius:8px;overflow:hidden">']
     for n_ in nbs:
         g = n_["q"]["m"]
         out.append(f'<path d="{path(g)}" fill="#e9edf3" stroke="#8892a3" stroke-width="1"/>')
         c = g.representative_point()
         x, y = P(c.x, c.y)
         out.append(f'<text x="{x:.0f}" y="{y:.0f}" font-size="11" text-anchor="middle" fill="#3b4456">{esc(n_["khasra"])}</text>')
-    out.append(f'<path d="{path(p["m"])}" fill="#ffe08a" stroke="#b26a00" stroke-width="2"/>')
+    ov = getattr(rep, "overlay", None)
+    if ov:
+        fw = rep.v["map"]["fwd"]
+        x0_, y0_ = fw(ov["west"], ov["north"])
+        x1_, y1_ = fw(ov["east"], ov["south"])
+        (ax, ay), (bx_, by_) = P(x0_, y0_), P(x1_, y1_)
+        out.append(f'<image href="data:image/png;base64,{ov["png"]}" x="{min(ax, bx_):.1f}" y="{min(ay, by_):.1f}" width="{abs(bx_ - ax):.1f}" '
+                   f'height="{abs(by_ - ay):.1f}" preserveAspectRatio="none" opacity="0.7"/>')
+        out.append(f'<path d="{path(p["m"])}" fill="#ffe08a" fill-opacity="0.12" stroke="#b26a00" stroke-width="2"/>')
+    else:
+        out.append(f'<path d="{path(p["m"])}" fill="#ffe08a" stroke="#b26a00" stroke-width="2"/>')
     c = p["m"].representative_point()
     x, y = P(c.x, c.y)
     out.append(f'<text x="{x:.0f}" y="{y:.0f}" font-size="13" font-weight="700" text-anchor="middle" fill="#5a3b00">{esc(p["khasra"])}</text>')
@@ -1851,7 +1971,11 @@ def render(rep):
             nb_html += (f'<tr><td style="padding:4px;border-bottom:1px solid #eceef2">{esc(d)}</td><td style="padding:4px;border-bottom:1px solid #eceef2"><b>{esc(k)}</b></td>'
                         f'<td style="padding:4px;border-bottom:1px solid #eceef2">{esc(t)}{("<br><span style=color:#5b6475>" + esc(c) + "</span>") if c else ""}</td></tr>')
         nb_html += "</table></div>"
-    map_html = (f'<div style="flex:1;min-width:240px">{m}<div style="font-size:12px;color:#5b6475">Yellow: khasra {esc(hd["khasra"])} · grey: adjoining khasras · red dot: geotag</div></div>') if m else ""
+    ovl = getattr(rep, "overlay", None)
+    map_html = (f'<div style="flex:1;min-width:240px">{m}<div style="font-size:12px;color:#5b6475">Yellow: khasra {esc(hd["khasra"])} · grey: adjoining khasras · red dot: geotag'
+                + (f' · ink: Patwari\'s sketch laid over the khasra at 70% ({esc(ovl["how"])}; approximate'
+                   + ("" if ovl.get("north_known") else ", assuming North is at the top of the sketch") + ")" if ovl else "")
+                + '</div></div>') if m else ""
     if tat:
         tat_html = (f'<div style="flex:1;min-width:240px"><div style="background:#fff;border:1px solid #e1e4ea;border-radius:8px;padding:4px;text-align:center">'
                     f'<img alt="Patwari tatima" src="data:image/jpeg;base64,{tat["data"]}" style="max-width:100%;max-height:420px;object-fit:contain"></div>'
