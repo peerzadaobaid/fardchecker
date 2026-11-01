@@ -1541,13 +1541,24 @@
       };
     return (n.cur = n.overdue[0] || a[0] || null), Object.assign(n, t);
   }
+  function rpFetch(u, o) {
+    o = o || {};
+    if (window.AbortController && !o.signal) {
+      var ac = new AbortController();
+      (o.signal = ac.signal),
+        setTimeout(function () {
+          ac.abort();
+        }, 9e4);
+    }
+    return fetch(u, o);
+  }
   async function ue(e, t, a, r) {
     var n = K(e);
     a.forEach(function (e) {
       n.set(e[0], e[1]);
     });
     var i = new URL(e.getAttribute("action") || t, t).href,
-      o = await fetch(i, {
+      o = await rpFetch(i, {
         method: "POST",
         body: n,
         credentials: "include",
@@ -1567,7 +1578,7 @@
       if (c) {
         var p = new URL(decodeURIComponent(c[1]).replace(/&amp;/g, "&"), l)
             .href,
-          u = await fetch(p, { credentials: "include" });
+          u = await rpFetch(p, { credentials: "include" });
         (s = await u.text()),
           (l = u.url),
           (d.followed = "HTTP " + u.status + " " + new URL(l).pathname);
@@ -1665,7 +1676,8 @@
             L(new Date(rpU.started).toLocaleString("en-IN")) +
             (rpU.allTypes ? " · all service types" : "") +
             " · <b>" + rpUS.read + " of " + rpUS.N + "</b> applications read · <b>" + rpUS.setsDone + " of " + rpUS.S + "</b> sets of " + 10 + " complete.</p>" +
-            (rpUS.errs ? '<p class="muted" style="margin:0 0 8px;color:#8a5300">' + rpUS.errs + " could not be read and will be retried.</p>" : "") +
+            (rpUS.errs ? '<p class="muted" style="margin:0 0 8px;color:#8a5300">' + rpUS.errs + " could not be read and will be retried:</p>" + rpUnreadHtml(rpU) : "") +
+            (rpU.lastRun ? '<p class="muted" style="margin:6px 0 8px">Last run: ' + L(rpU.lastRun) + "</p>" : "") +
             '<div class="tools"><button class="pri" id="rpresume">' +
             (rpUS.complete ? "Retry " + rpUS.errs + " unread" : "Resume scan (" + (rpUS.N - rpUS.read + rpUS.errs) + " left)") +
             '</button><button id="rpsofar">Show results so far</button></div><p class="muted" style="margin:8px 0 0">Starting a new scan below discards this unfinished one.</p></div>';
@@ -1674,6 +1686,11 @@
       rb &&
         (rb.onclick = function () {
           rpResume();
+        });
+      var dl2 = y.getElementById("rpdiagdl");
+      dl2 &&
+        (dl2.onclick = function (ev) {
+          ev.preventDefault(), rpDiagDownload();
         });
       var sf = y.getElementById("rpsofar");
       sf &&
@@ -1747,9 +1764,11 @@
       });
   }
   async function ye(e, t) {
-    var a = await fetch(k.split("#")[0], { credentials: "include" }),
+    var a = await rpFetch(k.split("#")[0], { credentials: "include" }),
       r = a.url,
-      n = j(await a.text());
+      rawDash = await a.text(),
+      bytes = rawDash.length,
+      n = j(rawDash);
     if (we(n, r)) return { why: "logout" };
     var i = function (t) {
         return G(t).filter(function (t) {
@@ -1771,14 +1790,16 @@
           ],
           !0,
         );
-        if (((r = c.url), !(o = i((n = j(c.html)))) && we(n, r)))
+        if (((bytes += c.html.length), (rawDash = c.html), (r = c.url), !(o = i((n = j(c.html)))) && we(n, r)))
           return { why: "logout" };
       }
     }
     return o
-      ? { row: o, baseUrl: r }
+      ? { row: o, baseUrl: r, bytes: bytes, dash: rawDash }
       : {
           why: G(n).length ? "gone" : "nolist",
+          bytes: bytes,
+          dash: rawDash,
           detail: fe({
             html: n.documentElement.outerHTML,
             diag: {
@@ -2110,7 +2131,81 @@
     Ne(obj);
     wr && (wr.scrollTop = top);
   }
-  function rpScanBar(r, setNo, inSet, msg) {
+  var rpDiag = null;
+  function rpSpeed(r, left) {
+    var tm = (r.timing || []).filter(function (x) {
+      return x.tot;
+    });
+    if (!tm.length) return null;
+    function sec(v) {
+      return (v / 1e3).toFixed(1) + " s";
+    }
+    function kb(v) {
+      return v >= 1048576 ? (v / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(v / 1024)) + " KB";
+    }
+    function avg(f) {
+      return tm.reduce(function (a, x) { return a + x[f]; }, 0) / tm.length;
+    }
+    var last = tm[tm.length - 1],
+      wd = tm.filter(function (x) { return x.db; }),
+      dAvg = wd.length ? wd.reduce(function (a, x) { return a + x.d; }, 0) / wd.length : 0,
+      dbAvg = wd.length ? wd.reduce(function (a, x) { return a + x.db; }, 0) / wd.length : 0,
+      per = avg("tot"),
+      mins = left ? Math.round((per * left) / 6e4) : 0;
+    return {
+      last: (last.db ? "Dashboard reload " + sec(last.d) + " (" + kb(last.db) + ") · " : "") + "application page " + sec(last.a) + " (" + kb(last.ab) + ")",
+      avg:
+        "average " + sec(per) + " per application (" + (per ? (6e4 / per).toFixed(1) : "–") + " per minute)" +
+        (dAvg ? " — Dashboard reload " + sec(dAvg) + " (" + kb(dbAvg) + "), application page " + sec(avg("a")) + " (" + kb(avg("ab")) + ")" : ""),
+      eta: left ? (mins < 1 ? "under a minute left" : "about " + mins + " min left") : "",
+      slow: last.d + last.a > 3e4,
+    };
+  }
+  function rpUnreadHtml(r) {
+    var un = r.items.filter(function (x) {
+      return x.err;
+    });
+    if (!un.length) return "";
+    var by = {};
+    un.forEach(function (x) {
+      var k = x.errWhy || "could not be read";
+      (by[k] = by[k] || []).push(x.appNo);
+    });
+    return (
+      '<div style="font-size:12px;color:#5b6475;margin-top:4px">' +
+      Object.keys(by)
+        .map(function (k) {
+          return "<b>" + by[k].length + "</b> — " + L(k) + ' <span style="font-size:11px">(' + L(by[k].slice(0, 4).join(", ")) + (by[k].length > 4 ? " …" : "") + ")</span>";
+        })
+        .join("<br>") +
+      (rpDiag ? '<br><a href="#" id="rpdiagdl" style="color:#12355b;font-weight:600">Download diagnostic file</a> — send it to whoever maintains the tracker' : "") +
+      "</div>"
+    );
+  }
+  function rpDiagDownload() {
+    var t = rpDiag;
+    if (!t) return;
+    function clean(h) {
+      return String(h || "")
+        .replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, "[email removed]")
+        .replace(/\b\d{4}\s?\d{4}\s?\d{4}\b/g, "[number removed]")
+        .replace(/\b[6-9]\d{9}\b/g, "[number removed]");
+    }
+    var txt =
+      "Revenue Plus Tracker diagnostic\nApplication: " + t.app + "\nTime: " + t.at + "\nReason: " + t.why +
+      "\nButton pressed: " + t.button + "\nFirst reply: " + t.firstUrl + "\nFinal page: " + t.finalUrl +
+      (t.timing ? "\nTiming: dashboard " + t.timing.d + " ms / " + t.timing.db + " bytes, application page " + t.timing.a + " ms / " + t.timing.ab + " bytes" : "") +
+      "\n\n===== DASHBOARD (reloaded before Process) =====\n" + clean(t.dash) +
+      "\n\n===== FIRST REPLY AFTER PROCESS =====\n" + clean(t.first) +
+      "\n\n===== FINAL PAGE =====\n" + clean(t.final),
+      a = document.createElement("a");
+    (a.href = URL.createObjectURL(new Blob([txt], { type: "text/plain" }))),
+      (a.download = "tracker-diagnostic-" + t.app + ".txt"),
+      document.body.appendChild(a),
+      a.click(),
+      a.remove();
+  }
+  function rpScanBar(r, setNo, inSet, msg, extra) {
     var b = y.getElementById("rpscanbar"),
       bar = y.querySelector(".bar");
     if (!b) return;
@@ -2122,10 +2217,15 @@
       b.innerHTML =
         '<div style="max-width:1100px;margin:0 auto;padding:8px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px"><b style="color:#8a5300;flex:1">' +
         L(msg) +
-        '</b><button id="rpsbx" style="padding:6px 10px;font-size:12.5px">Hide</button></div>';
+        '</b><button id="rpsbx" style="padding:6px 10px;font-size:12.5px">Hide</button>' + (extra ? '<div style="flex-basis:100%">' + extra + "</div>" : "") + "</div>";
       y.getElementById("rpsbx").onclick = function () {
         b.hidden = !0;
       };
+      var dl = y.getElementById("rpdiagdl");
+      dl &&
+        (dl.onclick = function (ev) {
+          ev.preventDefault(), rpDiagDownload();
+        });
       return;
     }
     b.innerHTML =
@@ -2135,7 +2235,16 @@
       (rpStopSet ? " disabled" : "") + ">" + (rpStopSet ? "Stopping after this set…" : "Stop after this set") +
       '</button><button id="rpstopnow" style="padding:6px 10px;font-size:12.5px">Stop now</button></span></div><div class="prog" style="height:6px;margin:6px 0"><i style="width:' +
       (s.N ? Math.round((s.read / s.N) * 100) : 0) +
-      '%"></i></div><div style="display:flex;flex-wrap:wrap;gap:4px">' +
+      '%"></i></div>' +
+      (function () {
+        var sp = rpSpeed(r, s.N - s.read);
+        return sp
+          ? '<div style="font-size:11.5px;color:#4a5466;margin:0 0 6px;line-height:1.4">Last: ' + L(sp.last) + "<br>Speed: " + L(sp.avg) + (sp.eta ? " · <b>" + L(sp.eta) + "</b>" : "") +
+              (sp.slow ? '<br><span style="color:#8a5300">The portal is responding slowly right now.</span>' : "") +
+              (s.errs ? '<br><span style="color:#8a5300">' + s.errs + " could not be read so far — they are retried on Resume.</span>" : "") + "</div>"
+          : "";
+      })() +
+      '<div style="display:flex;flex-wrap:wrap;gap:4px">' +
       s.sets
         .map(function (st) {
           var cur = st.no === setNo && !st.complete;
@@ -2222,9 +2331,11 @@
   }
   async function rpRunPlan(r, refs) {
     if (A) return;
-    (A = !0), (T = !1), (P = !1), (rpStopSet = !1);
+    (A = !0), (T = !1), (P = !1), (rpStopSet = !1), (rpDiag = null);
     rpBG.gen++, (rpBG.queue = []), (rpBG.total = 0);
-    var done = {},
+    var runStart = Date.now(),
+      runRead = 0,
+      done = {},
       first = !0;
     r.items.forEach(function (e) {
       done[rpScanKey(e)] = 1;
@@ -2244,12 +2355,18 @@
       rpScanBar(r, setNo, ix % 10);
       var S = { ok: !1 },
         mem = refs[key],
-        gone = !1;
+        gone = !1,
+        tf = Date.now(),
+        th = tf,
+        tdb = 0,
+        tab = 0,
+        dashRaw = "";
       try {
         var R,
           Nn = null;
         if (!first || !mem) {
           Nn = await ye(E.appNo, E.svc);
+          (th = Date.now()), (tdb = (Nn && Nn.bytes) || 0), (dashRaw = (Nn && Nn.dash) || "");
           if (Nn && "logout" === Nn.why) {
             (T = !0), (P = !0);
             break;
@@ -2264,6 +2381,9 @@
           R = Nn
             ? await ue(Nn.row.form, Nn.baseUrl, [[Nn.row.btnName, Nn.row.btnValue]])
             : await ue(mem.row.form, mem.baseUrl, [[mem.row.btnName, mem.row.btnValue]]);
+          tab = R.html.length;
+          var tm = (r.timing = r.timing || []);
+          tm.push({ d: th - tf, db: tdb, a: Date.now() - th, ab: tab, tot: 0 }), tm.length > 200 && tm.shift();
           S = I(R.html);
           if (!S.ok) {
             var dd = j(R.html);
@@ -2272,12 +2392,26 @@
               break;
             }
             (S.diag = fe(R)), (S.err = !0);
+            S.why = /Remarks\s*:/i.test(R.html) ? "page opened but its layout was not recognised" : "the portal did not return the application page";
+            rpDiag = {
+              app: E.appNo, at: new Date().toLocaleString("en-IN"), why: S.why,
+              button: Nn ? Nn.row.btnName + " = " + Nn.row.btnValue : mem ? mem.row.btnName + " = " + mem.row.btnValue : "",
+              dash: dashRaw, first: (R.diag && R.diag.html) || "", firstUrl: (R.diag && R.diag.url) || "",
+              final: R.html, finalUrl: R.url, timing: tm[tm.length - 1],
+            };
           }
         }
       } catch (err) {
-        S = { ok: !1, err: !0, diag: "Error: " + String((err && err.message) || err) };
+        var why =
+          err && "AbortError" === err.name
+            ? "the portal did not respond within 90 s"
+            : /Dashboard/i.test(String(err && err.message))
+              ? "the Dashboard did not load / application not found on it"
+              : "error: " + String((err && err.message) || err).slice(0, 120);
+        S = { ok: !1, err: !0, why: why, diag: "Error: " + why };
+        rpDiag = { app: E.appNo, at: new Date().toLocaleString("en-IN"), why: why, button: "", dash: dashRaw, first: "", firstUrl: "", final: "", finalUrl: "" };
       }
-      first = !1;
+      (first = !1), runRead++;
       if (gone) r.gone.push(key);
       else {
         var O = Q(S);
@@ -2289,9 +2423,10 @@
           lastT: O.lastT || 0, lastRemark: O.lastRemark || "", stageDays: null == O.stageDays ? null : O.stageDays,
           svc: E.svc || "", docs: S.docs || [], fields: S.fields || null, adj: S.adj || null, mut: S.mut || null,
           patReport: O.patReport || "", level: O.level || "", levelBy: O.levelBy || "", levelT: O.levelT || 0,
-          history: O.history || [], vendee: S.vendee || "", area: S.area || "", set: setNo, err: !!S.err,
+          history: O.history || [], vendee: S.vendee || "", area: S.area || "", set: setNo, err: !!S.err, errWhy: S.why || "",
         });
       }
+      r.timing && r.timing.length && !r.timing[r.timing.length - 1].tot && (r.timing[r.timing.length - 1].tot = Date.now() - tf + e);
       (done[key] = 1), rpScanSave(r);
       if ((ix + 1) % 10 == 0 || ix === r.plan.length - 1) {
         try {
@@ -2317,15 +2452,21 @@
         localStorage.removeItem("rpTrackerScan");
       } catch (x) {}
     rpShowResults(M);
+    var spd = rpSpeed(r, 0),
+      took = Math.round((Date.now() - runStart) / 1000),
+      runLine = runRead ? runRead + " read in " + (took >= 60 ? Math.floor(took / 60) + " min " + (took % 60) + " s" : took + " s") + (spd ? " · " + spd.avg : "") : "";
+    r.lastRun = runLine;
+    (fin.complete && !fin.errs) || rpScanSave(r); // a finished, clean scan stays cleared
     var endMsg =
       P
         ? "The portal logged you out after " + fin.read + " of " + fin.N + ". Log in again, run Tracker and tap Resume."
         : !fin.complete
           ? "Scan stopped after " + fin.read + " of " + fin.N + " (" + fin.setsDone + " of " + fin.S + " sets). Run Tracker again and tap Resume to continue."
           : fin.errs
-            ? fin.errs + " application(s) could not be read — run Tracker again and tap “Retry unread”."
+            ? fin.errs + " application(s) could not be read — run Tracker again and tap “Retry unread”." + (runLine ? " (" + runLine + ")" : "")
             : null;
-    endMsg ? rpScanBar(r, 0, 0, endMsg) : rpScanBar(null);
+    endMsg || (endMsg = runLine ? "Scan complete — " + runLine : null);
+    endMsg ? rpScanBar(r, 0, 0, endMsg, fin.errs ? rpUnreadHtml(r) : "") : rpScanBar(null);
     rpStartBackground(M.items);
   }
   function E_MSG(why) {
