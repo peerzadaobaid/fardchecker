@@ -201,6 +201,10 @@ def _analyse():
         rep.tatima = engine.pick_tatima_page(pages)
     except Exception:
         rep.tatima = None
+    try:
+        rep.overlay = engine.sketch_overlay(rep)
+    except Exception:
+        rep.overlay = None
     if skipped:
         engine.add(rep.sections[0], "amber", "Some documents could not be opened: " + "; ".join(skipped))
     engine.add(rep.sections[0], "info", f"{len(pages)} distinct document page(s) read in {time.time() - t0:.0f} s.")
