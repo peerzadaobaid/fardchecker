@@ -242,7 +242,7 @@
     b.style.cssText = "position:fixed;inset:0;z-index:2147483647;";
     var y = b.attachShadow({ mode: "open" });
     y.innerHTML =
-      '<style>:host{all:initial}*{box-sizing:border-box}.wrap{position:fixed;inset:0;background:#f4f5f7;color:#1d2330;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:auto;-webkit-text-size-adjust:100%}.bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 14px;background:#12355b;color:#fff}.bar b{font-size:16px;flex:1}.bar small{opacity:.8;font-weight:400;display:block;font-size:11px}button{font:inherit;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;background:#e6e9ef;color:#1d2330}button.pri{background:#1a7f5a;color:#fff}button.x{background:transparent;color:#fff;font-size:22px;padding:2px 8px}.box{max-width:1100px;margin:0 auto;padding:14px}.card{background:#fff;border:1px solid #e1e4ea;border-radius:12px;padding:14px;margin-bottom:12px}.warn{background:#fff7e0;border-color:#f0d58a}.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}.tile{background:#fff;border:1px solid #e1e4ea;border-radius:10px;padding:10px;cursor:pointer}.tile.on{outline:2px solid #12355b}.tile .n{font-size:24px;font-weight:700}.tile .l{font-size:12px;color:#5b6475}.prog{height:10px;background:#e1e4ea;border-radius:6px;overflow:hidden;margin:10px 0}.prog i{display:block;height:100%;background:#1a7f5a;width:0}.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}input.s{flex:1;min-width:180px;padding:9px 12px;border:1px solid #c9ced8;border-radius:8px;font:inherit}.chip{padding:6px 10px;border-radius:20px;background:#e6e9ef;font-size:12px}.chip.on{background:#12355b;color:#fff}table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}th,td{text-align:left;padding:8px;border-bottom:1px solid #eceef2;vertical-align:top}th{background:#f0f2f6;font-size:12px}tr.r{cursor:pointer}tr.r:hover{background:#f7f9fc}.st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;white-space:nowrap}.s0{background:#fde2e2;color:#8a1c1c}.s1{background:#fff0d6;color:#7a4b00}.s2{background:#dcecff;color:#123f7a}.s3{background:#dff5e8;color:#145c36}.s9{background:#eee;color:#555}.apps tr.lv-p,.apps tr.lv-p td{background:#fff7da}.apps tr.lv-p td:first-child{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g,.apps tr.lv-g td{background:#ddf3ef}.apps tr.lv-g td:first-child{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n,.apps tr.lv-n td{background:#ece5fb}.apps tr.lv-n td:first-child{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t,.apps tr.lv-t td{background:#eceef2}.apps tr.lv-t td:first-child{box-shadow:inset 5px 0 0 #6b7385}@media(max-width:640px){.apps tr.lv-p{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t{box-shadow:inset 5px 0 0 #6b7385}.apps tr.r td:first-child{box-shadow:none}}.lvl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.lv{border-radius:10px;padding:10px;cursor:pointer;border:1px solid #e1e4ea;background:#fff}.lv .n{font-size:22px;font-weight:700}.lv .l{font-size:12px;color:#5b6475}.lv.on{outline:2px solid #12355b}.lv.k-p{background:#fff7da;border-left:5px solid #d9a400}.lv.k-g{background:#ddf3ef;border-left:5px solid #1f9184}.lv.k-n{background:#ece5fb;border-left:5px solid #6b48c8}.lv.k-t{background:#eceef2;border-left:5px solid #6b7385}.lv.k-0{border-left:5px solid #c9ced8}input.num{width:56px;padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit}select{padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit;max-width:100%}table.tlv tr.vrow{cursor:pointer}table.tlv tr.vrow:hover td{background:#f7f9fc}table.tlv tr.sel td{background:#e4ecf7}table.tl td,table.tl th{padding:5px 8px}.d{font-weight:700}.d.hi{color:#c62828}.flag{color:#c62828;font-size:12px}.det td{background:#fafbfd;font-size:12px}.det p{margin:4px 0}.scroll{overflow-x:auto;border-radius:10px;border:1px solid #e1e4ea}h3{margin:0 0 8px;font-size:15px}.muted{color:#5b6475;font-size:12px}@media(max-width:640px){.apps thead{display:none}.apps tr.r{display:block;padding:8px 6px;border-bottom:1px solid #eceef2}.apps tr.r td{display:inline-block;border:0;padding:2px 10px 2px 0;vertical-align:top}.apps tr.det td{display:block}.bar b{font-size:15px}}.modal{font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d2330;position:fixed;inset:0;z-index:10;background:rgba(10,20,35,.6);display:flex;align-items:center;justify-content:center;padding:10px}.modal[hidden]{display:none}.mbox{background:#fff;border-radius:12px;width:min(980px,100%);height:min(92vh,960px);display:flex;flex-direction:column;overflow:hidden}.mhead{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #e1e4ea}.mhead b{flex:1;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mbody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#eef0f4}.mbody img{max-width:100%;max-height:100%;object-fit:contain}.mbody iframe{width:100%;height:100%;border:0;background:#fff}.docs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.docs button{padding:6px 10px;font-size:12px;background:#e4ecf7;color:#12355b}</style><div class="wrap"><div class="bar"><b>Revenue Plus Tracker<small>Read-only — never submits or changes anything</small></b><button class="x" id="close">×</button></div><div class="box" id="main"></div></div><div class="modal" id="modal" hidden><div class="mbox"><div class="mhead"><b id="mtitle"></b><span id="macts" style="display:flex;gap:6px"></span><button id="mclose">Close</button></div><div class="mbody" id="mbody"></div></div></div>';
+      '<style>:host{all:initial}*{box-sizing:border-box}.wrap{position:fixed;inset:0;background:#f4f5f7;color:#1d2330;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:auto;-webkit-text-size-adjust:100%}.bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 14px;background:#12355b;color:#fff}.bar b{font-size:16px;flex:1}.bar small{opacity:.8;font-weight:400;display:block;font-size:11px}button{font:inherit;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;background:#e6e9ef;color:#1d2330}button.pri{background:#1a7f5a;color:#fff}button.x{background:transparent;color:#fff;font-size:22px;padding:2px 8px}.box{max-width:1100px;margin:0 auto;padding:14px}.card{background:#fff;border:1px solid #e1e4ea;border-radius:12px;padding:14px;margin-bottom:12px}.warn{background:#fff7e0;border-color:#f0d58a}.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}.tile{background:#fff;border:1px solid #e1e4ea;border-radius:10px;padding:10px;cursor:pointer}.tile.on{outline:2px solid #12355b}.tile .n{font-size:24px;font-weight:700}.tile .l{font-size:12px;color:#5b6475}.prog{height:10px;background:#e1e4ea;border-radius:6px;overflow:hidden;margin:10px 0}.prog i{display:block;height:100%;background:#1a7f5a;width:0}.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}input.s{flex:1;min-width:180px;padding:9px 12px;border:1px solid #c9ced8;border-radius:8px;font:inherit}.chip{padding:6px 10px;border-radius:20px;background:#e6e9ef;font-size:12px}.chip.on{background:#12355b;color:#fff}table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}th,td{text-align:left;padding:8px;border-bottom:1px solid #eceef2;vertical-align:top}th{background:#f0f2f6;font-size:12px}tr.r{cursor:pointer}tr.r:hover{background:#f7f9fc}.st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;white-space:nowrap}.s0{background:#fde2e2;color:#8a1c1c}.s1{background:#fff0d6;color:#7a4b00}.s2{background:#dcecff;color:#123f7a}.s3{background:#dff5e8;color:#145c36}.s9{background:#eee;color:#555}.apps tr.lv-p,.apps tr.lv-p td{background:#fff7da}.apps tr.lv-p td:first-child{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g,.apps tr.lv-g td{background:#ddf3ef}.apps tr.lv-g td:first-child{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n,.apps tr.lv-n td{background:#ece5fb}.apps tr.lv-n td:first-child{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t,.apps tr.lv-t td{background:#eceef2}.apps tr.lv-t td:first-child{box-shadow:inset 5px 0 0 #6b7385}@media(max-width:640px){.apps tr.lv-p{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t{box-shadow:inset 5px 0 0 #6b7385}.apps tr.r td:first-child{box-shadow:none}}.lvl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.lv{border-radius:10px;padding:10px;cursor:pointer;border:1px solid #e1e4ea;background:#fff}.lv .n{font-size:22px;font-weight:700}.lv .l{font-size:12px;color:#5b6475}.lv.on{outline:2px solid #12355b}.lv.k-p{background:#fff7da;border-left:5px solid #d9a400}.lv.k-g{background:#ddf3ef;border-left:5px solid #1f9184}.lv.k-n{background:#ece5fb;border-left:5px solid #6b48c8}.lv.k-t{background:#eceef2;border-left:5px solid #6b7385}.lv.k-0{border-left:5px solid #c9ced8}input.num{width:56px;padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit}select{padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit;max-width:100%}table.tlv tr.vrow{cursor:pointer}table.tlv tr.vrow:hover td{background:#f7f9fc}table.tlv tr.sel td{background:#e4ecf7}table.tl td,table.tl th{padding:5px 8px}.d{font-weight:700}.d.hi{color:#c62828}.flag{color:#c62828;font-size:12px}.det td{background:#fafbfd;font-size:12px}.det p{margin:4px 0}.scroll{overflow-x:auto;border-radius:10px;border:1px solid #e1e4ea}h3{margin:0 0 8px;font-size:15px}.muted{color:#5b6475;font-size:12px}@media(max-width:640px){.apps thead{display:none}.apps tr.r{display:block;padding:8px 6px;border-bottom:1px solid #eceef2}.apps tr.r td{display:inline-block;border:0;padding:2px 10px 2px 0;vertical-align:top}.apps tr.det td{display:block}.bar b{font-size:15px}}.modal{font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d2330;position:fixed;inset:0;z-index:10;background:rgba(10,20,35,.6);display:flex;align-items:center;justify-content:center;padding:10px}.modal[hidden]{display:none}.mbox{background:#fff;border-radius:12px;width:min(980px,100%);height:min(92vh,960px);display:flex;flex-direction:column;overflow:hidden}.mhead{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #e1e4ea}.mhead b{flex:1;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mbody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#eef0f4}.mbody img{max-width:100%;max-height:100%;object-fit:contain}.mbody iframe{width:100%;height:100%;border:0;background:#fff}.docs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.docs button{padding:6px 10px;font-size:12px;background:#e4ecf7;color:#12355b}</style><div class="wrap"><div class="bar"><b>Revenue Plus Tracker<small>Read-only — never submits or changes anything</small></b><button class="x" id="close">×</button></div><div id="rpscanbar" hidden style="position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid #d5dbe6;box-shadow:0 3px 8px rgba(16,32,60,.08)"></div><div class="box" id="main"></div></div><div class="modal" id="modal" hidden><div class="mbox"><div class="mhead"><b id="mtitle"></b><span id="macts" style="display:flex;gap:6px"></span><button id="mclose">Close</button></div><div class="mbody" id="mbody"></div></div></div>';
     var w = y.getElementById("main");
     (y.getElementById("close").onclick = function () {
       location.assign(k.split("#")[0]);
@@ -1656,13 +1656,39 @@
     try {
       i = JSON.parse(localStorage.getItem(t) || "null");
     } catch (e) {}
+    var rpU = rpScanLoad(),
+      rpUS = rpU && rpU.plan ? rpScanStats(rpU) : null,
+      rpCard =
+        !rpUS || (rpUS.complete && !rpUS.errs)
+          ? ""
+          : '<div class="card" style="border:2px solid #1b4a7a"><h3>Unfinished scan</h3><p class="muted" style="margin:0 0 8px">Started ' +
+            L(new Date(rpU.started).toLocaleString("en-IN")) +
+            (rpU.allTypes ? " · all service types" : "") +
+            " · <b>" + rpUS.read + " of " + rpUS.N + "</b> applications read · <b>" + rpUS.setsDone + " of " + rpUS.S + "</b> sets of " + 10 + " complete.</p>" +
+            (rpUS.errs ? '<p class="muted" style="margin:0 0 8px;color:#8a5300">' + rpUS.errs + " could not be read and will be retried.</p>" : "") +
+            '<div class="tools"><button class="pri" id="rpresume">' +
+            (rpUS.complete ? "Retry " + rpUS.errs + " unread" : "Resume scan (" + (rpUS.N - rpUS.read + rpUS.errs) + " left)") +
+            '</button><button id="rpsofar">Show results so far</button></div><p class="muted" style="margin:8px 0 0">Starting a new scan below discards this unfinished one.</p></div>';
+    function rpBindResume() {
+      var rb = y.getElementById("rpresume");
+      rb &&
+        (rb.onclick = function () {
+          rpResume();
+        });
+      var sf = y.getElementById("rpsofar");
+      sf &&
+        (sf.onclick = function () {
+          Ne({ at: rpU.at || Date.now(), items: rpOrdered(rpU), partial: !0 });
+        });
+    }
     if (e && (a.length || r)) {
       w.innerHTML =
-        '<div class="card"><h3>Scan pending applications</h3><p class="muted">The tracker presses “Process” for each application in the background, only to read the Patwari, Girdawar and Naib Tehsildar remarks. It never types remarks or presses Submit.</p><div class="tools"><button class="pri" id="one">Scan this list' +
+        rpCard +
+        '<div class="card"><h3>' + (rpCard ? "Or start a new scan" : "Scan pending applications") + '</h3><p class="muted">The tracker presses “Process” for each application in the background, only to read the Patwari, Girdawar and Naib Tehsildar remarks. It never types remarks or presses Submit.</p><div class="tools"><button class="pri" id="one">Scan this list' +
         (n ? " (" + L(n) + ")" : "") +
         " — " +
         a.length +
-        " applications</button>" +
+        " applications (" + Math.max(1, Math.ceil(a.length / 10)) + " sets)</button>" +
         (r ? '<button id="all">Scan all service types</button>' : "") +
         '</div></div><div class="card warn"><b>Before you start:</b> close any other Revenue Plus tab where an application is open. When you are done, tap <b>×</b> — it reloads the Dashboard. Always reload before processing an application, because the portal remembers the last application opened.</div>' +
         (i
@@ -1687,8 +1713,10 @@
         (l.onclick = function () {
           Ne(i), rpStartBackground(i.items);
         });
+      rpBindResume();
     } else {
       w.innerHTML =
+        rpCard +
         '<div class="card warn"><b>No application list found.</b><br>Open the Revenue Plus <b>Dashboard</b>, choose a Service Type, press <b>View</b>, then run Tracker again.</div>' +
         (i
           ? '<div class="card"><button id="showlast">Show last scan (' +
@@ -1700,6 +1728,7 @@
         (d.onclick = function () {
           Ne(i), rpStartBackground(i.items);
         });
+      rpBindResume();
     }
   }
   function be(e, t, a) {
@@ -1949,6 +1978,7 @@
       : "";
   }
   async function Ee(e, t, lab) {
+    if (A) throw new Error("A scan is reading the portal right now — wait for it to finish (or stop it), then open documents.");
     var a = await ye(e.appNo, e.svc);
     if (!a.row)
       throw new Error(
@@ -2009,11 +2039,127 @@
       throw new Error(e.message + " — Button: " + Te(i));
     }
   }
+  // ───── Scan in sets of 10, saved after every application, resumable ─────
+  var rpStopSet = !1; // set size and storage name are fixed values below (the start screen draws before vars initialise)
+  function rpScanKey(e) {
+    return (e.svc || "") + "|" + e.appNo;
+  }
+  function rpScanLoad() {
+    try {
+      return JSON.parse(localStorage.getItem("rpTrackerScan") || "null");
+    } catch (x) {
+      return null;
+    }
+  }
+  function rpScanSave(r) {
+    try {
+      localStorage.setItem("rpTrackerScan", JSON.stringify(r));
+    } catch (x) {
+      try {
+        // storage full: keep the status, drop the heavy per-application details
+        r.items.forEach(function (e) {
+          (e.docs = []), (e.mut = null), (e.adj = null), (e.fields = null);
+        });
+        localStorage.setItem("rpTrackerScan", JSON.stringify(r));
+      } catch (q) {}
+    }
+  }
+  function rpScanStats(r) {
+    var N = r.plan.length,
+      S = Math.max(1, Math.ceil(N / 10)),
+      got = {},
+      sets = [];
+    r.items.forEach(function (e) {
+      got[rpScanKey(e)] = e;
+    });
+    (r.gone || []).forEach(function (k) {
+      got[k] = "gone";
+    });
+    for (var i = 0; i < S; i++) sets.push({ no: i + 1, n: 0, read: 0, err: 0, gone: 0 });
+    r.plan.forEach(function (e, i) {
+      var st = sets[Math.floor(i / 10)],
+        g = got[rpScanKey(e)];
+      st.n++;
+      "gone" === g ? (st.read++, st.gone++) : g && (st.read++, g.err && st.err++);
+    });
+    sets.forEach(function (st) {
+      st.complete = st.read === st.n;
+    });
+    var read = sets.reduce(function (a, st) {
+      return a + st.read;
+    }, 0);
+    return {
+      N: N, S: S, sets: sets, read: read,
+      setsDone: sets.filter(function (st) { return st.complete; }).length,
+      complete: read >= N,
+      errs: r.items.filter(function (e) { return e.err; }).length,
+    };
+  }
+  function rpOrdered(r) {
+    var pos = {};
+    r.plan.forEach(function (e, i) {
+      pos[rpScanKey(e)] = i;
+    });
+    return r.items.slice().sort(function (a, b) {
+      return pos[rpScanKey(a)] - pos[rpScanKey(b)];
+    });
+  }
+  function rpShowResults(obj) {
+    var wr = y.querySelector(".wrap"),
+      top = wr ? wr.scrollTop : 0;
+    Ne(obj);
+    wr && (wr.scrollTop = top);
+  }
+  function rpScanBar(r, setNo, inSet, msg) {
+    var b = y.getElementById("rpscanbar"),
+      bar = y.querySelector(".bar");
+    if (!b) return;
+    b.style.top = (bar ? bar.offsetHeight : 0) + "px";
+    if (null === r) return void (b.hidden = !0);
+    var s = rpScanStats(r);
+    b.hidden = !1;
+    if (msg) {
+      b.innerHTML =
+        '<div style="max-width:1100px;margin:0 auto;padding:8px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px"><b style="color:#8a5300;flex:1">' +
+        L(msg) +
+        '</b><button id="rpsbx" style="padding:6px 10px;font-size:12.5px">Hide</button></div>';
+      y.getElementById("rpsbx").onclick = function () {
+        b.hidden = !0;
+      };
+      return;
+    }
+    b.innerHTML =
+      '<div style="max-width:1100px;margin:0 auto;padding:8px 14px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px"><span><b style="color:#12355b">Scanning · Set ' +
+      setNo + " of " + s.S + "</b> · application " + (inSet + 1) + " of " + s.sets[setNo - 1].n + " · " + s.read + " of " + s.N +
+      ' read</span><span style="display:flex;gap:6px"><button id="rpstopset" style="padding:6px 10px;font-size:12.5px"' +
+      (rpStopSet ? " disabled" : "") + ">" + (rpStopSet ? "Stopping after this set…" : "Stop after this set") +
+      '</button><button id="rpstopnow" style="padding:6px 10px;font-size:12.5px">Stop now</button></span></div><div class="prog" style="height:6px;margin:6px 0"><i style="width:' +
+      (s.N ? Math.round((s.read / s.N) * 100) : 0) +
+      '%"></i></div><div style="display:flex;flex-wrap:wrap;gap:4px">' +
+      s.sets
+        .map(function (st) {
+          var cur = st.no === setNo && !st.complete;
+          return (
+            '<span style="font-size:11px;padding:2px 7px;border-radius:10px;' +
+            (st.complete ? "background:#e3f4ea;color:#145c36;font-weight:600" : cur ? "background:#12355b;color:#fff;font-weight:600" : "background:#eef1f6;color:#64708a") +
+            '">' + (st.complete ? "✓ " : "") + "Set " + st.no + (cur ? " · " + inSet + "/" + st.n : "") + "</span>"
+          );
+        })
+        .join("") +
+      '</div><div class="muted" style="margin-top:4px">Results of each completed set appear below while the next set is read. Every application is saved as soon as it is read — if the scan stops, run Tracker again and tap Resume.</div></div>';
+    y.getElementById("rpstopnow").onclick = function () {
+      (T = !0), (this.textContent = "Stopping…"), (this.disabled = !0);
+    };
+    y.getElementById("rpstopset").onclick = function () {
+      (rpStopSet = !0), (this.disabled = !0), (this.textContent = "Stopping after this set…");
+    };
+  }
   async function Se(a) {
     rpBG.gen++, (rpBG.queue = []), (rpBG.total = 0);
     if (!A) {
       (A = !0), (T = !1);
-      var r = [];
+      var refs = {},
+        plan = [];
       P = !1;
       try {
         var n = x.forms[0],
@@ -2023,12 +2169,7 @@
             var o = he(n),
               s = ve(n),
               l = Array.prototype.filter.call(o.options, function (e) {
-                return (
-                  e.value &&
-                  "0" !== e.value &&
-                  "-1" !== e.value &&
-                  !/select/i.test(e.text)
-                );
+                return e.value && "0" !== e.value && "-1" !== e.value && !/select/i.test(e.text);
               }),
               d = 0;
             d < l.length && !T;
@@ -2040,128 +2181,155 @@
             var p = await ue(n, k, c, !0),
               u = j(p.html),
               f = G(u);
-            i.push({
-              service: D(l[d].text),
-              svc: l[d].value,
-              rows: f,
-              form: f.length ? f[0].form : u.forms[0],
-              baseUrl: p.url,
-            }),
+            i.push({ service: D(l[d].text), svc: l[d].value, rows: f, form: f.length ? f[0].form : u.forms[0], baseUrl: p.url }),
               u.forms[0] && ((o = he((n = u.forms[0])) || o), (s = ve(n) || s)),
               await C(e);
           }
         else {
           var h = he(n);
-          i.push({
-            service: h ? h.options[h.selectedIndex].text : "",
-            svc: h ? h.value : "",
-            rows: G(x),
-            form: n,
-            baseUrl: k,
-          });
+          i.push({ service: h ? h.options[h.selectedIndex].text : "", svc: h ? h.value : "", rows: G(x), form: n, baseUrl: k });
         }
-        for (
-          var v = i.reduce(function (e, t) {
-              return e + t.rows.length;
-            }, 0),
-            m = 0,
-            g = 0;
-          g < i.length && !T;
-          g++
-        )
-          for (var b = i[g], y = 0; y < b.rows.length && !T; y++) {
-            var E = b.rows[y];
-            be(
-              "Reading applications" + (b.service ? " — " + b.service : ""),
-              m,
-              v,
-            );
-            var S = { ok: !1 };
-            try {
-              var R,
-                N = 0 === m ? null : await ye(E.appNo, b.svc);
-              if (N && "logout" === N.why) {
-                (T = !0), (P = !0);
-                break;
-              }
-              N && !N.row && (N = null),
-                !(S = I(
-                  (R = N
-                    ? await ue(N.row.form, N.baseUrl, [
-                        [N.row.btnName, N.row.btnValue],
-                      ])
-                    : await ue(E.form, b.baseUrl, [[E.btnName, E.btnValue]]))
-                    .html,
-                )).ok &&
-                  m > 0 &&
-                  !N &&
-                  (S.note =
-                    "Could not find this application on a reloaded Dashboard."),
-                S.ok || (S.diag = (S.note ? S.note + " · " : "") + fe(R));
-            } catch (e) {
-              S = { ok: !1, diag: "Error: " + String((e && e.message) || e) };
-            }
-            var O = Q(S);
-            r.push({
-              service: b.service,
-              appNo: E.appNo,
-              name: E.name,
-              mobile: E.mobile,
-              village: E.village,
-              khasra: E.khasra,
-              purpose: E.purpose,
-              appDate: E.appDate,
-              revert: E.revert,
-              days: E.days,
-              khewat: S.khewat || "",
-              pat: S.pat || "",
-              gir: S.gir || "",
-              nt: S.nt || "",
-              teh: S.teh || "",
-              stage: O.stage,
-              flag: O.flag,
-              diag: S.diag || "",
-              holder: O.holder || "",
-              lastBy: O.lastBy || "",
-              lastT: O.lastT || 0,
-              lastRemark: O.lastRemark || "",
-              stageDays: null == O.stageDays ? null : O.stageDays,
-              svc: b.svc || "",
-              docs: S.docs || [],
-              fields: S.fields || null,
-              adj: S.adj || null,
-              mut: S.mut || null,
-              patReport: O.patReport || "",
-              level: O.level || "",
-              levelBy: O.levelBy || "",
-              levelT: O.levelT || 0,
-              history: O.history || [],
-              vendee: S.vendee || "",
-              area: S.area || "",
-            }),
-              m++,
-              await C(e);
-          }
-      } catch (e) {
+        i.forEach(function (b) {
+          b.rows.forEach(function (E) {
+            var pl = {
+              service: b.service, svc: b.svc || "", appNo: E.appNo, name: E.name, mobile: E.mobile, village: E.village,
+              khasra: E.khasra, purpose: E.purpose, appDate: E.appDate, revert: E.revert, days: E.days,
+            };
+            plan.push(pl), (refs[rpScanKey(pl)] = { row: E, baseUrl: b.baseUrl });
+          });
+        });
+      } catch (err) {
         return (
           (w.innerHTML =
             '<div class="card warn"><b>Scan stopped:</b> ' +
-            L((e && e.message) || e) +
+            L((err && err.message) || err) +
             "<br>Close this, make sure you are still logged in, and try again from the Dashboard.</div>"),
           void (A = !1)
         );
       }
-      A = !1;
-      var M = { at: Date.now(), items: r, partial: T, loggedOut: P };
-      try {
-        de(r, M.at);
-      } catch (e) {}
-      try {
-        localStorage.setItem(t, JSON.stringify(M));
-      } catch (e) {}
-      Ne(M);
-      rpStartBackground(M.items);
+      if (T) return (A = !1), void ge();
+      var prog = { started: Date.now(), allTypes: !!a, plan: plan, items: [], gone: [] };
+      rpScanSave(prog), (A = !1), await rpRunPlan(prog, refs);
     }
+  }
+  async function rpResume() {
+    var r = rpScanLoad();
+    if (!r || !r.plan) return ge();
+    (r.items = r.items.filter(function (e) {
+      return !e.err; // unread ones are tried again
+    })),
+      await rpRunPlan(r, {});
+  }
+  async function rpRunPlan(r, refs) {
+    if (A) return;
+    (A = !0), (T = !1), (P = !1), (rpStopSet = !1);
+    rpBG.gen++, (rpBG.queue = []), (rpBG.total = 0);
+    var done = {},
+      first = !0;
+    r.items.forEach(function (e) {
+      done[rpScanKey(e)] = 1;
+    });
+    (r.gone = r.gone || []).forEach(function (k) {
+      done[k] = 1;
+    });
+    var st0 = rpScanStats(r);
+    st0.setsDone
+      ? rpShowResults({ at: Date.now(), items: rpOrdered(r), partial: !0 })
+      : (w.innerHTML = '<div class="card"><h3>Reading applications in sets of ' + 10 + '</h3><p class="muted" style="margin:0">Results appear here as soon as Set 1 is complete, so you can start working on it while the next sets are read.</p></div>');
+    for (var ix = 0; ix < r.plan.length && !T; ix++) {
+      var E = r.plan[ix],
+        key = rpScanKey(E);
+      if (done[key]) continue;
+      var setNo = Math.floor(ix / 10) + 1;
+      rpScanBar(r, setNo, ix % 10);
+      var S = { ok: !1 },
+        mem = refs[key],
+        gone = !1;
+      try {
+        var R,
+          Nn = null;
+        if (!first || !mem) {
+          Nn = await ye(E.appNo, E.svc);
+          if (Nn && "logout" === Nn.why) {
+            (T = !0), (P = !0);
+            break;
+          }
+          if (Nn && "gone" === Nn.why) gone = !0;
+          else if (!Nn.row) {
+            if (!mem) throw new Error(E_MSG(Nn.why));
+            Nn = null;
+          }
+        }
+        if (!gone) {
+          R = Nn
+            ? await ue(Nn.row.form, Nn.baseUrl, [[Nn.row.btnName, Nn.row.btnValue]])
+            : await ue(mem.row.form, mem.baseUrl, [[mem.row.btnName, mem.row.btnValue]]);
+          S = I(R.html);
+          if (!S.ok) {
+            var dd = j(R.html);
+            if (we(dd, R.url)) {
+              (T = !0), (P = !0);
+              break;
+            }
+            (S.diag = fe(R)), (S.err = !0);
+          }
+        }
+      } catch (err) {
+        S = { ok: !1, err: !0, diag: "Error: " + String((err && err.message) || err) };
+      }
+      first = !1;
+      if (gone) r.gone.push(key);
+      else {
+        var O = Q(S);
+        r.items.push({
+          service: E.service, appNo: E.appNo, name: E.name, mobile: E.mobile, village: E.village, khasra: E.khasra,
+          purpose: E.purpose, appDate: E.appDate, revert: E.revert, days: E.days,
+          khewat: S.khewat || "", pat: S.pat || "", gir: S.gir || "", nt: S.nt || "", teh: S.teh || "",
+          stage: O.stage, flag: O.flag, diag: S.diag || "", holder: O.holder || "", lastBy: O.lastBy || "",
+          lastT: O.lastT || 0, lastRemark: O.lastRemark || "", stageDays: null == O.stageDays ? null : O.stageDays,
+          svc: E.svc || "", docs: S.docs || [], fields: S.fields || null, adj: S.adj || null, mut: S.mut || null,
+          patReport: O.patReport || "", level: O.level || "", levelBy: O.levelBy || "", levelT: O.levelT || 0,
+          history: O.history || [], vendee: S.vendee || "", area: S.area || "", set: setNo, err: !!S.err,
+        });
+      }
+      (done[key] = 1), rpScanSave(r);
+      if ((ix + 1) % 10 == 0 || ix === r.plan.length - 1) {
+        try {
+          rpShowResults({ at: Date.now(), items: rpOrdered(r), partial: !0 });
+        } catch (x) {}
+        rpStopSet && (T = !0);
+      }
+      await C(e);
+    }
+    A = !1;
+    var fin = rpScanStats(r);
+    (r.complete = fin.complete), (r.at = Date.now()), rpScanSave(r);
+    var items = rpOrdered(r),
+      M = { at: r.at, items: items, partial: !fin.complete, loggedOut: P };
+    try {
+      de(items, M.at);
+    } catch (x) {}
+    try {
+      localStorage.setItem(t, JSON.stringify(M));
+    } catch (x) {}
+    if (fin.complete && !fin.errs)
+      try {
+        localStorage.removeItem("rpTrackerScan");
+      } catch (x) {}
+    rpShowResults(M);
+    var endMsg =
+      P
+        ? "The portal logged you out after " + fin.read + " of " + fin.N + ". Log in again, run Tracker and tap Resume."
+        : !fin.complete
+          ? "Scan stopped after " + fin.read + " of " + fin.N + " (" + fin.setsDone + " of " + fin.S + " sets). Run Tracker again and tap Resume to continue."
+          : fin.errs
+            ? fin.errs + " application(s) could not be read — run Tracker again and tap “Retry unread”."
+            : null;
+    endMsg ? rpScanBar(r, 0, 0, endMsg) : rpScanBar(null);
+    rpStartBackground(M.items);
+  }
+  function E_MSG(why) {
+    return E[why] || "The Dashboard did not load.";
   }
   // ───── Analyse with village records (hosted version) ─────
   var rpAnaCache = {},
@@ -2425,6 +2593,7 @@
       again();
     }
     if (!API) return st("This tracker was not loaded from the Render app.", !0);
+    if (A) return st("A scan is reading the portal right now. Analyse becomes available when it finishes — or tap “Stop after this set”.", !0);
     if (!e.fields) return st("Run a new scan first — this application was read by an older tracker version.", !0);
     var hit = !force && rpCacheGet(e);
     if (hit) return show(hit.html, hit.at);
