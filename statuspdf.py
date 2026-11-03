@@ -1,3 +1,4 @@
+# FARD CHECKER VERSION 1.0
 """Application pendency status PDF (status only — no remarks, documents, analysis or phone numbers).
 Input comes from the tracker's last scan, already computed with the 5/7/9 working-day rules."""
 import io
@@ -91,6 +92,14 @@ def table(data, widths, header_rows=1, zebra=True, extra=None, long=False):
     return T
 
 
+def _ver():
+    try:
+        import version
+        return version.VERSION
+    except Exception:
+        return "?"
+
+
 def build(payload):
     items = payload.get("items") or []
     lim = payload.get("limits") or {}
@@ -113,7 +122,7 @@ def build(payload):
         cv.saveState()
         cv.setFont("Helvetica", 7)
         cv.setFillColor(MUTED)
-        cv.drawString(11 * mm, 6 * mm, f"Application pendency status · {office} · as on {scan_at:%d %b %Y, %I:%M %p}")
+        cv.drawString(11 * mm, 6 * mm, f"Application pendency status · {office} · as on {scan_at:%d %b %Y, %I:%M %p} · Fard Checker v{_ver()}")
         cv.drawRightString(landscape(A4)[0] - 11 * mm, 6 * mm, f"Page {d.page}")
         cv.restoreState()
 

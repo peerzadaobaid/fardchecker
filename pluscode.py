@@ -1,3 +1,4 @@
+# FARD CHECKER VERSION 1.0
 """Minimal Open Location Code (Plus Code) decoder — enough to check a GPS-camera overlay.
 A short code like '6MG2+X6H' is recovered against a nearby reference point (the village)."""
 ALPH = "23456789CFGHJMPQRVWX"

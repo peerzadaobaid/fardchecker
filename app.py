@@ -1,3 +1,4 @@
+# FARD CHECKER VERSION 1.0
 """Revenue Plus Tracker — hosted tracker + application analyser (Flask, for Render).
 
 Environment variables (Render → Environment):
@@ -13,6 +14,23 @@ import hmac, html, os, time
 from flask import Flask, Response, jsonify, request, send_file
 
 import engine
+import version
+
+APP_FILES = ["version.py", "app.py", "engine.py", "tracker.js", "statuspdf.py", "pluscode.py", "gunicorn.conf.py", "requirements.txt"]
+
+
+def file_versions():
+    """Version line found in each file of the app (to catch a file that was not uploaded)."""
+    import re as _re
+    out = {}
+    for f in APP_FILES:
+        try:
+            with open(os.path.join(BASE, f), encoding="utf-8", errors="ignore") as fh:
+                m = _re.search(r"FARD CHECKER VERSION ([\d.]+)", fh.read(4000))
+            out[f] = m.group(1) if m else "no version (old file)"
+        except FileNotFoundError:
+            out[f] = "missing"
+    return out
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 40 * 1024 * 1024
@@ -49,7 +67,7 @@ def tracker_js():
         base = base.replace("http://", "https://")
     with open(os.path.join(BASE, "tracker.js"), encoding="utf-8") as fh:
         code = fh.read()
-    body = f'window.__rpApiBase="{base}";\n' + code
+    body = f'window.__rpApiBase="{base}";window.__rpVersion="{version.VERSION}";\n' + code
     return Response(body, mimetype="application/javascript",
                     headers={"Cache-Control": "no-store", "Access-Control-Allow-Origin": "*"})
 
@@ -64,7 +82,9 @@ def ping():
         except Exception:
             vers[p] = None
     reader = "claude" if os.environ.get("ANTHROPIC_API_KEY") else ("gemini" if os.environ.get("GEMINI_API_KEY") else "free-ocr")
-    return jsonify(ok=True, key_ok=ok_key(), ai=reader != "free-ocr", reader=reader,
+    fv = file_versions()
+    return jsonify(ok=True, version=version.VERSION, version_date=version.DATE, files_ok=all(v == version.VERSION for v in fv.values()), files=fv,
+                   key_ok=ok_key(), ai=reader != "free-ocr", reader=reader,
                    gemini_model=os.environ.get("GEMINI_MODEL", "gemini-3.8-flash") if reader == "gemini" else None,
                    python=sys.version.split()[0], versions=vers)
 
@@ -223,7 +243,7 @@ button{{font:inherit;border:0;border-radius:8px;padding:9px 14px;background:#1a7
 table{{width:100%;border-collapse:collapse;font-size:14px}}td,th{{text-align:left;padding:6px;border-bottom:1px solid #eceef2}}.m{{color:#5b6475;font-size:13px}}
 input{{font:inherit;padding:8px;border:1px solid #c9ced8;border-radius:8px}}
 </style></head><body><div class="w">
-<h1>Revenue Plus Tracker</h1><p class="m">Read-only tracker and application analyser for the JK Revenue Plus portal. The bookmark below always loads the latest version from this server — update <code>tracker.js</code> or <code>engine.py</code> on GitHub and Render redeploys; the bookmark itself never changes.</p>
+<h1>Revenue Plus Tracker <span style="font-size:14px;background:#12355b;color:#fff;border-radius:12px;padding:3px 10px;vertical-align:middle">v{ver}</span></h1>{verbox}<p class="m">Read-only tracker and application analyser for the JK Revenue Plus portal. The bookmark below always loads the latest version from this server — update <code>tracker.js</code> or <code>engine.py</code> on GitHub and Render redeploys; the bookmark itself never changes.</p>
 <div class="c"><h2>1 · Install the bookmark (once per browser)</h2>
 <p><b>Desktop:</b> drag this button to your bookmarks bar: <a class="bm" href="{bm}">RP Tracker</a></p>
 <p><b>Phone (Chrome):</b> bookmark any page, edit the bookmark, and replace its URL with the text below. Name it <b>RP Tracker</b>; on the portal type “RP Tracker” in the address bar and tap the bookmark.</p>
@@ -265,7 +285,18 @@ def landing():
           "s.onerror=function(){fetch(u).then(function(r){return r.text()}).then(function(c){n.remove();(new Function(c))()})"
           ".catch(function(){n.textContent='Could not load RP Tracker. Render may be waking up — try again in 30 s.';setTimeout(function(){n.remove()},6000)})};"
           "d.body.appendChild(s)})()")
-    return LANDING.format(bm=html.escape(js), bm_text=html.escape(js))
+    fv = file_versions()
+    bad = {f: v for f, v in fv.items() if v != version.VERSION}
+    rows = "".join(f'<tr><td><code>{html.escape(f)}</code></td><td>{"✓ v" + v if v == version.VERSION else "<b style=color:#b42318>" + html.escape(v if v in ("missing", "no version (old file)") else "v" + v) + "</b>"}</td></tr>'
+                   for f, v in fv.items())
+    verbox = ('<div class="c" style="border:2px solid ' + ("#b42318" if bad else "#1a7f5a") + '"><b>'
+              + (f"⚠ {len(bad)} file(s) not on v{version.VERSION} — upload the complete set of files again" if bad
+                 else f"✓ All files are on version {version.VERSION} ({version.DATE})") + "</b>"
+              + '<details style="margin-top:6px"' + (" open" if bad else "") + '><summary class="m" style="cursor:pointer">Files and what changed</summary>'
+              + '<table style="margin:6px 0">' + rows + "</table>"
+              + "".join(f'<p class="m" style="margin:4px 0"><b>v{html.escape(v)}</b> · {html.escape(d)} — {html.escape(t)}</p>' for v, d, t in version.CHANGES[:5])
+              + "</details></div>")
+    return LANDING.format(bm=html.escape(js), bm_text=html.escape(js), ver=version.VERSION, verbox=verbox)
 
 
 if __name__ == "__main__":

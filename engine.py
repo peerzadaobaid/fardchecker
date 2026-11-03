@@ -1,3 +1,4 @@
+# FARD CHECKER VERSION 1.0
 """Revenue Plus application analyser — village records, document reading and checks.
 
 Village data lives in the repo:  villages/<Village name>/<anything>.xlsx  (Jamabandi export)
@@ -1941,6 +1942,14 @@ def case_text(rep):
     return out
 
 
+def _app_version():
+    try:
+        import version
+        return version.VERSION
+    except Exception:
+        return "?"
+
+
 def render(rep):
     hd = rep.head
     n_red = sum(1 for s in rep.sections for l, _ in s["items"] if l == "red")  # html items ignored
@@ -2016,5 +2025,6 @@ def render(rep):
              '<button data-copy="rpa-case" style="font:inherit;border:0;border-radius:8px;padding:8px 14px;background:#12355b;color:#fff;cursor:pointer">Copy full case for Claude</button></div>')
     rd = getattr(rep, "reader", "AI")
     h.append(f'<p style="color:#5b6475;font-size:12px;margin-top:14px">Values marked “{rd} translation” or “read by {rd}” were read from handwritten/scanned documents by AI — confirm them against the originals. '
-             'Shares are indicative and assume the khasra is in the predecessor\'s possession as recorded. Nothing is submitted to the portal.</p></div>')
+             'Shares are indicative and assume the khasra is in the predecessor\'s possession as recorded. Nothing is submitted to the portal.'
+             f' · Fard Checker v{_app_version()}</p></div>')
     return "".join(h)
