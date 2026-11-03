@@ -1,11 +1,13 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.2
+FARD CHECKER VERSION 1.3
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.2"
+VERSION = "1.3"
 DATE = "3 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.3", "3 Nov 2026",
+     "Tracker reads a new application still at the Tehsildar desk (no movement yet, Members Remarks empty): shown as With Tehsildar — not yet forwarded, instead of Could not read."),
     ("1.2", "3 Nov 2026",
      "Main survey number is the denominator: 1513/141 is located on the map as 141, and the total area of 141 adds 141, 141 min and every …/141 number. Old khasra numbers are no longer used."),
     ("1.1", "3 Nov 2026",
