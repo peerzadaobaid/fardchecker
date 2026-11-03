@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.1
+# FARD CHECKER VERSION 1.2
 """Revenue Plus application analyser — village records, document reading and checks.
 
 Village data lives in the repo:  villages/<Village name>/<anything>.xlsx  (Jamabandi export)
@@ -101,6 +101,25 @@ def kparts(s):
     t = kn(s)
     nums = re.findall(r"\d+", t)
     return (nums[0] if nums else ""), nums[1:], ("min" in t)
+
+
+def main_no(s, v=None):
+    """Main survey number = the DENOMINATOR: '1513/141' -> '141', '141 min' -> '141', '141' -> '141'.
+    Exception: a plain sub-division K/1, K/2 … (denominator below 10) whose K is itself drawn on the
+    village map belongs to K (e.g. Wahidpora 282/1, 282/2 are parts of parcel 282)."""
+    nums = re.findall(r"\d+", kn(s))
+    if not nums:
+        return ""
+    if len(nums) >= 2 and int(nums[-1]) < 10 and v and v.get("map") and nums[0] in _map_labels(v):
+        return nums[0]
+    return nums[-1]
+
+
+def _map_labels(v):
+    lab = v["map"].get("_labels")
+    if lab is None:
+        lab = v["map"]["_labels"] = {kn(p["khasra"]) for p in v["map"]["parcels"] if p.get("khasra")}
+    return lab
 
 
 def first_num(s):
@@ -648,9 +667,10 @@ def parcel_for(v, khasra):
     if not v or not v["map"]:
         return None
     khasra = kn(khasra)
-    base = first_num(khasra) or str(khasra)
+    base = main_no(khasra, v) or str(khasra)
     ps = [p for p in v["map"]["parcels"] if kn(p["khasra"]) == khasra] or \
-         [p for p in v["map"]["parcels"] if p["khasra"] == base]
+         [p for p in v["map"]["parcels"] if kn(p["khasra"]) == base] or \
+         [p for p in v["map"]["parcels"] if main_no(p["khasra"], v) == base]
     if not ps:
         return None
     if len(ps) == 1:
@@ -709,37 +729,33 @@ def jb_info(v, khasra):
         return None
     ks = v["jb"]["khasras"]
     k = kn(khasra)
-    return ks.get(k) or ks.get(first_num(k))
+    return ks.get(k) or ks.get(main_no(k, v))
 
 
 def khasra_family(v, khasra):
-    """All Jamabandi entries belonging to khasra K: K itself, K/1 K/2 sub-divisions, K min,
-    and new numbers carved out of K (e.g. 828/K, or old-khasra column = K)."""
+    """All Jamabandi entries of main survey number K (the denominator): K itself, 'K min',
+    and every new number written X/K (e.g. 1513/141 belongs to 141). Old khasra numbers are ignored."""
     if not v or not v["jb"]:
         return []
-    K = first_num(kn(khasra))
+    K = main_no(khasra, v)
     if not K:
         return []
     out = []
     for key, entries in v["jb"]["khasras"].items():
-        base, rest, is_min = kparts(key)
+        if main_no(key, v) != K:
+            continue
+        t = kn(key)
+        if "min" in t:
+            rel = "part (min) of " + K
+        elif t == K:
+            rel = "same number"
+        else:
+            rel = ("sub-division of " if int(re.findall(r"\d+", t)[-1]) < 10 and re.findall(r"\d+", t)[0] == K else "new number under ") + K
         for e in entries:
-            old_nums = re.findall(r"\d+", kn(e.get("khasra_old")))
-            rel = None
-            if base == K and not rest and not is_min:
-                rel = "same number"
-            elif base == K and is_min:
-                rel = "part (min)"
-            elif base == K and rest:
-                rel = "sub-division of " + K
-            elif K in old_nums or (rest and rest[-1] == K and int(K) >= 10):
-                rel = "carved out of " + K
-            elif K in rest[:-1]:
-                rel = "carved out of " + K + " (via " + "/".join(rest) + ")"
-            if rel:
-                out.append(dict(e, relation=rel))
-    order = {"same number": 0, "part (min)": 1}
-    return sorted(out, key=lambda e: (order.get(e["relation"], 2), [int(x) for x in re.findall(r"\d+", e["khasra"])]))
+            out.append(dict(e, relation=rel))
+    order = {"same number": 0}
+    return sorted(out, key=lambda e: (order.get(e["relation"], 1 if "min" in e["relation"] else 2),
+                                      [int(x) for x in re.findall(r"\d+", e["khasra"])]))
 
 
 TRANSFER = re.compile(r"baya|bay'?a|sale|hiba|gift|tabadla|exchange|rehan|mortgage|lease|ijara|award|acquisition|hasool|sehat|family\s*settle|partition|taqseem|khangi", re.I)
@@ -1145,10 +1161,15 @@ def analyse(app, ai=None, ai_error=None):
     # ── Khasra family: K, K/1.., K min, numbers carved out of K
     fam = khasra_family(v, khasra) if v else []
     if v and v["jb"]:
-        K = first_num(khasra)
-        sf = rep.sec(f"Khasra {K} — all entries in the Jamabandi (sub-divisions, “min”, carved-out numbers)")
+        K = main_no(khasra, v)
+        sf = rep.sec(f"Survey no. {K} — all entries in the Jamabandi ({K}, {K} min and every number written …/{K})")
+        if K != kn(khasra) and K == (re.findall(r"\d+", kn(khasra)) or [""])[-1]:
+            add(sf, "info", f"Khasra {khasra} is a new number under main survey no. <b>{K}</b> (the denominator); "
+                            f"the map location and the total area are taken for survey no. {K}.")
+        elif K != kn(khasra) and "min" not in kn(khasra):
+            add(sf, "info", f"Khasra {khasra} is a sub-division of survey no. <b>{K}</b> (drawn on the map as {K}); total area is taken for {K}.")
         if not fam:
-            add(sf, "red", f"No entry for khasra {K} (or its sub-divisions) in the Jamabandi on file.",
+            add(sf, "red", f"No entry for survey no. {K} (or any …/{K} number) in the Jamabandi on file.",
                 f"Check khasra number {khasra} — not found in the village Jamabandi.", rep)
         else:
             if not jb:
@@ -1170,8 +1191,8 @@ def analyse(app, ai=None, ai_error=None):
                     owners = v["jb"]["khewats"].get(e["khewat"], {}).get("owners", "")
                     alien_rows.append((e, owners))
                 hl = "background:#fff7da;" if is_tr else ""
-                rows.append(f'<tr style="{hl}">{T}<b>{esc(e["khasra"])}</b>{(" <span style=color:#5b6475>(old " + esc(e["khasra_old"]) + ")</span>") if e.get("khasra_old") else ""}</td>'
-                            f'{T}{esc(e["relation"])}</td>{T}{esc(e["khewat_no"])} / {esc(e["khata_no"])}</td>'
+                rows.append(f'<tr style="{hl}">{T}<b>{esc(e["khasra"])}</b></td>'
+                            f'{T}{esc(e["relation"])}{" <b style=color:#12355b>◀ applied</b>" if kn(e["khasra"]) == kn(khasra) else ""}</td>{T}{esc(e["khewat_no"])} / {esc(e["khata_no"])}</td>'
                             f'<td style="padding:4px 6px;border-bottom:1px solid #eceef2;text-align:right;white-space:nowrap">{km(e["area_marla"])}</td>'
                             f'{T}{esc(e["qism"])}</td>{T}{esc((e["mut_no"] or "—") + (" " + e["mut_type"] if e["mut_type"] else ""))}</td>'
                             f'{T}{esc(e["cultivator"][:140])}</td></tr>')
@@ -1209,15 +1230,15 @@ def analyse(app, ai=None, ai_error=None):
                         f"Mutation {mno} quantum {km(q)} exceeds khasra {K} area {km(total)} — check.", rep)
             # map comparison
             if v["map"]:
-                nums = {first_num(e["khasra"]) for e in fam} | {K}
-                on_map = [p_ for p_ in v["map"]["parcels"] if first_num(kn(p_["khasra"])) in nums]
+                nums = {K}
+                on_map = [p_ for p_ in v["map"]["parcels"] if main_no(p_["khasra"], v) == K]
                 if on_map:
                     m2 = sum(p_["m"].area for p_ in on_map)
                     diff = m2 / MARLA_M2 - total
                     lvl = "green" if abs(diff) <= max(2, 0.08 * total) else "amber"
-                    add(sf, lvl, f"Map survey: parcel(s) {', '.join(sorted({kn(p_['khasra']) for p_ in on_map}, key=lambda x: int(first_num(x) or 0)))} measure "
+                    add(sf, lvl, f"Map survey: parcel(s) {', '.join(sorted({kn(p_['khasra']) for p_ in on_map}, key=lambda x: [int(n) for n in re.findall(r"\d+", x)] or [0]))} measure "
                                  f"{m2:.0f} m² ≈ {km(m2 / MARLA_M2)} vs Jamabandi {km(total)} (difference {km(diff) if diff >= 0 else '−' + km(-diff)}).")
-                    missing = sorted(nums - {first_num(kn(p_['khasra'])) for p_ in on_map}, key=lambda x: int(x))
+                    missing = sorted(nums - {main_no(p_['khasra'], v) for p_ in on_map}, key=lambda x: int(x))
                     if missing:
                         add(sf, "info", f"Not drawn separately on the map: {', '.join(missing)} (may lie inside the parent parcel).")
                 else:
@@ -1587,8 +1608,8 @@ def analyse(app, ai=None, ai_error=None):
             "Record adjoining khasras" + (f" ({sugg})" if sugg else "") + " with owners.", rep)
     elif adj and nbs:
         for d, r in adj.items():
-            k_ = first_num((r or {}).get("khasra"))
-            mapk = [n_["khasra"] for n_ in nbs if n_["dir"].lower().startswith(d.lower()[:4]) or d.lower() in n_["dir"].lower()]
+            k_ = main_no((r or {}).get("khasra"), v)
+            mapk = [main_no(n_["khasra"], v) or n_["khasra"] for n_ in nbs if n_["dir"].lower().startswith(d.lower()[:4]) or d.lower() in n_["dir"].lower()]
             if k_ and mapk and k_ not in mapk:
                 add(s4, "amber", f"{d}: report says khasra {k_}, map shows {', '.join(mapk)}.", f"Check {d} adjoining khasra ({k_} vs map {', '.join(mapk)}).", rep)
     lmb = pf(f, "lambardar")
