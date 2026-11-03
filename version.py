@@ -1,11 +1,13 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.3
+FARD CHECKER VERSION 1.4
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.3"
+VERSION = "1.4"
 DATE = "3 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.4", "3 Nov 2026",
+     "Save record to folder (Chrome/Edge): one sub-folder per application with all uploaded documents, the Patwari's tatima, the KMZ with the tatima laid over the khasra, and Details.txt."),
     ("1.3", "3 Nov 2026",
      "Tracker reads a new application still at the Tehsildar desk (no movement yet, Members Remarks empty): shown as With Tehsildar — not yet forwarded, instead of Could not read."),
     ("1.2", "3 Nov 2026",

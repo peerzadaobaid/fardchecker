@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.3
+# FARD CHECKER VERSION 1.4
 """Revenue Plus Tracker — hosted tracker + application analyser (Flask, for Render).
 
 Environment variables (Render → Environment):

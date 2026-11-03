@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.3
+# FARD CHECKER VERSION 1.4
 """Revenue Plus application analyser — village records, document reading and checks.
 
 Village data lives in the repo:  villages/<Village name>/<anything>.xlsx  (Jamabandi export)
