@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.4
+# FARD CHECKER VERSION 1.5
 """Revenue Plus Tracker — hosted tracker + application analyser (Flask, for Render).
 
 Environment variables (Render → Environment):
@@ -225,6 +225,17 @@ def _analyse():
         rep.overlay = engine.sketch_overlay(rep)
     except Exception:
         rep.overlay = None
+    try:
+        s4 = next((s_ for s_ in rep.sections if s_["title"].startswith("Shaded portion")), None)
+        if s4 is not None and rep.tatima and not rep.tatima.get("patwari", True):
+            engine.add(s4, "amber", "No tatima uploaded by the Patwari was found — only the applicant's rough sketch, which is shown beside the map.",
+                       "Patwari to upload the tatima showing the shaded portion of the khasra.", rep)
+        tk = str(((ai or {}).get("tatima") or {}).get("sketch_kind") or "").lower()
+        if s4 is not None and rep.tatima and rep.tatima.get("patwari", True) and tk.startswith("loc"):
+            engine.add(s4, "amber", "The Patwari's tatima is only a location / route sketch — it does not draw the khasra or mark the shaded portion.",
+                       "Patwari to upload a tatima (aks shajra) of the khasra with the shaded portion and dimensions.", rep)
+    except Exception:
+        pass
     if skipped:
         engine.add(rep.sections[0], "amber", "Some documents could not be opened: " + "; ".join(skipped))
     engine.add(rep.sections[0], "info", f"{len(pages)} distinct document page(s) read in {time.time() - t0:.0f} s.")

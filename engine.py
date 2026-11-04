@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.4
+# FARD CHECKER VERSION 1.5
 """Revenue Plus application analyser — village records, document reading and checks.
 
 Village data lives in the repo:  villages/<Village name>/<anything>.xlsx  (Jamabandi export)
@@ -890,7 +890,8 @@ Read them carefully and return ONLY a JSON object, no other text, in exactly thi
              "as_written": "<the area figures exactly as written, e.g. 1K-5M / 0-14 / 0-11>", "shaded_side": "north|south|east|west|centre|unclear",
              "dimensions_marked": bool, "neighbours_marked": {{"north": "", "east": "", "south": "", "west": ""}}, "note": "",
              "box_2d": [ymin, xmin, ymax, xmax] of the outline of the applied khasra on the LAST tatima page, normalised 0-1000, or null,
-             "north_at": "top|bottom|left|right|unclear" — the side of that page where North (شمال / N) is written}},
+             "north_at": "top|bottom|left|right|unclear" — the side of that page where North (شمال / N) is written,
+             "sketch_kind": "shajra" if it draws the khasra (and neighbours) with a shaded portion, "location" if it is only a route / location sketch (roads, bus stop, 'towards …', site marked)}},
  "uncertain": ["<anything you could not read with confidence>"]
 }}
 Rules: areas are kanal/marla/sqft (1 kanal = 20 marla, 1 marla = 272.25 sqft); convert to marla numbers in *_marla fields. Read Urdu numerals carefully. Do NOT output Aadhaar, phone or any ID numbers. Be honest in "uncertain" rather than guessing."""
@@ -1648,8 +1649,14 @@ def pick_tatima_page(pages):
             im.thumbnail((1100, 1100))
             buf = io.BytesIO()
             im.save(buf, "JPEG", quality=72)
-            return {"label": last["label"], "data": base64.b64encode(buf.getvalue()).decode(), "w": im.width, "h": im.height}
+            return {"label": last["label"], "data": base64.b64encode(buf.getvalue()).decode(), "w": im.width, "h": im.height,
+                    "patwari": pat == r"tatima"}
     return None
+
+
+def tatima_title(rep):
+    t = getattr(rep, "tatima", None) or {}
+    return "Patwari's tatima / shajra" if t.get("patwari", True) else "Applicant's rough sketch (no Patwari tatima found)"
 
 
 def build_kml(rep, image_name=None):
@@ -1673,7 +1680,7 @@ def build_kml(rep, image_name=None):
                 f"<scale>{scale}</scale></LabelStyle></Style><Point><coordinates>{c.x:.7f},{c.y:.7f},0</coordinates></Point></Placemark>")
     desc = ""
     if image_name:
-        desc = (f"<description><![CDATA[<b>Patwari's tatima / shajra</b> ({esc(rep.tatima['label'])})<br>"
+        desc = (f"<description><![CDATA[<b>{esc(tatima_title(rep))}</b> ({esc(rep.tatima['label'])})<br>"
                 f"<img src=\"{image_name}\" width=\"520\"><br><i>Sketch is not to scale — compare the shaded part with this outline.</i>]]></description>")
     kml = '<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>'
     kml += f"<name>Khasra {esc(p['khasra'])}</name>"
@@ -1693,7 +1700,7 @@ def build_kml(rep, image_name=None):
                 f"<Icon><href>files/sketch.png</href></Icon><LatLonBox><north>{ov['north']:.8f}</north><south>{ov['south']:.8f}</south>"
                 f"<east>{ov['east']:.8f}</east><west>{ov['west']:.8f}</west></LatLonBox></GroundOverlay>")
     if image_name:
-        kml += (f"<ScreenOverlay><name>Patwari's tatima (untick to hide)</name><Icon><href>{image_name}</href></Icon>"
+        kml += (f"<ScreenOverlay><name>{esc(tatima_title(rep))} (untick to hide)</name><Icon><href>{image_name}</href></Icon>"
                 f"<overlayXY x=\"0\" y=\"1\" xunits=\"fraction\" yunits=\"fraction\"/><screenXY x=\"0.01\" y=\"0.98\" xunits=\"fraction\" yunits=\"fraction\"/>"
                 f"<size x=\"0.36\" y=\"0\" xunits=\"fraction\" yunits=\"fraction\"/></ScreenOverlay>")
     kml += "</Document></kml>"
@@ -1743,6 +1750,13 @@ def sketch_overlay(rep):
     rgb = np.array(im)
     H, W = rgb.shape[:2]
     tt = (getattr(rep, "ai", None) or {}).get("tatima") or {}
+    rep.overlay_note = ""
+    if not tat.get("patwari", True):
+        rep.overlay_note = "Not laid over the map: no Patwari tatima was found, only the applicant's rough sketch."
+        return None
+    if str(tt.get("sketch_kind") or "").lower().startswith("loc"):
+        rep.overlay_note = "Not laid over the map: the tatima is a location / route sketch, not a drawing of the khasra."
+        return None
     box, how = None, ""
     try:
         box = detect_sketch_box(rgb)
@@ -1755,9 +1769,17 @@ def sketch_overlay(rep):
             y0, x0, y1, x1 = [float(v) for v in bx]
             box = (int(x0 / 1000 * W), int(y0 / 1000 * H), max(4, int((x1 - x0) / 1000 * W)), max(4, int((y1 - y0) / 1000 * H)))
             how = "outline located by " + {"gemini": "Gemini", "claude": "Claude"}.get((rep.ai or {}).get("mode"), "AI")
+            # accept the AI's box only if a closed outline is really drawn there
+            bx_, by_, bw_, bh_ = box
+            mx, my = int(bw_ * 0.3) + 6, int(bh_ * 0.3) + 6
+            sub = rgb[max(0, by_ - my):min(H, by_ + bh_ + my), max(0, bx_ - mx):min(W, bx_ + bw_ + mx)]
+            if bw_ < 10 or bh_ < 10 or sub.size == 0 or detect_sketch_box(sub) is None:
+                box = None
+                rep.overlay_note = "Not laid over the map: no closed outline of the khasra could be found on the sketch."
         except Exception:
             box = None
     if not box:
+        rep.overlay_note = rep.overlay_note or "Not laid over the map: no closed outline of the khasra could be found on the sketch."
         return None
     x, y, w, h = box
     m = int(max(w, h) * 0.9)                             # keep the surroundings (neighbour numbers, arrows)
@@ -2004,12 +2026,13 @@ def render(rep):
     ovl = getattr(rep, "overlay", None)
     map_html = (f'<div style="flex:1;min-width:240px">{m}<div style="font-size:12px;color:#5b6475">Yellow: khasra {esc(hd["khasra"])} · grey: adjoining khasras · red dot: geotag'
                 + (f' · ink: Patwari\'s sketch laid over the khasra at 70% ({esc(ovl["how"])}; approximate'
-                   + ("" if ovl.get("north_known") else ", assuming North is at the top of the sketch") + ")" if ovl else "")
+                   + ("" if ovl.get("north_known") else ", assuming North is at the top of the sketch") + ")" if ovl
+                   else ((" · " + esc(rep.overlay_note)) if getattr(rep, "tatima", None) and getattr(rep, "overlay_note", "") else ""))
                 + '</div></div>') if m else ""
     if tat:
         tat_html = (f'<div style="flex:1;min-width:240px"><div style="background:#fff;border:1px solid #e1e4ea;border-radius:8px;padding:4px;text-align:center">'
                     f'<img alt="Patwari tatima" src="data:image/jpeg;base64,{tat["data"]}" style="max-width:100%;max-height:420px;object-fit:contain"></div>'
-                    f'<div style="font-size:12px;color:#5b6475">Patwari\'s tatima / shajra — last page of “{esc(tat["label"].split(" — ")[0])}”. '
+                    f'<div style="font-size:12px;color:#5b6475">{esc(tatima_title(rep))} — last page of “{esc(tat["label"].split(" — ")[0])}”. '
                     f'Compare its shaded part with the yellow khasra on the map (sketches are not to scale).</div></div>')
         h.append('<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;margin-bottom:8px">' + map_html + tat_html + '</div>')
         if nb_html:

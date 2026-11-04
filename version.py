@@ -1,11 +1,13 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.4
+FARD CHECKER VERSION 1.5
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.4"
-DATE = "3 Nov 2026"
+VERSION = "1.5"
+DATE = "4 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.5", "4 Nov 2026",
+     "Sketch is laid over the map only when it is the Patwari's tatima with a real outline of the khasra. The applicant's rough sketch or a location/route sketch is shown beside the map (and in the KMZ) but never stretched over the khasra; the report says why."),
     ("1.4", "3 Nov 2026",
      "Save record to folder (Chrome/Edge): one sub-folder per application with all uploaded documents, the Patwari's tatima, the KMZ with the tatima laid over the khasra, and Details.txt."),
     ("1.3", "3 Nov 2026",
