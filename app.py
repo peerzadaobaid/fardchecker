@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9
+# FARD CHECKER VERSION 1.9.1
 """Revenue Plus Tracker — hosted tracker + application analyser (Flask, for Render).
 
 Environment variables (Render → Environment):
@@ -280,7 +280,7 @@ def _analyse():
                          prev_points=data.get("prev_points"), other_fps=data.get("photo_fps"), reader_status=reader_status, skipped=skipped)
     del id_pages
     ai_safe = {k: v for k, v in (ai or {}).items() if k != "pages"}
-    out = jsonify(html=res["html"], case=res["case"], points=res["points"], photo_hash=res["photo_hash"], owner_default=res["owner_default"], ai=ai_safe)
+    out = jsonify(html=res["html"], case=res["case"], gist=res["gist"], points=res["points"], photo_hash=res["photo_hash"], owner_default=res["owner_default"], ai=ai_safe)
     pages.clear()
     engine.trim_memory()
     return out

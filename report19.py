@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9
+# FARD CHECKER VERSION 1.9.1
 """Analysis report (v1.9).
 
 Case 1 — Pre-scrutiny: only the applicant's submission (no Patwari report yet).
@@ -71,6 +71,12 @@ STYLE = """<style>
 .r19 .bx{margin:8px 0 4px;border:2px solid #12355b;border-radius:10px;padding:8px 10px;background:#f6f9fd}.r19 .bxh{font-weight:700;color:#12355b;font-size:13px;margin-bottom:4px}
 .r19 .ch{display:inline-block;margin:2px 6px 2px 0;padding:3px 9px;border-radius:12px;font-size:12px;font-weight:600}
 .r19 .ch.red{background:#fdecea}.r19 .ch.amber{background:#fff4e0}.r19 .ch.green{background:#e8f6ee}.r19 .ch.info{background:#eef0f4}
+.r19 details.sec{background:#fff;border:1px solid #e1e4ea;border-radius:10px;margin:8px 0;padding:0 12px}
+.r19 details.sec[open]{padding-bottom:10px}.r19 details.ov{border:2px solid #12355b}
+.r19 details.sec>summary{cursor:pointer;list-style:none;padding:10px 0;display:block}.r19 details.sec>summary::-webkit-details-marker{display:none}
+.r19 details.sec>summary .stt{font-weight:700;font-size:15px;margin-right:8px}.r19 details.sec>summary .stt:before{content:"▸ ";color:#5b6475}
+.r19 details.sec[open]>summary .stt:before{content:"▾ "}.r19 .sl{font-size:12.5px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.r19 details.sec[open]>summary .sl{display:none}
 .r19 ol{margin:4px 0 6px 18px;padding:0;font-size:13.5px}.r19 li{margin:2px 0}.r19 .mu{color:#5b6475}
 </style>"""
 
@@ -253,10 +259,11 @@ def photo_section(c, photo_page, other_fps):
             c.point = pm
             if c.p and c.p["m"].contains(pm):
                 it(s, "green", f"The point falls <b>inside</b> survey no. {esc(c.p['khasra'])} (about {c.p['m'].centroid.distance(pm):.0f} m from its centre).")
+            elif c.p and dist is not None and dist <= 20:
+                it(s, "info", f"The point is {dist:.0f} m outside survey no. {esc(c.p['khasra'])} — within the 20 m GPS tolerance.")
             elif c.p and dist is not None:
-                lv = "amber" if dist <= 15 else "red"
                 where = (f"it falls in khasra {inside['khasra'] or '(unnumbered parcel)'}" if inside else "it is not inside any parcel of this village")
-                it(s, lv, f"The point is <b>outside</b> survey no. {esc(c.p['khasra'])}, {dist:.0f} m away; {esc(where)}.",
+                it(s, "red", f"The point is <b>outside</b> survey no. {esc(c.p['khasra'])}, {dist:.0f} m away; {esc(where)}.",
                    ("photo-outside", f"Geotag falls {dist:.0f} m outside survey no. {c.p['khasra']} — fresh geotagged photograph of the land required."))
             elif c.near:
                 it(s, "amber", f"Survey no. {esc(c.near['asked'])} is not on the village map, so the point could not be checked against it"
@@ -306,8 +313,6 @@ def photo_section(c, photo_page, other_fps):
             it(s, "red", f"The photo file was saved by an <b>editing app</b> ({esc(ex['software'])}).", ("photo-edited", "Photograph saved by an editing app — original photograph required."))
         else:
             it(s, "info", "Camera data in the file: " + esc("; ".join(b for b in bits if b)) + ".")
-    elif raw:
-        it(s, "info", "The photo file carries no camera data (stripped on upload or re-saved) — editing cannot be ruled out from the file.")
     # same photo in another application
     src = raw or (photo_page or {}).get("data")
     c.photo_hash = dhash(src) if src else ""
@@ -321,13 +326,8 @@ def photo_section(c, photo_page, other_fps):
     if es in ("likely", "possible"):
         it(s, "red" if es == "likely" else "amber", f"{c.reader}: {'likely' if es == 'likely' else 'possible'} signs of editing — {esc(ph.get('editing_note') or 'see photo')}.",
            ("photo-ai-edit", "Possible editing / replaced person in the photograph — verify on spot."))
-    elif es == "none":
-        it(s, "info", f"{c.reader} saw no visible signs of editing (this does not prove the photo is original).")
     # the heat-map
     c.ela = ela_png(raw) if raw and (raw[:3] == b"\xff\xd8\xff") else None
-    if c.ela:
-        it(s, "info", "Compression check (picture on the right): pasted or retouched areas often glow brighter than the rest. "
-                      "The GPS stamp itself always glows; look for a person or patch that glows differently from the scene around it.")
     if photo_page and photo_page.get("data"):
         try:
             from PIL import Image
@@ -1073,6 +1073,8 @@ def overall(c, secs, title_s, prev_points):
     score = round(sum(sc * wt for _, sc, wt in have) / max(1, sum(wt for _, _, wt in have))) if have else None
     if score is not None and title_s.get("score") is not None and title_s["score"] < 40:
         score = min(score, 35)
+    elif score is not None and any(sc < 40 for _, sc, _ in have):
+        score = min(score, 69)                 # a serious finding anywhere keeps the overall at "doubtful" at best
     # points (current)
     pts = []
     for s_ in [secs["photo"], secs["survey"], title_s, secs.get("docs"), secs.get("tatima"), secs.get("report")]:
@@ -1169,7 +1171,9 @@ def build(app, ai, ai_err=None, pages=None, id_pages=None, doc_labels=None, prev
     ovs = [overall(c, secs, t, prev_points) for t in titles]
     out = render(c, rep, secs, titles, opts, default, ovs, reader_status, ai_err, skipped)
     d = default + 1                                   # variant index (0 = not found)
-    return {"html": out, "case": c.case, "points": [{"id": p_["id"], "text": p_["text"]} for p_ in ovs[d]["points"]],
+    gist = {"case": c.case, "score": ovs[d]["score"], "band": band(ovs[d]["score"])[0],
+            "text": " · ".join(p_["text"] for p_ in ovs[d]["points"][:3]) or "No objection on record."}
+    return {"html": out, "case": c.case, "gist": gist, "points": [{"id": p_["id"], "text": p_["text"]} for p_ in ovs[d]["points"]],
             "photo_hash": c.photo_hash, "owner_default": default, "rep": rep}
 
 
@@ -1193,13 +1197,30 @@ def _map_block(c, rep, with_tatima):
     return '<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;margin:6px 0">' + left + right + '</div>' + E.coords_block(rep)
 
 
+def _headline(s):
+    """One line for the closed section: the most serious finding."""
+    for lv in ("red", "amber"):
+        x = next((x for x in s["items"] + s["box"] if x["lv"] == lv), None)
+        if x:
+            return lv, re.sub(r"<[^>]+>", "", x["t"])
+    g = next((x for x in s["items"] + s["box"] if x["lv"] == "green"), None)
+    return ("green", re.sub(r"<[^>]+>", "", g["t"])) if g else ("info", "")
+
+
+def _summary(title, score, s=None):
+    lv, line = _headline(s) if s else ("info", "")
+    return (f'<summary><span class="stt">{esc(title)}</span>{chip("Score", score) if score is not None else ""}'
+            + (f'<div class="sl {lv}">{esc(_html.unescape(line))[:180]}</div>' if line else "") + "</summary>")
+
+
 def _sec_html(s, extra_top="", scale_title=None):
-    h = [f'<h3 style="font-size:16px;margin:18px 0 6px;padding-top:8px;border-top:1px solid #e1e4ea">{esc(s["title"])}</h3>']
+    h = ['<details class="sec">' + _summary(s["title"], s["score"], s)]
     if scale_title:
         h.append(scale_html(scale_title, s["score"]))
     h.append(extra_top)
     h.append(items_html([x for x in s["items"] if not x.get("hidden")]))
     h.append(box_html([x for x in s["box"] if not x.get("hidden")]))
+    h.append("</details>")
     return "".join(h)
 
 
@@ -1254,11 +1275,13 @@ def render(c, rep, secs, titles, opts, default, ovs, rs, ai_err, skipped):
                f'<select data-rp-owner data-app="{esc(hd["appNo"] or "")}" style="font:inherit;max-width:100%;padding:4px;border:1px solid #c9ced8;border-radius:6px">{o_html}</select>'
                f'<div style="color:#5b6475;font-size:12px">If the spelling match picked the wrong person, choose the right owner — the figures, the scale and the overall update at once. '
                f'The list shows the {len(opts)} names closest to the applicant out of {getattr(c, "n_owners", len(opts))} owner entries.</div></div>')
-    th = []
+    th, heads = [], []
     for i, s_ in enumerate(titles):
         inner = scale_html("Eligibility", s_["score"]) + items_html([x for x in s_["items"] if not x.get("hidden")]) + box_html(s_["box"])
         th.append(vwrap(i, inner))
-    h.append(f'<h3 style="font-size:16px;margin:18px 0 6px;padding-top:8px;border-top:1px solid #e1e4ea">3 · Title and share</h3>{sel}{"".join(th)}')
+        lv_, line_ = _headline(s_)
+        heads.append(vwrap(i, chip("Score", s_["score"]) + (f'<div class="sl {lv_}">{esc(_html.unescape(line_))[:180]}</div>' if line_ else ""), block=False))
+    h.append(f'<details class="sec"><summary><span class="stt">3 · Title and share</span>{"".join(heads)}</summary>{sel}{"".join(th)}</details>')
     # 4 / 5
     if c.case == 1:
         h.append(_sec_html(secs["docs"]))
@@ -1276,7 +1299,7 @@ def render(c, rep, secs, titles, opts, default, ovs, rs, ai_err, skipped):
         h.append(_sec_html(secs["report"], sat, "Report consistency"))
     # overall
     oh = "".join(vwrap(i, overall_html(c, ovs[i])) for i in range(nvar))
-    h.append(f'<h3 style="font-size:16px;margin:18px 0 6px;padding-top:8px;border-top:2px solid #12355b">Overall</h3>{oh}')
+    h.append(f'<details class="sec ov" open><summary><span class="stt">Overall</span></summary>{oh}</details>')
     # case for Claude (default owner)
     h.append(f'<pre id="rpa-case" style="display:none">{esc(case_text(c, secs, titles[d], ovs[d]))}</pre>')
     h.append('<div style="margin-top:12px;padding:10px 12px;background:#fff;border:1px solid #e1e4ea;border-radius:10px">'
