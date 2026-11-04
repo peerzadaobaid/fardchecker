@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.5
+# FARD CHECKER VERSION 1.6
 """Revenue Plus Tracker — hosted tracker + application analyser (Flask, for Render).
 
 Environment variables (Render → Environment):
@@ -9,7 +9,7 @@ Environment variables (Render → Environment):
   GEMINI_MODEL       optional, default gemini-3.8-flash
   (Without ANTHROPIC_API_KEY the app runs in free mode: GPS overlay read by free OCR, handwriting not read.)
 """
-import hmac, html, os, time
+import base64, gc, hmac, html, os, time
 
 from flask import Flask, Response, jsonify, request, send_file
 
@@ -138,6 +138,58 @@ def status_pdf():
     pdf = statuspdf.build(data)
     return Response(pdf, mimetype="application/pdf",
                     headers={"Content-Disposition": "attachment; filename=Pendency_Status.pdf", "Cache-Control": "no-store"})
+
+
+@app.post("/api/merge-pdf")
+def merge_pdf():
+    """Join several documents (PDFs and images) into one PDF, with a bookmark per document. Nothing is stored."""
+    if not ok_key():
+        return jsonify(error="Wrong or missing access key"), 401
+    import fitz
+    data = request.get_json(force=True, silent=True) or {}
+    files = data.get("files") or []
+    if not files:
+        return jsonify(error="No documents"), 400
+    out, toc, skipped = fitz.open(), [], []
+    for f in files:
+        label = str(f.get("label") or "Document")[:120]
+        try:
+            raw = base64.b64decode(f.get("data") or "")
+        except Exception:
+            skipped.append(label)
+            continue
+        start = out.page_count
+        try:
+            if raw[:4] == b"%PDF":
+                src = fitz.open(stream=raw, filetype="pdf")
+                out.insert_pdf(src)
+                src.close()
+            else:
+                img = fitz.open(stream=raw)                      # jpg / png / tif …
+                pdfb = img.convert_to_pdf()
+                img.close()
+                src = fitz.open("pdf", pdfb)
+                out.insert_pdf(src)
+                src.close()
+        except Exception:
+            skipped.append(label)
+            continue
+        if out.page_count > start:
+            toc.append([1, label, start + 1])
+        del raw
+    if not out.page_count:
+        return jsonify(error="None of the documents could be read as PDF or image", skipped=skipped), 422
+    try:
+        out.set_toc(toc)
+        out.set_metadata({"title": str(data.get("title") or "")[:200], "producer": "Fard Checker"})
+    except Exception:
+        pass
+    pdf = out.tobytes(garbage=3, deflate=True)
+    out.close()
+    gc.collect()
+    return Response(pdf, mimetype="application/pdf",
+                    headers={"Cache-Control": "no-store", "X-Skipped": ", ".join(skipped)[:500],
+                             "Access-Control-Expose-Headers": "X-Skipped"})
 
 
 @app.get("/api/villages")

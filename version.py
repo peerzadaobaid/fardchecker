@@ -1,11 +1,13 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.5
+FARD CHECKER VERSION 1.6
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.5"
+VERSION = "1.6"
 DATE = "4 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.6", "4 Nov 2026",
+     "Saved record named by survey no. + village, with two PDFs (applicant documents, Patwari documents) plus the KMZ. If the survey no. is not on the map, the nearest available survey no. and its neighbours are shown, clearly marked as locality only."),
     ("1.5", "4 Nov 2026",
      "Sketch is laid over the map only when it is the Patwari's tatima with a real outline of the khasra. The applicant's rough sketch or a location/route sketch is shown beside the map (and in the KMZ) but never stretched over the khasra; the report says why."),
     ("1.4", "3 Nov 2026",

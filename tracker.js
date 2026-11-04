@@ -1,4 +1,4 @@
-// FARD CHECKER VERSION 1.5
+// FARD CHECKER VERSION 1.6
 !(function () {
   "use strict";
   if (window.__rpTracker) window.__rpTracker.open();
@@ -243,7 +243,7 @@
     b.style.cssText = "position:fixed;inset:0;z-index:2147483647;";
     var y = b.attachShadow({ mode: "open" });
     y.innerHTML =
-      '<style>:host{all:initial}*{box-sizing:border-box}.wrap{position:fixed;inset:0;background:#f4f5f7;color:#1d2330;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:auto;-webkit-text-size-adjust:100%}.bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 14px;background:#12355b;color:#fff}.bar b{font-size:16px;flex:1}.bar small{opacity:.8;font-weight:400;display:block;font-size:11px}button{font:inherit;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;background:#e6e9ef;color:#1d2330}button.pri{background:#1a7f5a;color:#fff}button.x{background:transparent;color:#fff;font-size:22px;padding:2px 8px}.box{max-width:1100px;margin:0 auto;padding:14px}.card{background:#fff;border:1px solid #e1e4ea;border-radius:12px;padding:14px;margin-bottom:12px}.warn{background:#fff7e0;border-color:#f0d58a}.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}.tile{background:#fff;border:1px solid #e1e4ea;border-radius:10px;padding:10px;cursor:pointer}.tile.on{outline:2px solid #12355b}.tile .n{font-size:24px;font-weight:700}.tile .l{font-size:12px;color:#5b6475}.prog{height:10px;background:#e1e4ea;border-radius:6px;overflow:hidden;margin:10px 0}.prog i{display:block;height:100%;background:#1a7f5a;width:0}.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}input.s{flex:1;min-width:180px;padding:9px 12px;border:1px solid #c9ced8;border-radius:8px;font:inherit}.chip{padding:6px 10px;border-radius:20px;background:#e6e9ef;font-size:12px}.chip.on{background:#12355b;color:#fff}table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}th,td{text-align:left;padding:8px;border-bottom:1px solid #eceef2;vertical-align:top}th{background:#f0f2f6;font-size:12px}tr.r{cursor:pointer}tr.r:hover{background:#f7f9fc}.st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;white-space:nowrap}.s0{background:#fde2e2;color:#8a1c1c}.s1{background:#fff0d6;color:#7a4b00}.s2{background:#dcecff;color:#123f7a}.s3{background:#dff5e8;color:#145c36}.s9{background:#eee;color:#555}.apps tr.lv-p,.apps tr.lv-p td{background:#fff7da}.apps tr.lv-p td:first-child{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g,.apps tr.lv-g td{background:#ddf3ef}.apps tr.lv-g td:first-child{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n,.apps tr.lv-n td{background:#ece5fb}.apps tr.lv-n td:first-child{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t,.apps tr.lv-t td{background:#eceef2}.apps tr.lv-t td:first-child{box-shadow:inset 5px 0 0 #6b7385}@media(max-width:640px){.apps tr.lv-p{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t{box-shadow:inset 5px 0 0 #6b7385}.apps tr.r td:first-child{box-shadow:none}}.lvl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.lv{border-radius:10px;padding:10px;cursor:pointer;border:1px solid #e1e4ea;background:#fff}.lv .n{font-size:22px;font-weight:700}.lv .l{font-size:12px;color:#5b6475}.lv.on{outline:2px solid #12355b}.lv.k-p{background:#fff7da;border-left:5px solid #d9a400}.lv.k-g{background:#ddf3ef;border-left:5px solid #1f9184}.lv.k-n{background:#ece5fb;border-left:5px solid #6b48c8}.lv.k-t{background:#eceef2;border-left:5px solid #6b7385}.lv.k-0{border-left:5px solid #c9ced8}input.num{width:56px;padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit}select{padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit;max-width:100%}table.tlv tr.vrow{cursor:pointer}table.tlv tr.vrow:hover td{background:#f7f9fc}table.tlv tr.sel td{background:#e4ecf7}table.tl td,table.tl th{padding:5px 8px}.d{font-weight:700}.d.hi{color:#c62828}.flag{color:#c62828;font-size:12px}.det td{background:#fafbfd;font-size:12px}.det p{margin:4px 0}.scroll{overflow-x:auto;border-radius:10px;border:1px solid #e1e4ea}h3{margin:0 0 8px;font-size:15px}.muted{color:#5b6475;font-size:12px}@media(max-width:640px){.apps thead{display:none}.apps tr.r{display:block;padding:8px 6px;border-bottom:1px solid #eceef2}.apps tr.r td{display:inline-block;border:0;padding:2px 10px 2px 0;vertical-align:top}.apps tr.det td{display:block}.bar b{font-size:15px}}.modal{font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d2330;position:fixed;inset:0;z-index:10;background:rgba(10,20,35,.6);display:flex;align-items:center;justify-content:center;padding:10px}.modal[hidden]{display:none}.mbox{background:#fff;border-radius:12px;width:min(980px,100%);height:min(92vh,960px);display:flex;flex-direction:column;overflow:hidden}.mhead{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #e1e4ea}.mhead b{flex:1;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mbody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#eef0f4}.mbody img{max-width:100%;max-height:100%;object-fit:contain}.mbody iframe{width:100%;height:100%;border:0;background:#fff}.docs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.docs button{padding:6px 10px;font-size:12px;background:#e4ecf7;color:#12355b}</style><div class="wrap"><div class="bar"><b>Revenue Plus Tracker<small>Read-only — never submits or changes anything · <span id="rpver">version 1.5</span></small></b><button class="x" id="close">×</button></div><div id="rpscanbar" hidden style="position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid #d5dbe6;box-shadow:0 3px 8px rgba(16,32,60,.08)"></div><div class="box" id="main"></div></div><div class="modal" id="modal" hidden><div class="mbox"><div class="mhead"><b id="mtitle"></b><span id="macts" style="display:flex;gap:6px"></span><button id="mclose">Close</button></div><div class="mbody" id="mbody"></div></div></div>';
+      '<style>:host{all:initial}*{box-sizing:border-box}.wrap{position:fixed;inset:0;background:#f4f5f7;color:#1d2330;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:auto;-webkit-text-size-adjust:100%}.bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 14px;background:#12355b;color:#fff}.bar b{font-size:16px;flex:1}.bar small{opacity:.8;font-weight:400;display:block;font-size:11px}button{font:inherit;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;background:#e6e9ef;color:#1d2330}button.pri{background:#1a7f5a;color:#fff}button.x{background:transparent;color:#fff;font-size:22px;padding:2px 8px}.box{max-width:1100px;margin:0 auto;padding:14px}.card{background:#fff;border:1px solid #e1e4ea;border-radius:12px;padding:14px;margin-bottom:12px}.warn{background:#fff7e0;border-color:#f0d58a}.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}.tile{background:#fff;border:1px solid #e1e4ea;border-radius:10px;padding:10px;cursor:pointer}.tile.on{outline:2px solid #12355b}.tile .n{font-size:24px;font-weight:700}.tile .l{font-size:12px;color:#5b6475}.prog{height:10px;background:#e1e4ea;border-radius:6px;overflow:hidden;margin:10px 0}.prog i{display:block;height:100%;background:#1a7f5a;width:0}.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}input.s{flex:1;min-width:180px;padding:9px 12px;border:1px solid #c9ced8;border-radius:8px;font:inherit}.chip{padding:6px 10px;border-radius:20px;background:#e6e9ef;font-size:12px}.chip.on{background:#12355b;color:#fff}table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}th,td{text-align:left;padding:8px;border-bottom:1px solid #eceef2;vertical-align:top}th{background:#f0f2f6;font-size:12px}tr.r{cursor:pointer}tr.r:hover{background:#f7f9fc}.st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;white-space:nowrap}.s0{background:#fde2e2;color:#8a1c1c}.s1{background:#fff0d6;color:#7a4b00}.s2{background:#dcecff;color:#123f7a}.s3{background:#dff5e8;color:#145c36}.s9{background:#eee;color:#555}.apps tr.lv-p,.apps tr.lv-p td{background:#fff7da}.apps tr.lv-p td:first-child{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g,.apps tr.lv-g td{background:#ddf3ef}.apps tr.lv-g td:first-child{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n,.apps tr.lv-n td{background:#ece5fb}.apps tr.lv-n td:first-child{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t,.apps tr.lv-t td{background:#eceef2}.apps tr.lv-t td:first-child{box-shadow:inset 5px 0 0 #6b7385}@media(max-width:640px){.apps tr.lv-p{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t{box-shadow:inset 5px 0 0 #6b7385}.apps tr.r td:first-child{box-shadow:none}}.lvl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.lv{border-radius:10px;padding:10px;cursor:pointer;border:1px solid #e1e4ea;background:#fff}.lv .n{font-size:22px;font-weight:700}.lv .l{font-size:12px;color:#5b6475}.lv.on{outline:2px solid #12355b}.lv.k-p{background:#fff7da;border-left:5px solid #d9a400}.lv.k-g{background:#ddf3ef;border-left:5px solid #1f9184}.lv.k-n{background:#ece5fb;border-left:5px solid #6b48c8}.lv.k-t{background:#eceef2;border-left:5px solid #6b7385}.lv.k-0{border-left:5px solid #c9ced8}input.num{width:56px;padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit}select{padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit;max-width:100%}table.tlv tr.vrow{cursor:pointer}table.tlv tr.vrow:hover td{background:#f7f9fc}table.tlv tr.sel td{background:#e4ecf7}table.tl td,table.tl th{padding:5px 8px}.d{font-weight:700}.d.hi{color:#c62828}.flag{color:#c62828;font-size:12px}.det td{background:#fafbfd;font-size:12px}.det p{margin:4px 0}.scroll{overflow-x:auto;border-radius:10px;border:1px solid #e1e4ea}h3{margin:0 0 8px;font-size:15px}.muted{color:#5b6475;font-size:12px}@media(max-width:640px){.apps thead{display:none}.apps tr.r{display:block;padding:8px 6px;border-bottom:1px solid #eceef2}.apps tr.r td{display:inline-block;border:0;padding:2px 10px 2px 0;vertical-align:top}.apps tr.det td{display:block}.bar b{font-size:15px}}.modal{font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d2330;position:fixed;inset:0;z-index:10;background:rgba(10,20,35,.6);display:flex;align-items:center;justify-content:center;padding:10px}.modal[hidden]{display:none}.mbox{background:#fff;border-radius:12px;width:min(980px,100%);height:min(92vh,960px);display:flex;flex-direction:column;overflow:hidden}.mhead{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #e1e4ea}.mhead b{flex:1;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mbody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#eef0f4}.mbody img{max-width:100%;max-height:100%;object-fit:contain}.mbody iframe{width:100%;height:100%;border:0;background:#fff}.docs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.docs button{padding:6px 10px;font-size:12px;background:#e4ecf7;color:#12355b}</style><div class="wrap"><div class="bar"><b>Revenue Plus Tracker<small>Read-only — never submits or changes anything · <span id="rpver">version 1.6</span></small></b><button class="x" id="close">×</button></div><div id="rpscanbar" hidden style="position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid #d5dbe6;box-shadow:0 3px 8px rgba(16,32,60,.08)"></div><div class="box" id="main"></div></div><div class="modal" id="modal" hidden><div class="mbox"><div class="mhead"><b id="mtitle"></b><span id="macts" style="display:flex;gap:6px"></span><button id="mclose">Close</button></div><div class="mbody" id="mbody"></div></div></div>';
     var w = y.getElementById("main");
     (y.getElementById("close").onclick = function () {
       location.assign(k.split("#")[0]);
@@ -2873,6 +2873,40 @@
       URL.revokeObjectURL(a.href), a.remove();
     }, 4000);
   }
+  function rpSurveyName(e) {
+    var k = String(e.khasra || "").replace(/\//g, "-").replace(/\s+/g, " ").trim(),
+      v = String(e.village || "").replace(/\s*-\s*/g, "-").replace(/\s+/g, " ").trim();
+    return rpSafe((k || "No khasra") + " " + (v || "Village"));
+  }
+  // Patwari's uploads start at the tatima (the portal lists the Patwari's section after the applicant's)
+  function rpSplitDocs(docs) {
+    var list = docs.filter(function (d) {
+        return !/^All documents/.test(d.label);
+      }),
+      at = -1;
+    list.forEach(function (d, i) {
+      at < 0 && /tatima|patwari|girdh?awar|field\s*report/i.test(d.label) && (at = i);
+    });
+    return { applicant: at < 0 ? list : list.slice(0, at), patwari: at < 0 ? [] : list.slice(at) };
+  }
+  async function rpMergePdf(files, title) {
+    var API = window.__rpApiBase || "",
+      key = rpGetKey(!1);
+    if (!API || !key) throw new Error("needs the access key");
+    var resp = await rpFetch(API + "/api/merge-pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Access-Key": key },
+      body: JSON.stringify({ title: title, files: files }),
+    });
+    if (!resp.ok) {
+      var m = "";
+      try {
+        m = (await resp.json()).error || "";
+      } catch (x) {}
+      throw new Error(m || "HTTP " + resp.status);
+    }
+    return { blob: await resp.blob(), skipped: resp.headers.get("X-Skipped") || "" };
+  }
   async function rpSaveRecord(e, btn) {
     var old = btn.textContent;
     function say(t) {
@@ -2880,12 +2914,13 @@
     }
     if (A) return alert("A scan is reading the portal right now — save after it finishes (or tap “Stop after this set”).");
     if (!e.docs) return alert("Run a new scan first — this application was read by an older tracker version.");
+    if (!rpGetKey(!0)) return;
     btn.disabled = !0;
     var dir = null,
-      folder = rpSafe(e.appNo) + " - " + rpSafe(e.name) + " - " + rpSafe(e.village) + " - Khasra " + rpSafe(e.khasra),
+      base = rpSurveyName(e),
+      folder = base,
       saved = [],
-      failed = [],
-      out = [];
+      failed = [];
     try {
       try {
         dir = await rpSaveDir(!1);
@@ -2893,63 +2928,91 @@
         if (x && x.name === "AbortError") return say(old);
         dir = null;
       }
-      var sub = dir ? await dir.getDirectoryHandle(folder, { create: !0 }) : null;
+      var sub = null;
+      if (dir) {
+        // same survey no. + village already saved for a different application → keep both
+        try {
+          var ex = await dir.getDirectoryHandle(folder),
+            dt = await (await (await ex.getFileHandle("Details.txt")).getFile()).text();
+          if (dt.indexOf(String(e.appNo || "")) < 0) folder = base + " (app " + String(e.appNo || "").slice(-6) + ")";
+        } catch (x) {}
+        sub = await dir.getDirectoryHandle(folder, { create: !0 });
+      }
       async function put(name, blob) {
         if (sub) await rpWrite(sub, name, blob);
-        else rpDownload(folder + " - " + name, blob);
+        else rpDownload(name, blob);
         saved.push(name);
       }
-      // 1. documents (applicant's + Patwari's tatima)
-      var list = e.docs.filter(function (d) {
-        return !/^All documents/.test(d.label);
-      });
-      if (!list.length) list = e.docs.slice();
-      for (var i = 0; i < list.length; i++) {
-        var d = list[i],
-          tat = /tatima/i.test(d.label);
-        say("Saving " + (i + 1) + " of " + list.length + ": " + d.label + " …");
-        try {
-          var r = await Ee(e, d.i, d.label),
-            ext = rpExt(r.type || (r.blob && r.blob.type), r.name),
-            nm = (tat ? "Patwari tatima" : String(i + 1).padStart(2, "0") + " " + rpSafe(d.label)) + "." + ext;
-          await put(nm, r.blob);
-        } catch (x) {
-          failed.push(d.label + " (" + String((x && x.message) || x).slice(0, 120) + ")");
+      var parts = rpSplitDocs(e.docs),
+        groups = [
+          ["Applicant documents", parts.applicant],
+          ["Patwari documents", parts.patwari],
+        ];
+      for (var gi = 0; gi < groups.length; gi++) {
+        var gname = groups[gi][0],
+          list = groups[gi][1],
+          files = [];
+        if (!list.length) {
+          failed.push(gname + " (none uploaded)");
+          continue;
         }
-        await C(300);
+        for (var i = 0; i < list.length; i++) {
+          var d = list[i];
+          say(gname + ": fetching " + (i + 1) + " of " + list.length + " (" + d.label + ") …");
+          try {
+            var r = await Ee(e, d.i, d.label);
+            files.push({ label: d.label, type: r.type || (r.blob && r.blob.type) || "", data: await rpBlobB64(r.blob) });
+          } catch (x) {
+            failed.push(gname + ": " + d.label + " (" + String((x && x.message) || x).slice(0, 100) + ")");
+          }
+          await C(300);
+        }
+        if (!files.length) continue;
+        say(gname + ": joining into one PDF …");
+        try {
+          var mg = await rpMergePdf(files, base + " - " + gname);
+          await put(base + " - " + gname + ".pdf", mg.blob);
+          mg.skipped && failed.push(gname + ": could not be added to the PDF — " + mg.skipped);
+        } catch (x) {
+          failed.push(gname + " PDF (" + String((x && x.message) || x).slice(0, 100) + ")");
+        }
+        files = null;
       }
-      // 2. KMZ with the tatima over the khasra (from the analysis)
+      // KMZ with the tatima over the khasra (from the analysis)
       var html = (rpCacheGet(e) || {}).html;
-      if (!html && window.__rpApiBase && rpGetKey(!1) && e.fields) {
+      if (!html && window.__rpApiBase && e.fields) {
         say("Preparing KMZ (analysing) …");
         try {
           html = await rpRunFor(e, function (t) {
             say(String(t).slice(0, 60));
           });
         } catch (x) {
-          failed.push("KMZ (analysis failed: " + String((x && x.message) || x).slice(0, 120) + ")");
+          failed.push("KMZ (analysis failed: " + String((x && x.message) || x).slice(0, 100) + ")");
         }
       }
       var km = html && /download="([^"]+\.kmz)"\s+href="data:application\/vnd\.google-earth\.kmz;base64,([^"]+)"/.exec(html);
-      if (km) await put("Khasra map with Patwari tatima.kmz", rpB64Blob(km[2], "application/vnd.google-earth.kmz"));
-      else if (html) failed.push("KMZ (the village map or the khasra was not found, so no KMZ was made)");
-      else if (!failed.some(function (f) { return /^KMZ/.test(f); })) failed.push("KMZ (analysis not available — enter the access key or tap Analyse first)");
-      // 3. a small details note
-      out = [
+      if (km) await put(base + " - map with tatima.kmz", rpB64Blob(km[2], "application/vnd.google-earth.kmz"));
+      else if (html) failed.push("KMZ (village map or khasra not found, or no tatima — so no KMZ was made)");
+      var nearM = html && /Survey no\. (\S+) not on map — nearest available (\S+) shown/.exec(html);
+      var out = [
+        "Survey no.: " + (e.khasra || ""),
+        "Village: " + (e.village || ""),
         "Application no.: " + (e.appNo || ""),
         "Service: " + (e.service || e.svc || ""),
         "Applicant: " + (e.name || ""),
-        "Village: " + (e.village || ""),
-        "Khasra: " + (e.khasra || ""),
         "Applied on: " + (e.appDate || ""),
         "Saved on: " + new Date().toLocaleString("en-IN"),
         "",
-        "Files saved: " + saved.join(", "),
-      ].concat(failed.length ? ["", "Not saved: " + failed.join("; ")] : []);
-      await put("Details.txt", new Blob([out.join("\r\n")], { type: "text/plain" }));
-      say(failed.length ? "Saved ✓ (" + failed.length + " item(s) missing)" : "Saved to folder ✓");
+        "Applicant documents: " + (parts.applicant.map(function (d) { return d.label; }).join(", ") || "none"),
+        "Patwari documents: " + (parts.patwari.map(function (d) { return d.label; }).join(", ") || "none"),
+      ]
+        .concat(nearM ? ["", "NOTE: survey no. " + nearM[1] + " is not on the village map; the KMZ shows the nearest available survey no. " + nearM[2] + " for locality only."] : [])
+        .concat(["", "Files saved: " + saved.join(", ")])
+        .concat(failed.length ? ["", "Not saved: " + failed.join("; ")] : []);
+      await put(sub ? "Details.txt" : base + " - Details.txt", new Blob([out.join("\r\n")], { type: "text/plain" }));
+      say(failed.length ? "Saved ✓ (" + failed.length + " note(s))" : "Saved to folder ✓");
       btn.title = (sub ? "Folder: " + dir.name + "\\" + folder : "Downloaded to your Downloads folder") + (failed.length ? "\nNot saved: " + failed.join("; ") : "");
-      if (failed.length) alert("Saved to “" + (sub ? dir.name + "\\" + folder : "Downloads") + "”.\n\nNot saved:\n• " + failed.join("\n• "));
+      if (failed.length) alert("Saved to “" + (sub ? dir.name + "\\" + folder : "Downloads") + "”.\n\nNotes:\n• " + failed.join("\n• "));
     } catch (x) {
       say(old);
       alert("Could not save: " + String((x && x.message) || x));
@@ -3175,7 +3238,7 @@
   function Re(e) {
     return null != e.stageDays ? e.stageDays : e.days;
   }
-  var RP_TRACKER_VERSION = "1.5";
+  var RP_TRACKER_VERSION = "1.6";
   function rpVersionBadge() {
     try {
       var el = y.getElementById("rpver"),

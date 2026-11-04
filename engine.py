@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.5
+# FARD CHECKER VERSION 1.6
 """Revenue Plus application analyser — village records, document reading and checks.
 
 Village data lives in the repo:  villages/<Village name>/<anything>.xlsx  (Jamabandi export)
@@ -1626,9 +1626,37 @@ def analyse(app, ai=None, ai_error=None):
     if free:
         if ai.get("error"):
             add(rep.sections[0], "amber", ai["error"])
+    rep.near = None
+    if not p and v and v.get("map"):
+        q, asked = nearest_on_map(v, khasra)
+        if q:
+            p, nbs = q, neighbours(v, q)
+            rep.near = {"asked": asked, "shown": q["khasra"]}
+            s0["items"] = [it for it in s0["items"] if "not found on the village map" not in str(it[1])]
+            add(s0, "amber", f"Survey no. {asked} is not drawn on the village map. The map shows the <b>nearest available survey no. "
+                             f"{esc(q['khasra'])}</b> with its neighbours, only to give the locality — it is <b>not</b> the applied land, "
+                             f"so no geotag, area or tatima checks were made against it.")
     rep.p, rep.nbs, rep.jb, rep.v = p, nbs, jb, v
     rep.ai, rep.reader, rep.free = ai, reader, free
     return rep
+
+
+def nearest_on_map(v, khasra):
+    """Closest survey number that is drawn on the map (higher number preferred on a tie)."""
+    K = main_no(khasra, v)
+    if not K.isdigit():
+        return None, K
+    have = {}
+    for q in v["map"]["parcels"]:
+        m = main_no(q["khasra"], v)
+        if m.isdigit() and m not in have:
+            have[m] = q
+    k = int(K)
+    for d in range(1, 201):
+        for c in (k + d, k - d):
+            if c > 0 and str(c) in have:
+                return have[str(c)], K
+    return None, K
 
 
 # ───────────────────────────── Rendering ─────────────────────────────
@@ -1683,11 +1711,13 @@ def build_kml(rep, image_name=None):
         desc = (f"<description><![CDATA[<b>{esc(tatima_title(rep))}</b> ({esc(rep.tatima['label'])})<br>"
                 f"<img src=\"{image_name}\" width=\"520\"><br><i>Sketch is not to scale — compare the shaded part with this outline.</i>]]></description>")
     kml = '<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>'
-    kml += f"<name>Khasra {esc(p['khasra'])}</name>"
+    nr = getattr(rep, "near", None)
+    kml += (f"<name>Survey {esc(nr['asked'])} NOT on map — nearest available {esc(p['khasra'])} (locality only)</name>" if nr
+            else f"<name>Khasra {esc(p['khasra'])}</name>")
     c = g.representative_point()
     kml += (f"<LookAt><longitude>{c.x:.7f}</longitude><latitude>{c.y:.7f}</latitude><altitude>0</altitude>"
             f"<range>{max(120, min(900, (g.bounds[2] - g.bounds[0]) * 111000 * 4)):.0f}</range><tilt>0</tilt><heading>0</heading></LookAt>")
-    kml += kml_poly(f"Khasra {p['khasra']}", g, "ff00d4ff", desc)
+    kml += kml_poly(f"Khasra {p['khasra']} (nearest available — {nr['asked']} is not on the map)" if nr else f"Khasra {p['khasra']}", g, "ff00d4ff", desc)
     kml += label(p["khasra"], g, "1.4", "ff00d4ff")
     for n_ in rep.nbs:
         kml += kml_poly(f"Khasra {n_['khasra']}", n_["q"]["geom"], "ffb0b0b0")
@@ -1751,6 +1781,9 @@ def sketch_overlay(rep):
     H, W = rgb.shape[:2]
     tt = (getattr(rep, "ai", None) or {}).get("tatima") or {}
     rep.overlay_note = ""
+    if getattr(rep, "near", None):
+        rep.overlay_note = f"Not laid over the map: survey no. {rep.near['asked']} is not on the map (nearest {rep.near['shown']} shown for locality only)."
+        return None
     if not tat.get("patwari", True):
         rep.overlay_note = "Not laid over the map: no Patwari tatima was found, only the applicant's rough sketch."
         return None
@@ -1844,7 +1877,7 @@ def coords_block(rep):
     pin = lambda la, lo: f"https://www.google.com/maps/search/?api=1&query={la:.6f},{lo:.6f}"
     a = 'style="color:#12355b;font-weight:600"'
     rows = [f'<div style="background:#fff;border:1px solid #e1e4ea;border-radius:10px;padding:10px 12px;margin:6px 0 10px;font-size:13px">'
-            f'<b>Exact location</b><div style="margin-top:4px">Khasra {esc(p["khasra"])} centre: <code>{c.y:.6f}, {c.x:.6f}</code> · '
+            f'<b>Exact location</b>' + (f'<div style="margin-top:4px;color:#7a4b00"><b>Survey no. {esc(rep.near["asked"])} is not on the map — the points below are of the nearest available survey no. {esc(p["khasra"])}, for locality only.</b></div>' if getattr(rep, "near", None) else "") + f'<div style="margin-top:4px">Khasra {esc(p["khasra"])} centre: <code>{c.y:.6f}, {c.x:.6f}</code> · '
             f'<a {a} href="{sat(c.y, c.x)}" target="_blank" rel="noopener">Open in Google Maps (satellite)</a></div>']
     if getattr(rep, "geo", None):
         la, lo = rep.geo
@@ -1916,10 +1949,14 @@ def svg_map(rep, w=360, h=300):
                    f'height="{abs(by_ - ay):.1f}" preserveAspectRatio="none" opacity="0.7"/>')
         out.append(f'<path d="{path(p["m"])}" fill="#ffe08a" fill-opacity="0.12" stroke="#b26a00" stroke-width="2"/>')
     else:
-        out.append(f'<path d="{path(p["m"])}" fill="#ffe08a" stroke="#b26a00" stroke-width="2"/>')
+        out.append(f'<path d="{path(p["m"])}" fill="#ffe08a" stroke="#b26a00" stroke-width="2"' +
+                   (' stroke-dasharray="6 4" fill-opacity="0.5"' if getattr(rep, "near", None) else "") + '/>')
     c = p["m"].representative_point()
     x, y = P(c.x, c.y)
     out.append(f'<text x="{x:.0f}" y="{y:.0f}" font-size="13" font-weight="700" text-anchor="middle" fill="#5a3b00">{esc(p["khasra"])}</text>')
+    if getattr(rep, "near", None):
+        out.append(f'<rect x="0" y="0" width="{w}" height="22" fill="#fff3cd"/><text x="{w / 2:.0f}" y="15" font-size="11.5" font-weight="700" '
+                   f'text-anchor="middle" fill="#7a4b00">Survey no. {esc(rep.near["asked"])} not on map — nearest available {esc(rep.near["shown"])} shown</text>')
     if pt is not None and p["m"].distance(pt) < 300:
         x, y = P(pt.x, pt.y)
         out.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="6" fill="#c62828" stroke="#fff" stroke-width="2"/>')
@@ -1929,8 +1966,9 @@ def svg_map(rep, w=360, h=300):
     bl = step * s
     out.append(f'<path d="M10,{h - 12} h{bl:.1f}" stroke="#3b4456" stroke-width="3"/>'
                f'<text x="{10 + bl / 2:.1f}" y="{h - 16}" font-size="10" text-anchor="middle" fill="#3b4456">{step} m</text>')
-    out.append(f'<text x="{w - 14}" y="18" font-size="12" font-weight="700" fill="#3b4456" text-anchor="middle">N</text>'
-               f'<path d="M{w - 14},22 L{w - 18},32 L{w - 10},32 Z" fill="#3b4456"/>')
+    oy = 24 if getattr(rep, "near", None) else 0
+    out.append(f'<text x="{w - 14}" y="{18 + oy}" font-size="12" font-weight="700" fill="#3b4456" text-anchor="middle">N</text>'
+               f'<path d="M{w - 14},{22 + oy} L{w - 18},{32 + oy} L{w - 10},{32 + oy} Z" fill="#3b4456"/>')
     out.append("</svg>")
     return "".join(out)
 
@@ -2024,7 +2062,7 @@ def render(rep):
                         f'<td style="padding:4px;border-bottom:1px solid #eceef2">{esc(t)}{("<br><span style=color:#5b6475>" + esc(c) + "</span>") if c else ""}</td></tr>')
         nb_html += "</table></div>"
     ovl = getattr(rep, "overlay", None)
-    map_html = (f'<div style="flex:1;min-width:240px">{m}<div style="font-size:12px;color:#5b6475">Yellow: khasra {esc(hd["khasra"])} · grey: adjoining khasras · red dot: geotag'
+    map_html = (f'<div style="flex:1;min-width:240px">{m}<div style="font-size:12px;color:#5b6475">{("Dashed: nearest available survey no. " + esc(rep.near["shown"]) + " (" + esc(rep.near["asked"]) + " is not on the map)") if getattr(rep, "near", None) else ("Yellow: khasra " + esc(hd["khasra"]))} · grey: adjoining khasras · red dot: geotag'
                 + (f' · ink: Patwari\'s sketch laid over the khasra at 70% ({esc(ovl["how"])}; approximate'
                    + ("" if ovl.get("north_known") else ", assuming North is at the top of the sketch") + ")" if ovl
                    else ((" · " + esc(rep.overlay_note)) if getattr(rep, "tatima", None) and getattr(rep, "overlay_note", "") else ""))
