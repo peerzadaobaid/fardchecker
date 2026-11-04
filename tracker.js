@@ -1,4 +1,4 @@
-// FARD CHECKER VERSION 1.8
+// FARD CHECKER VERSION 1.9
 !(function () {
   "use strict";
   if (window.__rpTracker) window.__rpTracker.open();
@@ -243,7 +243,7 @@
     b.style.cssText = "position:fixed;inset:0;z-index:2147483647;";
     var y = b.attachShadow({ mode: "open" });
     y.innerHTML =
-      '<style>:host{all:initial}*{box-sizing:border-box}.wrap{position:fixed;inset:0;background:#f4f5f7;color:#1d2330;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:auto;-webkit-text-size-adjust:100%}.bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 14px;background:#12355b;color:#fff}.bar b{font-size:16px;flex:1}.bar small{opacity:.8;font-weight:400;display:block;font-size:11px}button{font:inherit;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;background:#e6e9ef;color:#1d2330}button.pri{background:#1a7f5a;color:#fff}button.x{background:transparent;color:#fff;font-size:22px;padding:2px 8px}.box{max-width:1100px;margin:0 auto;padding:14px}.card{background:#fff;border:1px solid #e1e4ea;border-radius:12px;padding:14px;margin-bottom:12px}.warn{background:#fff7e0;border-color:#f0d58a}.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}.tile{background:#fff;border:1px solid #e1e4ea;border-radius:10px;padding:10px;cursor:pointer}.tile.on{outline:2px solid #12355b}.tile .n{font-size:24px;font-weight:700}.tile .l{font-size:12px;color:#5b6475}.prog{height:10px;background:#e1e4ea;border-radius:6px;overflow:hidden;margin:10px 0}.prog i{display:block;height:100%;background:#1a7f5a;width:0}.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}input.s{flex:1;min-width:180px;padding:9px 12px;border:1px solid #c9ced8;border-radius:8px;font:inherit}.chip{padding:6px 10px;border-radius:20px;background:#e6e9ef;font-size:12px}.chip.on{background:#12355b;color:#fff}table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}th,td{text-align:left;padding:8px;border-bottom:1px solid #eceef2;vertical-align:top}th{background:#f0f2f6;font-size:12px}tr.r{cursor:pointer}tr.r:hover{background:#f7f9fc}.st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;white-space:nowrap}.s0{background:#fde2e2;color:#8a1c1c}.s1{background:#fff0d6;color:#7a4b00}.s2{background:#dcecff;color:#123f7a}.s3{background:#dff5e8;color:#145c36}.s9{background:#eee;color:#555}.apps tr.lv-p,.apps tr.lv-p td{background:#fff7da}.apps tr.lv-p td:first-child{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g,.apps tr.lv-g td{background:#ddf3ef}.apps tr.lv-g td:first-child{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n,.apps tr.lv-n td{background:#ece5fb}.apps tr.lv-n td:first-child{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t,.apps tr.lv-t td{background:#eceef2}.apps tr.lv-t td:first-child{box-shadow:inset 5px 0 0 #6b7385}@media(max-width:640px){.apps tr.lv-p{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t{box-shadow:inset 5px 0 0 #6b7385}.apps tr.r td:first-child{box-shadow:none}}.lvl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.lv{border-radius:10px;padding:10px;cursor:pointer;border:1px solid #e1e4ea;background:#fff}.lv .n{font-size:22px;font-weight:700}.lv .l{font-size:12px;color:#5b6475}.lv.on{outline:2px solid #12355b}.lv.k-p{background:#fff7da;border-left:5px solid #d9a400}.lv.k-g{background:#ddf3ef;border-left:5px solid #1f9184}.lv.k-n{background:#ece5fb;border-left:5px solid #6b48c8}.lv.k-t{background:#eceef2;border-left:5px solid #6b7385}.lv.k-0{border-left:5px solid #c9ced8}input.num{width:56px;padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit}select{padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit;max-width:100%}table.tlv tr.vrow{cursor:pointer}table.tlv tr.vrow:hover td{background:#f7f9fc}table.tlv tr.sel td{background:#e4ecf7}table.tl td,table.tl th{padding:5px 8px}.d{font-weight:700}.d.hi{color:#c62828}.flag{color:#c62828;font-size:12px}.det td{background:#fafbfd;font-size:12px}.det p{margin:4px 0}.scroll{overflow-x:auto;border-radius:10px;border:1px solid #e1e4ea}h3{margin:0 0 8px;font-size:15px}.muted{color:#5b6475;font-size:12px}@media(max-width:640px){.apps thead{display:none}.apps tr.r{display:block;padding:8px 6px;border-bottom:1px solid #eceef2}.apps tr.r td{display:inline-block;border:0;padding:2px 10px 2px 0;vertical-align:top}.apps tr.det td{display:block}.bar b{font-size:15px}}.modal{font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d2330;position:fixed;inset:0;z-index:10;background:rgba(10,20,35,.6);display:flex;align-items:center;justify-content:center;padding:10px}.modal[hidden]{display:none}.mbox{background:#fff;border-radius:12px;width:min(980px,100%);height:min(92vh,960px);display:flex;flex-direction:column;overflow:hidden}.mhead{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #e1e4ea}.mhead b{flex:1;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mbody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#eef0f4}.mbody img{max-width:100%;max-height:100%;object-fit:contain}.mbody iframe{width:100%;height:100%;border:0;background:#fff}.docs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.docs button{padding:6px 10px;font-size:12px;background:#e4ecf7;color:#12355b}</style><div class="wrap"><div class="bar"><b>Revenue Plus Tracker<small>Read-only — never submits or changes anything · <span id="rpver">version 1.8</span></small></b><button class="x" id="close">×</button></div><div id="rpscanbar" hidden style="position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid #d5dbe6;box-shadow:0 3px 8px rgba(16,32,60,.08)"></div><div class="box" id="main"></div></div><div class="modal" id="modal" hidden><div class="mbox"><div class="mhead"><b id="mtitle"></b><span id="macts" style="display:flex;gap:6px"></span><button id="mclose">Close</button></div><div class="mbody" id="mbody"></div></div></div>';
+      '<style>:host{all:initial}*{box-sizing:border-box}.wrap{position:fixed;inset:0;background:#f4f5f7;color:#1d2330;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:auto;-webkit-text-size-adjust:100%}.bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 14px;background:#12355b;color:#fff}.bar b{font-size:16px;flex:1}.bar small{opacity:.8;font-weight:400;display:block;font-size:11px}button{font:inherit;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;background:#e6e9ef;color:#1d2330}button.pri{background:#1a7f5a;color:#fff}button.x{background:transparent;color:#fff;font-size:22px;padding:2px 8px}.box{max-width:1100px;margin:0 auto;padding:14px}.card{background:#fff;border:1px solid #e1e4ea;border-radius:12px;padding:14px;margin-bottom:12px}.warn{background:#fff7e0;border-color:#f0d58a}.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}.tile{background:#fff;border:1px solid #e1e4ea;border-radius:10px;padding:10px;cursor:pointer}.tile.on{outline:2px solid #12355b}.tile .n{font-size:24px;font-weight:700}.tile .l{font-size:12px;color:#5b6475}.prog{height:10px;background:#e1e4ea;border-radius:6px;overflow:hidden;margin:10px 0}.prog i{display:block;height:100%;background:#1a7f5a;width:0}.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}input.s{flex:1;min-width:180px;padding:9px 12px;border:1px solid #c9ced8;border-radius:8px;font:inherit}.chip{padding:6px 10px;border-radius:20px;background:#e6e9ef;font-size:12px}.chip.on{background:#12355b;color:#fff}table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}th,td{text-align:left;padding:8px;border-bottom:1px solid #eceef2;vertical-align:top}th{background:#f0f2f6;font-size:12px}tr.r{cursor:pointer}tr.r:hover{background:#f7f9fc}.st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;white-space:nowrap}.s0{background:#fde2e2;color:#8a1c1c}.s1{background:#fff0d6;color:#7a4b00}.s2{background:#dcecff;color:#123f7a}.s3{background:#dff5e8;color:#145c36}.s9{background:#eee;color:#555}.apps tr.lv-p,.apps tr.lv-p td{background:#fff7da}.apps tr.lv-p td:first-child{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g,.apps tr.lv-g td{background:#ddf3ef}.apps tr.lv-g td:first-child{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n,.apps tr.lv-n td{background:#ece5fb}.apps tr.lv-n td:first-child{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t,.apps tr.lv-t td{background:#eceef2}.apps tr.lv-t td:first-child{box-shadow:inset 5px 0 0 #6b7385}@media(max-width:640px){.apps tr.lv-p{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t{box-shadow:inset 5px 0 0 #6b7385}.apps tr.r td:first-child{box-shadow:none}}.lvl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.lv{border-radius:10px;padding:10px;cursor:pointer;border:1px solid #e1e4ea;background:#fff}.lv .n{font-size:22px;font-weight:700}.lv .l{font-size:12px;color:#5b6475}.lv.on{outline:2px solid #12355b}.lv.k-p{background:#fff7da;border-left:5px solid #d9a400}.lv.k-g{background:#ddf3ef;border-left:5px solid #1f9184}.lv.k-n{background:#ece5fb;border-left:5px solid #6b48c8}.lv.k-t{background:#eceef2;border-left:5px solid #6b7385}.lv.k-0{border-left:5px solid #c9ced8}input.num{width:56px;padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit}select{padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit;max-width:100%}table.tlv tr.vrow{cursor:pointer}table.tlv tr.vrow:hover td{background:#f7f9fc}table.tlv tr.sel td{background:#e4ecf7}table.tl td,table.tl th{padding:5px 8px}.d{font-weight:700}.d.hi{color:#c62828}.flag{color:#c62828;font-size:12px}.det td{background:#fafbfd;font-size:12px}.det p{margin:4px 0}.scroll{overflow-x:auto;border-radius:10px;border:1px solid #e1e4ea}h3{margin:0 0 8px;font-size:15px}.muted{color:#5b6475;font-size:12px}@media(max-width:640px){.apps thead{display:none}.apps tr.r{display:block;padding:8px 6px;border-bottom:1px solid #eceef2}.apps tr.r td{display:inline-block;border:0;padding:2px 10px 2px 0;vertical-align:top}.apps tr.det td{display:block}.bar b{font-size:15px}}.modal{font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d2330;position:fixed;inset:0;z-index:10;background:rgba(10,20,35,.6);display:flex;align-items:center;justify-content:center;padding:10px}.modal[hidden]{display:none}.mbox{background:#fff;border-radius:12px;width:min(980px,100%);height:min(92vh,960px);display:flex;flex-direction:column;overflow:hidden}.mhead{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #e1e4ea}.mhead b{flex:1;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mbody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#eef0f4}.mbody img{max-width:100%;max-height:100%;object-fit:contain}.mbody iframe{width:100%;height:100%;border:0;background:#fff}.docs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.docs button{padding:6px 10px;font-size:12px;background:#e4ecf7;color:#12355b}</style><div class="wrap"><div class="bar"><b>Revenue Plus Tracker<small>Read-only — never submits or changes anything · <span id="rpver">version 1.9</span></small></b><button class="x" id="close">×</button></div><div id="rpscanbar" hidden style="position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid #d5dbe6;box-shadow:0 3px 8px rgba(16,32,60,.08)"></div><div class="box" id="main"></div></div><div class="modal" id="modal" hidden><div class="mbox"><div class="mhead"><b id="mtitle"></b><span id="macts" style="display:flex;gap:6px"></span><button id="mclose">Close</button></div><div class="mbody" id="mbody"></div></div></div>';
     var w = y.getElementById("main");
     (y.getElementById("close").onclick = function () {
       location.assign(k.split("#")[0]);
@@ -2518,6 +2518,80 @@
     // … and when Fard Checker is updated to a new version → every case is analysed afresh
     return [(e.history || []).length, e.patReport || "", (e.docs || []).length, e.appDate || "", "v" + rpAppVersion()].join("|");
   }
+  // owner chosen in the report's drop-down — remembered per application
+  function rpOwnerGet(e) {
+    try {
+      var m = JSON.parse(localStorage.getItem("rpOwnerSel") || "{}") || {};
+      return m[rpKey(e)];
+    } catch (x) {
+      return undefined;
+    }
+  }
+  function rpOwnerSet(e, v, label) {
+    try {
+      var m = JSON.parse(localStorage.getItem("rpOwnerSel") || "{}") || {};
+      m[rpKey(e)] = { v: String(v), label: label || "" };
+      localStorage.setItem("rpOwnerSel", JSON.stringify(m));
+    } catch (x) {}
+  }
+  function rpWireOwner(root, e) {
+    var sel = root.querySelector("select[data-rp-owner]");
+    if (!sel) return;
+    function apply(v) {
+      Array.prototype.forEach.call(root.querySelectorAll("[data-owner]"), function (el) {
+        el.style.display = el.getAttribute("data-owner") === String(v) ? "" : "none";
+      });
+    }
+    var saved = rpOwnerGet(e);
+    if (saved && sel.querySelector('option[value="' + saved.v + '"]')) sel.value = saved.v;
+    apply(sel.value);
+    sel.onchange = function () {
+      apply(sel.value);
+      rpOwnerSet(e, sel.value, sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : "");
+    };
+  }
+  // pre-scrutiny points (kept across versions) and photo fingerprints (to catch a reused photo)
+  function rpPtsGet(e) {
+    try {
+      return (JSON.parse(localStorage.getItem("rpPts") || "{}") || {})[rpKey(e)] || null;
+    } catch (x) {
+      return null;
+    }
+  }
+  function rpPtsSave(e, kase, points) {
+    try {
+      var m = JSON.parse(localStorage.getItem("rpPts") || "{}") || {};
+      if (kase === 1 || !m[rpKey(e)]) m[rpKey(e)] = { case: kase, points: points || [], at: Date.now() };
+      var ks = Object.keys(m).sort(function (a, b) {
+        return (m[b].at || 0) - (m[a].at || 0);
+      });
+      ks.slice(400).forEach(function (k) {
+        delete m[k];
+      });
+      localStorage.setItem("rpPts", JSON.stringify(m));
+    } catch (x) {}
+  }
+  function rpFpAll() {
+    try {
+      return JSON.parse(localStorage.getItem("rpPhotoFp") || "{}") || {};
+    } catch (x) {
+      return {};
+    }
+  }
+  function rpFpSave(e, h) {
+    if (!h) return;
+    try {
+      var m = rpFpAll();
+      m[e.appNo] = { h: h, at: Date.now() };
+      var ks = Object.keys(m).sort(function (a, b) {
+        return m[b].at - m[a].at;
+      });
+      ks.slice(600).forEach(function (k) {
+        delete m[k];
+      });
+      localStorage.setItem("rpPhotoFp", JSON.stringify(m));
+    } catch (x) {}
+  }
   function rpAppVersion() {
     return String(window.__rpVersion || RP_TRACKER_VERSION || "");
   }
@@ -2615,11 +2689,30 @@
     }
     try {
       stage = "fetching documents";
-      var list = (e.docs || []).filter(function (d) {
-          return !/^All documents/.test(d.label) && !/identity|aadhaar|aadhar|id proof|voter|pan card/i.test(d.label);
+      var kase1 = "Submitted" !== e.patReport,
+        idre = /identity|aadhaar|aadhar|id proof|voter|pan card/i,
+        list = (e.docs || []).filter(function (d) {
+          return !/^All documents/.test(d.label) && !idre.test(d.label);
         }),
+        idList = kase1
+          ? (e.docs || []).filter(function (d) {
+              return !/^All documents/.test(d.label) && idre.test(d.label);
+            })
+          : [],
         docs = [],
+        idDocs = [],
         size = 0;
+      // identity proof: read on the server by local OCR only (Aadhaar check), never sent to an AI reader
+      for (var j = 0; j < idList.length; j++) {
+        chk();
+        status("Fetching identity proof for the Aadhaar check …");
+        try {
+          var ir = await Ee(e, idList[j].i, idList[j].label),
+            ib = ir.blob.type ? ir.blob : new Blob([ir.blob], { type: ir.type || "" });
+          if (ib.size < 12e6) idDocs.push({ label: idList[j].label, type: ir.type || ib.type, data: await rpBlobB64(ib) });
+        } catch (x) {}
+        await C(300);
+      }
       for (var i = 0; i < list.length; i++) {
         chk();
         var d = list[i];
@@ -2653,8 +2746,28 @@
           app: {
             appNo: e.appNo, name: e.name, village: e.village, khasra: e.khasra, service: e.service,
             purpose: e.purpose, appDate: e.appDate, area: e.area, fields: e.fields, adj: e.adj, mut: e.mut, history: e.history,
+            patReport: e.patReport || "", stage: e.stage || "",
           },
           docs: docs,
+          id_docs: idDocs,
+          doc_labels: (e.docs || []).map(function (d) {
+            return d.label;
+          }),
+          prev_points: (function () {
+            var pp = rpPtsGet(e);
+            return pp && pp.case === 1 ? pp.points : null;
+          })(),
+          photo_fps: (function () {
+            var m = rpFpAll();
+            return Object.keys(m)
+              .filter(function (k) {
+                return k !== e.appNo;
+              })
+              .slice(0, 600)
+              .map(function (k) {
+                return { app: k, hash: m[k].h };
+              });
+          })(),
         }),
       });
       if (401 === resp.status) {
@@ -2668,6 +2781,8 @@
       var j = await resp.json();
       if (!resp.ok) throw new Error(j.error || "HTTP " + resp.status);
       rpCachePut(e, j.html);
+      rpPtsSave(e, j.case, j.points);
+      rpFpSave(e, j.photo_hash);
       rpMarkButtons();
       return j.html;
     } catch (err) {
@@ -2753,9 +2868,13 @@
           : "") +
         html +
         "</div>";
+      rpWireOwner(body, e);
       Array.prototype.forEach.call(body.querySelectorAll("[data-copy]"), function (b) {
         b.onclick = function () {
-          var el = body.querySelector("#" + b.dataset.copy),
+          var el = Array.prototype.filter.call(body.querySelectorAll("#" + b.dataset.copy), function (q) {
+              var v = q.closest("[data-owner]");
+              return !v || v.style.display !== "none";
+            })[0],
             txt = el ? el.textContent : "";
           navigator.clipboard && navigator.clipboard.writeText
             ? navigator.clipboard.writeText(txt).then(
@@ -3017,6 +3136,7 @@
         "Applicant: " + (e.name || ""),
         "Applied on: " + (e.appDate || ""),
         "Saved on: " + new Date().toLocaleString("en-IN"),
+        "Owner matched in the analysis: " + ((rpOwnerGet(e) || {}).label || "as found automatically"),
         "",
         "Applicant documents: " + (parts.applicant.map(function (d) { return d.label; }).join(", ") || "none"),
         "Patwari documents: " + (parts.patwari.map(function (d) { return d.label; }).join(", ") || "none"),
@@ -3122,14 +3242,11 @@
     var docs = (e.docs || []).filter(function (d) {
       return !/^All documents/.test(d.label);
     });
+    // v1.9: every application is analysed — Case 1 (pre-scrutiny) and Case 2 (after the Patwari's report)
     return (
       !!e.fields &&
-      "Submitted" === e.patReport &&
       docs.some(function (d) {
-        return /tatima/i.test(d.label);
-      }) &&
-      docs.some(function (d) {
-        return !/tatima/i.test(d.label) && !/identity|aadhaar|aadhar|id proof|voter|pan card/i.test(d.label);
+        return !/identity|aadhaar|aadhar|id proof|voter|pan card/i.test(d.label);
       })
     );
   }
@@ -3253,7 +3370,7 @@
   function Re(e) {
     return null != e.stageDays ? e.stageDays : e.days;
   }
-  var RP_TRACKER_VERSION = "1.8";
+  var RP_TRACKER_VERSION = "1.9";
   function rpVersionBadge() {
     try {
       var el = y.getElementById("rpver"),

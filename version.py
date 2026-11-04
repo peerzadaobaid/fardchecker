@@ -1,11 +1,13 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.8
+FARD CHECKER VERSION 1.9
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.8"
-DATE = "4 Nov 2026"
+VERSION = "1.9"
+DATE = "5 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.9", "5 Nov 2026",
+     "New analysis: Case 1 pre-scrutiny (photo, survey record, title with owner drop-down, documents with Aadhaar) and Case 2 after the Patwari's report (boxes inside each section, tatima, report contradictions). Satisfaction scales, overall verdict, pre-scrutiny points marked resolved/open. Every application analysed in the background. Movement line removed."),
     ("1.8", "4 Nov 2026",
      "After an update, analyses saved by the older version are discarded and every case is analysed afresh (background and on request). Within the same version, saved analyses are still reused until the file moves or documents change."),
     ("1.7", "4 Nov 2026",

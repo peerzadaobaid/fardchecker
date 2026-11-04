@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.8
+# FARD CHECKER VERSION 1.9
 """Revenue Plus Tracker — hosted tracker + application analyser (Flask, for Render).
 
 Environment variables (Render → Environment):
@@ -16,7 +16,7 @@ from flask import Flask, Response, jsonify, request, send_file
 import engine
 import version
 
-APP_FILES = ["version.py", "app.py", "engine.py", "tracker.js", "statuspdf.py", "pluscode.py", "gunicorn.conf.py", "requirements.txt"]
+APP_FILES = ["version.py", "app.py", "engine.py", "report19.py", "tracker.js", "statuspdf.py", "pluscode.py", "gunicorn.conf.py", "requirements.txt"]
 
 
 def file_versions():
@@ -267,31 +267,21 @@ def _analyse():
     reader_status = {"used": used, "ok": ai_err is None, "error": ai_err, "pages": len(pages), "secs": round(time.time() - t1),
                      "read": [k for k in ("fard", "tatima", "mutations") if (ai or {}).get(k) and (not isinstance(ai.get(k), dict) or ai[k].get("found"))]
                              + (["GPS stamp"] if ((ai or {}).get("photo") or {}).get("lat") else [])}
-    rep = engine.analyse(appd, ai, ai_err)
-    rep.reader_status = reader_status
-    try:
-        rep.tatima = engine.pick_tatima_page(pages, ai)
-    except Exception:
-        rep.tatima = None
-    try:
-        rep.overlay = engine.sketch_overlay(rep)
-    except Exception:
-        rep.overlay = None
-    try:
-        s4 = next((s_ for s_ in rep.sections if s_["title"].startswith("Shaded portion")), None)
-        if s4 is not None and rep.tatima and not rep.tatima.get("patwari", True):
-            engine.add(s4, "amber", "No tatima uploaded by the Patwari was found — only the applicant's rough sketch, which is shown beside the map.",
-                       "Patwari to upload the tatima showing the shaded portion of the khasra.", rep)
-        tk = str(((ai or {}).get("tatima") or {}).get("sketch_kind") or "").lower()
-        if s4 is not None and rep.tatima and rep.tatima.get("patwari", True) and tk.startswith("loc"):
-            engine.add(s4, "amber", "The Patwari's tatima is only a location / route sketch — it does not draw the khasra or mark the shaded portion.",
-                       "Patwari to upload a tatima (aks shajra) of the khasra with the shaded portion and dimensions.", rep)
-    except Exception:
-        pass
-    if skipped:
-        engine.add(rep.sections[0], "amber", "Some documents could not be opened: " + "; ".join(skipped))
-    engine.add(rep.sections[0], "info", f"{len(pages)} distinct document page(s) read in {time.time() - t0:.0f} s.")
-    out = jsonify(html=engine.render(rep), ai=ai)
+    # identity documents: read locally (OCR) for the Aadhaar check only — never sent to an AI reader
+    id_pages = []
+    for d in data.pop("id_docs", None) or []:
+        if d.get("data"):
+            try:
+                id_pages += engine.doc_to_images(d.get("label") or "Identity", d.get("type", ""), d.pop("data"), max_side=1400)
+            except Exception:
+                pass
+    import report19
+    res = report19.build(appd, ai, ai_err, pages=pages, id_pages=id_pages, doc_labels=data.get("doc_labels"),
+                         prev_points=data.get("prev_points"), other_fps=data.get("photo_fps"), reader_status=reader_status, skipped=skipped)
+    del id_pages
+    ai_safe = {k: v for k, v in (ai or {}).items() if k != "pages"}
+    out = jsonify(html=res["html"], case=res["case"], points=res["points"], photo_hash=res["photo_hash"], owner_default=res["owner_default"], ai=ai_safe)
+    pages.clear()
     engine.trim_memory()
     return out
 

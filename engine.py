@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.8
+# FARD CHECKER VERSION 1.9
 """Revenue Plus application analyser — village records, document reading and checks.
 
 Village data lives in the repo:  villages/<Village name>/<anything>.xlsx  (Jamabandi export)
@@ -847,6 +847,16 @@ def doc_to_images(label, mime, b64, max_side=1400, seen=None):
             im = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
             del pix
             add_img(f"{label} — page {i + 1}", im)
+            # keep the original embedded photo (camera data, compression check) for colourful pages only
+            try:
+                if _colourfulness(im) >= 0.08:
+                    imgs = sorted(page.get_images(full=True), key=lambda t: -(t[2] * t[3]))
+                    if imgs and imgs[0][2] * imgs[0][3] >= 200 * 200:
+                        x = doc.extract_image(imgs[0][0])
+                        if x and x.get("ext", "").lower() in ("jpeg", "jpg", "png") and len(x["image"]) < 8e6:
+                            out[-1]["orig"] = x["image"]
+            except Exception:
+                pass
             del im
             fitz.TOOLS.store_shrink(100)
         doc.close()
@@ -863,6 +873,8 @@ def doc_to_images(label, mime, b64, max_side=1400, seen=None):
                     continue
                 seen.add(h)
                 add_img(f"{label}" + (f" — page {i + 1}" if frames > 1 else ""), fr)
+                if frames == 1 and len(raw) < 8e6 and _colourfulness(fr) >= 0.08:
+                    out[-1]["orig"] = raw
         except Exception:
             return []
     for o in out:
@@ -879,7 +891,9 @@ Read them carefully and return ONLY a JSON object, no other text, in exactly thi
  "pages": [{{"label": "<label shown above the image>", "kind": "fard|girdawari|tatima|site_photo|mutation|id_card|other", "note": "<one line>"}}],
  "photo": {{"found": bool, "lat": number|null, "lng": number|null, "datetime": "<as printed>", "place_label": "<as printed>",
             "land_description": "<what the land in the photo looks like: open/vacant, cultivated, orchard, built-up, under construction, structures visible…>",
-            "built_up": "yes|no|partly|unclear", "person_present": bool}},
+            "built_up": "yes|no|partly|unclear", "person_present": bool,
+            "editing_signs": "none|possible|likely" — signs that the photo was edited: a person pasted in or replaced (edges, lighting, shadows, scale, sharpness that differ), cloned areas, an overlay that looks added later,
+            "editing_note": "<one line: what you saw>"}},
  "fard": {{"found": bool, "khewat": "", "khata": "", "khasra": "", "area_kanal": number|null, "area_marla": number|null, "land_type": "",
            "owner_entry": "<English transliteration of the owner column>", "cultivator_entry": "<English transliteration>",
            "remarks": ["<English translation of each numbered remark / note in Kaifiyat or below the table>"],
@@ -1051,7 +1065,7 @@ def merge_ocr(ai, ocr):
     o = (ocr or {}).get("photo") or {}
     if o.get("found"):
         ph = ai.get("photo") or {}
-        ph.update({k: o[k] for k in ("lat", "lng", "pluscode", "datetime") if o.get(k) not in (None, "")})
+        ph.update({k: o[k] for k in ("lat", "lng", "pluscode", "datetime", "label") if o.get(k) not in (None, "")})
         ph["found"], ph["source"] = True, "OCR"
         ai["photo"] = ph
     return ai
