@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.6
+# FARD CHECKER VERSION 1.7
 """Revenue Plus Tracker — hosted tracker + application analyser (Flask, for Render).
 
 Environment variables (Render → Environment):
@@ -270,7 +270,7 @@ def _analyse():
     rep = engine.analyse(appd, ai, ai_err)
     rep.reader_status = reader_status
     try:
-        rep.tatima = engine.pick_tatima_page(pages)
+        rep.tatima = engine.pick_tatima_page(pages, ai)
     except Exception:
         rep.tatima = None
     try:

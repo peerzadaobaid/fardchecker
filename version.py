@@ -1,11 +1,13 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.6
+FARD CHECKER VERSION 1.7
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.6"
+VERSION = "1.7"
 DATE = "4 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.7", "4 Nov 2026",
+     "Tatima page chosen by content: the sketch page (no table column lines, red shading) instead of simply the last page, so Jamabandi/girdawari pages scanned with the tatima are skipped. Non-rectangular sketches are located by the outline round the red shading."),
     ("1.6", "4 Nov 2026",
      "Saved record named by survey no. + village, with two PDFs (applicant documents, Patwari documents) plus the KMZ. If the survey no. is not on the map, the nearest available survey no. and its neighbours are shown, clearly marked as locality only."),
     ("1.5", "4 Nov 2026",

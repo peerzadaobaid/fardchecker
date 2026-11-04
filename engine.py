@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.6
+# FARD CHECKER VERSION 1.7
 """Revenue Plus application analyser — village records, document reading and checks.
 
 Village data lives in the repo:  villages/<Village name>/<anything>.xlsx  (Jamabandi export)
@@ -889,7 +889,7 @@ Read them carefully and return ONLY a JSON object, no other text, in exactly thi
  "tatima": {{"found": bool, "khasra": "", "total_marla": number|null, "shaded_marla": number|null, "remaining_marla": number|null,
              "as_written": "<the area figures exactly as written, e.g. 1K-5M / 0-14 / 0-11>", "shaded_side": "north|south|east|west|centre|unclear",
              "dimensions_marked": bool, "neighbours_marked": {{"north": "", "east": "", "south": "", "west": ""}}, "note": "",
-             "box_2d": [ymin, xmin, ymax, xmax] of the outline of the applied khasra on the LAST tatima page, normalised 0-1000, or null,
+             "box_2d": [ymin, xmin, ymax, xmax] of the outline of the applied khasra on the tatima page that has the SKETCH (aks shajra, not the jamabandi/girdawari table pages), normalised 0-1000, or null,
              "north_at": "top|bottom|left|right|unclear" — the side of that page where North (شمال / N) is written,
              "sketch_kind": "shajra" if it draws the khasra (and neighbours) with a shaded portion, "location" if it is only a route / location sketch (roads, bus stop, 'towards …', site marked)}},
  "uncertain": ["<anything you could not read with confidence>"]
@@ -1663,22 +1663,60 @@ def nearest_on_map(v, khasra):
 ICON = {"red": ("●", "#b42318"), "amber": ("▲", "#8a5300"), "green": ("✓", "#145c36"), "info": ("ℹ", "#5b6475")}
 
 
-def pick_tatima_page(pages):
-    """Last page of the Patwari's tatima upload (falls back to rough sketch / shajra / aks uploads)."""
+def _sketch_score(b64):
+    """(long vertical lines per mille, red-ink per mille). Jamabandi / khasra-girdawari tables have long column lines; a sketch does not."""
+    import cv2
+    import numpy as np
     from PIL import Image
+    im = Image.open(io.BytesIO(base64.b64decode(b64))).convert("RGB")
+    im.thumbnail((900, 900))
+    rgb = np.array(im)
+    H, W = rgb.shape[:2]
+    g = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
+    ink = cv2.adaptiveThreshold(g, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 31, 12)
+    vl = cv2.morphologyEx(ink, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (1, max(20, int(H * 0.25)))))
+    hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
+    red = (((hsv[:, :, 0] < 12) | (hsv[:, :, 0] > 160)) & (hsv[:, :, 1] > 70) & (hsv[:, :, 2] > 70)).mean()
+    return vl.mean() / 255 * 1000, red * 1000
+
+
+def pick_tatima_page(pages, ai=None):
+    """The sketch page of the Patwari's tatima upload (not the Jamabandi / girdawari table pages that are often scanned with it).
+    Falls back to rough sketch / shajra / aks uploads."""
+    from PIL import Image
+    ai_tat = {str(x.get("label")) for x in ((ai or {}).get("pages") or []) if isinstance(x, dict) and x.get("kind") == "tatima"}
     for pat in (r"tatima", r"rough\s*sketch|sketch|shajra|aks|massavi|latha|map"):
         cand = [p for p in pages if re.search(pat, p["label"], re.I)]
-        if cand:
-            def pno(p):
-                m = re.search(r"page\s*(\d+)", p["label"])
-                return int(m.group(1)) if m else 0
-            last = max(cand, key=pno)
-            im = Image.open(io.BytesIO(base64.b64decode(last["data"]))).convert("RGB")
-            im.thumbnail((1100, 1100))
-            buf = io.BytesIO()
-            im.save(buf, "JPEG", quality=72)
-            return {"label": last["label"], "data": base64.b64encode(buf.getvalue()).decode(), "w": im.width, "h": im.height,
-                    "patwari": pat == r"tatima"}
+        if not cand:
+            continue
+
+        def pno(p):
+            m = re.search(r"page\s*(\d+)", p["label"])
+            return int(m.group(1)) if m else 0
+        cand.sort(key=pno)
+        why = "last page"
+        scored = []
+        for p in cand:
+            try:
+                vl, red = _sketch_score(p["data"])
+            except Exception:
+                vl, red = 99, 0
+            scored.append((p, vl, red))
+        sketchy = [t for t in scored if t[1] < 3]
+        if sketchy:
+            # prefer: page the AI called a tatima → page with red shading → the later page
+            last = max(sketchy, key=lambda t: (t[0]["label"] in ai_tat, t[2] > 0.3, pno(t[0])))[0]
+            why = "sketch page" if len(cand) > 1 else "only page"
+        else:
+            tagged = [t for t in scored if t[0]["label"] in ai_tat]
+            last = (tagged[-1] if tagged else scored[-1])[0]
+            why = "page read as tatima by AI" if tagged else "last page (no sketch-like page found)"
+        im = Image.open(io.BytesIO(base64.b64decode(last["data"]))).convert("RGB")
+        im.thumbnail((1100, 1100))
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=72)
+        return {"label": last["label"], "data": base64.b64encode(buf.getvalue()).decode(), "w": im.width, "h": im.height,
+                "patwari": pat == r"tatima", "why": why, "of": len(cand)}
     return None
 
 
@@ -1769,6 +1807,36 @@ def detect_sketch_box(rgb):
     return best[1] if best else None
 
 
+def detect_shaded_shape(rgb):
+    """Fallback for sketches that are not rectangles: the black outline drawn round the red shading. Returns (x, y, w, h) or None."""
+    import cv2
+    import numpy as np
+    H, W = rgb.shape[:2]
+    hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
+    red = ((((hsv[:, :, 0] < 12) | (hsv[:, :, 0] > 160)) & (hsv[:, :, 1] > 60) & (hsv[:, :, 2] > 60))).astype(np.uint8)
+    if red.mean() < 0.0005:
+        return None
+    black = ((hsv[:, :, 2] < 110) & (hsv[:, :, 1] < 90)).astype(np.uint8) * 255
+    k = max(5, int(min(W, H) * 0.009)) | 1                # join the broken strokes of one hand-drawn outline
+    black = cv2.dilate(black, np.ones((k, k), np.uint8))
+    n, lab, st, _ = cv2.connectedComponentsWithStats(black, 8)
+    best = None
+    for i in range(1, n):
+        x, y, w, h, area = st[i]
+        if w < W * 0.05 or h < H * 0.03 or w > W * 0.6 or h > H * 0.5:
+            continue
+        inside = red[y:y + h, x:x + w].sum()
+        if inside < 40:
+            continue
+        fill = area / float(w * h)                      # outlines are thin; handwriting blocks are dense
+        if fill > 0.35:
+            continue
+        sc = inside
+        if not best or sc > best[0]:
+            best = (sc, (int(x), int(y), int(w), int(h)))
+    return best[1] if best else None
+
+
 def sketch_overlay(rep):
     """Sketch cropped around the drawn khasra, white made transparent, placed on the surveyed khasra's extent (north up)."""
     tat, p = getattr(rep, "tatima", None), rep.p
@@ -1794,6 +1862,9 @@ def sketch_overlay(rep):
     try:
         box = detect_sketch_box(rgb)
         how = "outline found automatically"
+        if not box:
+            box = detect_shaded_shape(rgb)
+            how = "outline found round the shaded part"
     except Exception:
         box = None
     bx = tt.get("box_2d")
@@ -1806,7 +1877,7 @@ def sketch_overlay(rep):
             bx_, by_, bw_, bh_ = box
             mx, my = int(bw_ * 0.3) + 6, int(bh_ * 0.3) + 6
             sub = rgb[max(0, by_ - my):min(H, by_ + bh_ + my), max(0, bx_ - mx):min(W, bx_ + bw_ + mx)]
-            if bw_ < 10 or bh_ < 10 or sub.size == 0 or detect_sketch_box(sub) is None:
+            if bw_ < 10 or bh_ < 10 or sub.size == 0 or (detect_sketch_box(sub) is None and detect_shaded_shape(sub) is None):
                 box = None
                 rep.overlay_note = "Not laid over the map: no closed outline of the khasra could be found on the sketch."
         except Exception:
@@ -2070,7 +2141,7 @@ def render(rep):
     if tat:
         tat_html = (f'<div style="flex:1;min-width:240px"><div style="background:#fff;border:1px solid #e1e4ea;border-radius:8px;padding:4px;text-align:center">'
                     f'<img alt="Patwari tatima" src="data:image/jpeg;base64,{tat["data"]}" style="max-width:100%;max-height:420px;object-fit:contain"></div>'
-                    f'<div style="font-size:12px;color:#5b6475">{esc(tatima_title(rep))} — last page of “{esc(tat["label"].split(" — ")[0])}”. '
+                    f'<div style="font-size:12px;color:#5b6475">{esc(tatima_title(rep))} — {esc(tat["label"].split(" — ")[-1] if " — " in tat["label"] else "page")}{(" of " + str(tat.get("of"))) if tat.get("of", 1) > 1 else ""} of “{esc(tat["label"].split(" — ")[0])}”{(" (" + esc(tat.get("why")) + ")") if tat.get("of", 1) > 1 else ""}. '
                     f'Compare its shaded part with the yellow khasra on the map (sketches are not to scale).</div></div>')
         h.append('<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;margin-bottom:8px">' + map_html + tat_html + '</div>')
         if nb_html:
