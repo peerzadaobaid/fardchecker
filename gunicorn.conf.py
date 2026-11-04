@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.7
+# FARD CHECKER VERSION 1.8
 # Read automatically by gunicorn on Render, whatever the start command says.
 timeout = 180          # document reading can take longer than the 30 s default
 workers = 1            # one process keeps memory inside Render's free 512 MB

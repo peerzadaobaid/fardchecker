@@ -1,11 +1,13 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.7
+FARD CHECKER VERSION 1.8
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.7"
+VERSION = "1.8"
 DATE = "4 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.8", "4 Nov 2026",
+     "After an update, analyses saved by the older version are discarded and every case is analysed afresh (background and on request). Within the same version, saved analyses are still reused until the file moves or documents change."),
     ("1.7", "4 Nov 2026",
      "Tatima page chosen by content: the sketch page (no table column lines, red shading) instead of simply the last page, so Jamabandi/girdawari pages scanned with the tatima are skipped. Non-rectangular sketches are located by the outline round the red shading."),
     ("1.6", "4 Nov 2026",
