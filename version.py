@@ -1,11 +1,13 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.9.3
+FARD CHECKER VERSION 1.9.4
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.9.3"
+VERSION = "1.9.4"
 DATE = "5 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.9.4", "5 Nov 2026",
+     "Screen kept awake (like a video) while the tracker is scanning or analysing; released when work stops."),
     ("1.9.3", "5 Nov 2026",
      "Gemini again uses its full reasoning (the brief-thinking setting of 1.9.2 is removed). All other speed changes kept — they change only the order of work, not what is read or checked."),
     ("1.9.2", "5 Nov 2026",

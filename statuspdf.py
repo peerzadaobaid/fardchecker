@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.3
+# FARD CHECKER VERSION 1.9.4
 """Application pendency status PDF (status only — no remarks, documents, analysis or phone numbers).
 Input comes from the tracker's last scan, already computed with the 5/7/9 working-day rules."""
 import io

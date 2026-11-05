@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.3
+# FARD CHECKER VERSION 1.9.4
 """Analysis report (v1.9).
 
 Case 1 — Pre-scrutiny: only the applicant's submission (no Patwari report yet).
