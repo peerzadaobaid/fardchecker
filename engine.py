@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.1
+# FARD CHECKER VERSION 1.9.3
 """Revenue Plus application analyser — village records, document reading and checks.
 
 Village data lives in the repo:  villages/<Village name>/<anything>.xlsx  (Jamabandi export)
@@ -1007,6 +1007,9 @@ def gemini_error(r):
     return (f"HTTP {r.status_code}: " + "; ".join(dict.fromkeys(bits))) if bits else f"HTTP {r.status_code}: {msg}"
 
 
+_gemini_no_thinking = set()
+
+
 def gemini_call(parts, json_out=True, max_tokens=8000, timeout=170):
     """Try the configured model, then other free-tier models if one has no quota. Returns (text, model, error)."""
     global _gemini_ok_model
@@ -1017,9 +1020,17 @@ def gemini_call(parts, json_out=True, max_tokens=8000, timeout=170):
         body = {"contents": [{"role": "user", "parts": parts}], "generationConfig": {"temperature": 0, "maxOutputTokens": max_tokens}}
         if json_out:
             body["generationConfig"]["responseMimeType"] = "application/json"
+        lvl = os.environ.get("GEMINI_THINKING", "default").strip().lower()   # model's own full reasoning unless set otherwise
+        if lvl and lvl != "default" and model not in _gemini_no_thinking:
+            body["generationConfig"]["thinkingConfig"] = {"thinkingLevel": lvl}
         try:
             r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", json=body, timeout=timeout,
                               headers={"x-goog-api-key": key, "content-type": "application/json"})
+            if r.status_code == 400 and "thinking" in r.text.lower() and "thinkingConfig" in body["generationConfig"]:
+                _gemini_no_thinking.add(model)              # this model does not take the setting — ask again without it
+                body["generationConfig"].pop("thinkingConfig", None)
+                r = requests.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", json=body, timeout=timeout,
+                                  headers={"x-goog-api-key": key, "content-type": "application/json"})
         except Exception as e:
             errors.append(f"{model}: {e}")
             continue

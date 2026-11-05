@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.1
+# FARD CHECKER VERSION 1.9.3
 """Analysis report (v1.9).
 
 Case 1 — Pre-scrutiny: only the applicant's submission (no Patwari report yet).
@@ -930,7 +930,26 @@ def sat_judge(img_b64):
         return None
 
 
-def report_section(c):
+def sat_prefetch(app):
+    """Fetched in parallel with the AI reader (Case 2 only): satellite image of the khasra and the AI's reading of it."""
+    try:
+        f = app.get("fields") or {}
+        pr = norm(app.get("patReport"))
+        if pr != "Submitted" or not pf(f, "onspot"):
+            return None
+        c = Ctx()
+        c.village = pf(f, "villageD") or norm(app.get("village"))
+        k = pf(f, "cKhasra") if not E.is_pending(pf(f, "cKhasra")) else (pf(f, "aKhasra") or norm(app.get("khasra")))
+        c.khasra = kn(re.split(r"[,;]", k)[0]) if k else ""
+        c.v = E.load_village(c.village) if c.village else None
+        c.p = E.parcel_for(c.v, c.khasra) if c.v and c.khasra else None
+        img, why = sat_image(c)
+        return {"img": img, "why": why, "ai": sat_judge(img)}
+    except Exception as e:
+        return {"img": None, "why": "satellite image not available right now", "ai": None}
+
+
+def report_section(c, sat_pre=None):
     s = new_sec("5 · Patwari's report — contradictions")
     f = c.f
     rows, flagged = [], 0
@@ -1011,8 +1030,11 @@ def report_section(c):
         vac, blt = bool(re.search(r"vacant|open", onspot, re.I)), bool(re.search(r"built", onspot, re.I))
         if vac and blt and not re.search(r"\(", onspot):
             flag("onspot", "amber", "the entry says both vacant and built up")
-        c.sat, c.sat_why = sat_image(c)
-        c.sat_ai = sat_judge(c.sat)
+        if sat_pre is not None:
+            c.sat, c.sat_why, c.sat_ai = sat_pre.get("img"), sat_pre.get("why"), sat_pre.get("ai")
+        else:
+            c.sat, c.sat_why = sat_image(c)
+            c.sat_ai = sat_judge(c.sat)
         ins = ((c.sat_ai or {}).get("inside") or "").lower()
         if ins in ("built_up", "partly_built") and vac and not blt:
             flag("onspot", "red", f"satellite view shows a structure ({esc((c.sat_ai or {}).get('note') or ins)})", ("rep-onspot", "On-spot position (vacant) contradicts the satellite view."))
@@ -1130,7 +1152,7 @@ class Rep:
     pass
 
 
-def build(app, ai, ai_err=None, pages=None, id_pages=None, doc_labels=None, prev_points=None, other_fps=None, reader_status=None, skipped=None):
+def build(app, ai, ai_err=None, pages=None, id_pages=None, doc_labels=None, prev_points=None, other_fps=None, reader_status=None, skipped=None, sat_pre=None):
     ai = ai or {}
     c = prepare(app, ai)
     pages = pages or []
@@ -1167,7 +1189,7 @@ def build(app, ai, ai_err=None, pages=None, id_pages=None, doc_labels=None, prev
         secs["docs"] = docs_section(c, doc_labels or [p["label"] for p in pages], aad)
     else:
         secs["tatima"] = tatima_section(c, rep.tatima)
-        secs["report"] = report_section(c)
+        secs["report"] = report_section(c, sat_pre)
     ovs = [overall(c, secs, t, prev_points) for t in titles]
     out = render(c, rep, secs, titles, opts, default, ovs, reader_status, ai_err, skipped)
     d = default + 1                                   # variant index (0 = not found)

@@ -1,11 +1,15 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.9.1
+FARD CHECKER VERSION 1.9.3
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.9.1"
+VERSION = "1.9.3"
 DATE = "5 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.9.3", "5 Nov 2026",
+     "Gemini again uses its full reasoning (the brief-thinking setting of 1.9.2 is removed). All other speed changes kept — they change only the order of work, not what is read or checked."),
+    ("1.9.2", "5 Nov 2026",
+     "Speed: documents of the next application are fetched while the current one is analysed; each application page is opened once for all its documents; GPS-stamp OCR and the satellite view run alongside the AI reader; Gemini asked to think briefly; Render woken when the tracker opens; timing shown in the background panel."),
     ("1.9.1", "5 Nov 2026",
      "Analysis summary after a scan (Case 1 and Case 2 tables, closed until opened; a row opens that application). Report sections fold into one line each and open on a tap. Geotag up to 20 m outside the khasra is only mentioned. Three explanatory photo lines removed. A serious finding in any section keeps the overall at doubtful at best."),
     ("1.9", "5 Nov 2026",

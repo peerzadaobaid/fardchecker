@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.1
+# FARD CHECKER VERSION 1.9.3
 """Revenue Plus Tracker — hosted tracker + application analyser (Flask, for Render).
 
 Environment variables (Render → Environment):
@@ -252,18 +252,31 @@ def _analyse():
            "area": f.get("areaProposed") or appd.get("area") or ""}
     ai, ai_err = (None, None)
     t1 = time.time()
+    # Work that does not depend on the AI reader runs at the same time as it (the reader mostly waits on the network):
+    # the free OCR of the GPS stamp, and for Case 2 the satellite view of the khasra.
+    from concurrent.futures import ThreadPoolExecutor
+    import report19
+    pool = ThreadPoolExecutor(max_workers=2)
+    fut_ocr = pool.submit(engine.free_read, pages)
+    fut_sat = pool.submit(report19.sat_prefetch, appd)
     used = "Free OCR (GPS stamp only — handwriting not read)"
     if os.environ.get("ANTHROPIC_API_KEY") and data.get("read_docs", True):
         ai, ai_err = engine.read_documents(pages, ctx)
         used = "Claude (" + os.environ.get("CLAUDE_MODEL", "claude-opus-5-5") + ")"
-        ai = engine.merge_ocr(ai, engine.free_read(pages)) if ai else engine.free_read(pages)
+        ocr = fut_ocr.result()
+        ai = engine.merge_ocr(ai, ocr) if ai else ocr
     elif os.environ.get("GEMINI_API_KEY") and data.get("read_docs", True):
-        ocr = engine.free_read(pages)
         ai, ai_err = engine.read_documents_gemini(pages, ctx)
         used = "Gemini (" + ((ai or {}).get("model") or engine.gemini_models()[0]) + ")"
+        ocr = fut_ocr.result()
         ai = engine.merge_ocr(ai, ocr) if ai else ocr
     else:
-        ai = engine.free_read(pages)
+        ai = fut_ocr.result()
+    try:
+        sat_pre = fut_sat.result(timeout=60)
+    except Exception:
+        sat_pre = None
+    pool.shutdown(wait=False)
     reader_status = {"used": used, "ok": ai_err is None, "error": ai_err, "pages": len(pages), "secs": round(time.time() - t1),
                      "read": [k for k in ("fard", "tatima", "mutations") if (ai or {}).get(k) and (not isinstance(ai.get(k), dict) or ai[k].get("found"))]
                              + (["GPS stamp"] if ((ai or {}).get("photo") or {}).get("lat") else [])}
@@ -275,12 +288,14 @@ def _analyse():
                 id_pages += engine.doc_to_images(d.get("label") or "Identity", d.get("type", ""), d.pop("data"), max_side=1400)
             except Exception:
                 pass
-    import report19
     res = report19.build(appd, ai, ai_err, pages=pages, id_pages=id_pages, doc_labels=data.get("doc_labels"),
-                         prev_points=data.get("prev_points"), other_fps=data.get("photo_fps"), reader_status=reader_status, skipped=skipped)
+                         prev_points=data.get("prev_points"), other_fps=data.get("photo_fps"), reader_status=reader_status, skipped=skipped,
+                         sat_pre=sat_pre)
     del id_pages
     ai_safe = {k: v for k, v in (ai or {}).items() if k != "pages"}
-    out = jsonify(html=res["html"], case=res["case"], gist=res["gist"], points=res["points"], photo_hash=res["photo_hash"], owner_default=res["owner_default"], ai=ai_safe)
+    timing = {"prepare": round(t1 - t0, 1), "read": reader_status["secs"], "total": round(time.time() - t0, 1)}
+    out = jsonify(html=res["html"], case=res["case"], gist=res["gist"], points=res["points"], photo_hash=res["photo_hash"], owner_default=res["owner_default"],
+                  timing=timing, ai=ai_safe)
     pages.clear()
     engine.trim_memory()
     return out

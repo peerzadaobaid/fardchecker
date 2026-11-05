@@ -1,4 +1,4 @@
-// FARD CHECKER VERSION 1.9.1
+// FARD CHECKER VERSION 1.9.3
 !(function () {
   "use strict";
   if (window.__rpTracker) window.__rpTracker.open();
@@ -243,7 +243,7 @@
     b.style.cssText = "position:fixed;inset:0;z-index:2147483647;";
     var y = b.attachShadow({ mode: "open" });
     y.innerHTML =
-      '<style>:host{all:initial}*{box-sizing:border-box}.wrap{position:fixed;inset:0;background:#f4f5f7;color:#1d2330;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:auto;-webkit-text-size-adjust:100%}.bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 14px;background:#12355b;color:#fff}.bar b{font-size:16px;flex:1}.bar small{opacity:.8;font-weight:400;display:block;font-size:11px}button{font:inherit;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;background:#e6e9ef;color:#1d2330}button.pri{background:#1a7f5a;color:#fff}button.x{background:transparent;color:#fff;font-size:22px;padding:2px 8px}.box{max-width:1100px;margin:0 auto;padding:14px}.card{background:#fff;border:1px solid #e1e4ea;border-radius:12px;padding:14px;margin-bottom:12px}.warn{background:#fff7e0;border-color:#f0d58a}.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}.tile{background:#fff;border:1px solid #e1e4ea;border-radius:10px;padding:10px;cursor:pointer}.tile.on{outline:2px solid #12355b}.tile .n{font-size:24px;font-weight:700}.tile .l{font-size:12px;color:#5b6475}.prog{height:10px;background:#e1e4ea;border-radius:6px;overflow:hidden;margin:10px 0}.prog i{display:block;height:100%;background:#1a7f5a;width:0}.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}input.s{flex:1;min-width:180px;padding:9px 12px;border:1px solid #c9ced8;border-radius:8px;font:inherit}.chip{padding:6px 10px;border-radius:20px;background:#e6e9ef;font-size:12px}.chip.on{background:#12355b;color:#fff}table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}th,td{text-align:left;padding:8px;border-bottom:1px solid #eceef2;vertical-align:top}th{background:#f0f2f6;font-size:12px}tr.r{cursor:pointer}tr.r:hover{background:#f7f9fc}.st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;white-space:nowrap}.s0{background:#fde2e2;color:#8a1c1c}.s1{background:#fff0d6;color:#7a4b00}.s2{background:#dcecff;color:#123f7a}.s3{background:#dff5e8;color:#145c36}.s9{background:#eee;color:#555}.apps tr.lv-p,.apps tr.lv-p td{background:#fff7da}.apps tr.lv-p td:first-child{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g,.apps tr.lv-g td{background:#ddf3ef}.apps tr.lv-g td:first-child{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n,.apps tr.lv-n td{background:#ece5fb}.apps tr.lv-n td:first-child{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t,.apps tr.lv-t td{background:#eceef2}.apps tr.lv-t td:first-child{box-shadow:inset 5px 0 0 #6b7385}@media(max-width:640px){.apps tr.lv-p{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t{box-shadow:inset 5px 0 0 #6b7385}.apps tr.r td:first-child{box-shadow:none}}.lvl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.lv{border-radius:10px;padding:10px;cursor:pointer;border:1px solid #e1e4ea;background:#fff}.lv .n{font-size:22px;font-weight:700}.lv .l{font-size:12px;color:#5b6475}.lv.on{outline:2px solid #12355b}.lv.k-p{background:#fff7da;border-left:5px solid #d9a400}.lv.k-g{background:#ddf3ef;border-left:5px solid #1f9184}.lv.k-n{background:#ece5fb;border-left:5px solid #6b48c8}.lv.k-t{background:#eceef2;border-left:5px solid #6b7385}.lv.k-0{border-left:5px solid #c9ced8}input.num{width:56px;padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit}select{padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit;max-width:100%}table.tlv tr.vrow{cursor:pointer}table.tlv tr.vrow:hover td{background:#f7f9fc}table.tlv tr.sel td{background:#e4ecf7}table.tl td,table.tl th{padding:5px 8px}.d{font-weight:700}.d.hi{color:#c62828}.flag{color:#c62828;font-size:12px}.det td{background:#fafbfd;font-size:12px}.det p{margin:4px 0}.scroll{overflow-x:auto;border-radius:10px;border:1px solid #e1e4ea}h3{margin:0 0 8px;font-size:15px}.muted{color:#5b6475;font-size:12px}@media(max-width:640px){.apps thead{display:none}.apps tr.r{display:block;padding:8px 6px;border-bottom:1px solid #eceef2}.apps tr.r td{display:inline-block;border:0;padding:2px 10px 2px 0;vertical-align:top}.apps tr.det td{display:block}.bar b{font-size:15px}}.modal{font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d2330;position:fixed;inset:0;z-index:10;background:rgba(10,20,35,.6);display:flex;align-items:center;justify-content:center;padding:10px}.modal[hidden]{display:none}.mbox{background:#fff;border-radius:12px;width:min(980px,100%);height:min(92vh,960px);display:flex;flex-direction:column;overflow:hidden}.mhead{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #e1e4ea}.mhead b{flex:1;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mbody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#eef0f4}.mbody img{max-width:100%;max-height:100%;object-fit:contain}.mbody iframe{width:100%;height:100%;border:0;background:#fff}.docs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.docs button{padding:6px 10px;font-size:12px;background:#e4ecf7;color:#12355b}</style><div class="wrap"><div class="bar"><b>Revenue Plus Tracker<small>Read-only — never submits or changes anything · <span id="rpver">version 1.9.1</span></small></b><button class="x" id="close">×</button></div><div id="rpscanbar" hidden style="position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid #d5dbe6;box-shadow:0 3px 8px rgba(16,32,60,.08)"></div><div class="box" id="main"></div></div><div class="modal" id="modal" hidden><div class="mbox"><div class="mhead"><b id="mtitle"></b><span id="macts" style="display:flex;gap:6px"></span><button id="mclose">Close</button></div><div class="mbody" id="mbody"></div></div></div>';
+      '<style>:host{all:initial}*{box-sizing:border-box}.wrap{position:fixed;inset:0;background:#f4f5f7;color:#1d2330;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:auto;-webkit-text-size-adjust:100%}.bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 14px;background:#12355b;color:#fff}.bar b{font-size:16px;flex:1}.bar small{opacity:.8;font-weight:400;display:block;font-size:11px}button{font:inherit;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;background:#e6e9ef;color:#1d2330}button.pri{background:#1a7f5a;color:#fff}button.x{background:transparent;color:#fff;font-size:22px;padding:2px 8px}.box{max-width:1100px;margin:0 auto;padding:14px}.card{background:#fff;border:1px solid #e1e4ea;border-radius:12px;padding:14px;margin-bottom:12px}.warn{background:#fff7e0;border-color:#f0d58a}.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}.tile{background:#fff;border:1px solid #e1e4ea;border-radius:10px;padding:10px;cursor:pointer}.tile.on{outline:2px solid #12355b}.tile .n{font-size:24px;font-weight:700}.tile .l{font-size:12px;color:#5b6475}.prog{height:10px;background:#e1e4ea;border-radius:6px;overflow:hidden;margin:10px 0}.prog i{display:block;height:100%;background:#1a7f5a;width:0}.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}input.s{flex:1;min-width:180px;padding:9px 12px;border:1px solid #c9ced8;border-radius:8px;font:inherit}.chip{padding:6px 10px;border-radius:20px;background:#e6e9ef;font-size:12px}.chip.on{background:#12355b;color:#fff}table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}th,td{text-align:left;padding:8px;border-bottom:1px solid #eceef2;vertical-align:top}th{background:#f0f2f6;font-size:12px}tr.r{cursor:pointer}tr.r:hover{background:#f7f9fc}.st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;white-space:nowrap}.s0{background:#fde2e2;color:#8a1c1c}.s1{background:#fff0d6;color:#7a4b00}.s2{background:#dcecff;color:#123f7a}.s3{background:#dff5e8;color:#145c36}.s9{background:#eee;color:#555}.apps tr.lv-p,.apps tr.lv-p td{background:#fff7da}.apps tr.lv-p td:first-child{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g,.apps tr.lv-g td{background:#ddf3ef}.apps tr.lv-g td:first-child{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n,.apps tr.lv-n td{background:#ece5fb}.apps tr.lv-n td:first-child{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t,.apps tr.lv-t td{background:#eceef2}.apps tr.lv-t td:first-child{box-shadow:inset 5px 0 0 #6b7385}@media(max-width:640px){.apps tr.lv-p{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t{box-shadow:inset 5px 0 0 #6b7385}.apps tr.r td:first-child{box-shadow:none}}.lvl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.lv{border-radius:10px;padding:10px;cursor:pointer;border:1px solid #e1e4ea;background:#fff}.lv .n{font-size:22px;font-weight:700}.lv .l{font-size:12px;color:#5b6475}.lv.on{outline:2px solid #12355b}.lv.k-p{background:#fff7da;border-left:5px solid #d9a400}.lv.k-g{background:#ddf3ef;border-left:5px solid #1f9184}.lv.k-n{background:#ece5fb;border-left:5px solid #6b48c8}.lv.k-t{background:#eceef2;border-left:5px solid #6b7385}.lv.k-0{border-left:5px solid #c9ced8}input.num{width:56px;padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit}select{padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit;max-width:100%}table.tlv tr.vrow{cursor:pointer}table.tlv tr.vrow:hover td{background:#f7f9fc}table.tlv tr.sel td{background:#e4ecf7}table.tl td,table.tl th{padding:5px 8px}.d{font-weight:700}.d.hi{color:#c62828}.flag{color:#c62828;font-size:12px}.det td{background:#fafbfd;font-size:12px}.det p{margin:4px 0}.scroll{overflow-x:auto;border-radius:10px;border:1px solid #e1e4ea}h3{margin:0 0 8px;font-size:15px}.muted{color:#5b6475;font-size:12px}@media(max-width:640px){.apps thead{display:none}.apps tr.r{display:block;padding:8px 6px;border-bottom:1px solid #eceef2}.apps tr.r td{display:inline-block;border:0;padding:2px 10px 2px 0;vertical-align:top}.apps tr.det td{display:block}.bar b{font-size:15px}}.modal{font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d2330;position:fixed;inset:0;z-index:10;background:rgba(10,20,35,.6);display:flex;align-items:center;justify-content:center;padding:10px}.modal[hidden]{display:none}.mbox{background:#fff;border-radius:12px;width:min(980px,100%);height:min(92vh,960px);display:flex;flex-direction:column;overflow:hidden}.mhead{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #e1e4ea}.mhead b{flex:1;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mbody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#eef0f4}.mbody img{max-width:100%;max-height:100%;object-fit:contain}.mbody iframe{width:100%;height:100%;border:0;background:#fff}.docs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.docs button{padding:6px 10px;font-size:12px;background:#e4ecf7;color:#12355b}</style><div class="wrap"><div class="bar"><b>Revenue Plus Tracker<small>Read-only — never submits or changes anything · <span id="rpver">version 1.9.3</span></small></b><button class="x" id="close">×</button></div><div id="rpscanbar" hidden style="position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid #d5dbe6;box-shadow:0 3px 8px rgba(16,32,60,.08)"></div><div class="box" id="main"></div></div><div class="modal" id="modal" hidden><div class="mbox"><div class="mhead"><b id="mtitle"></b><span id="macts" style="display:flex;gap:6px"></span><button id="mclose">Close</button></div><div class="mbody" id="mbody"></div></div></div>';
     var w = y.getElementById("main");
     (y.getElementById("close").onclick = function () {
       location.assign(k.split("#")[0]);
@@ -2019,6 +2019,55 @@
       ? new URL(f.replace(/^~\//, "/revenueplus/").replace(/\\/g, "/"), a).href
       : "";
   }
+  // Open the application page ONCE and take every document from it (one list + one page load per application,
+  // instead of per document). Any document that fails this way is fetched again the old way.
+  async function rpDetailOpen(e) {
+    var a = await ye(e.appNo, e.svc);
+    if (!a.row) throw new Error(E[a.why] + ("nolist" === a.why && a.detail ? " Details: " + a.detail : ""));
+    var r = await ue(a.row.form, a.baseUrl, [[a.row.btnName, a.row.btnValue]]),
+      n = j(r.html);
+    return { r: r, n: n, allb: F(n) };
+  }
+  async function rpDetailDoc(dt, t, lab) {
+    var r = dt.r,
+      n = dt.n,
+      allb = dt.allb,
+      byLab = lab
+        ? allb.filter(function (b) {
+            return D($(b)).toLowerCase() === D(lab).toLowerCase();
+          })
+        : [],
+      i = byLab.length === 1 ? byLab[0] : allb[t] || byLab[0];
+    if (!i) throw new Error("document button not found");
+    var o,
+      s = i.form || i.closest("form") || n.forms[0],
+      l = i.getAttribute("href") || "",
+      d = i.getAttribute("onclick") || "",
+      c =
+        /__doPostBack\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]*)['"]/.exec(l + " " + d) ||
+        /WebForm_PostBackOptions\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]*)['"]/.exec(l + " " + d),
+      p = /open\(\s*['"]([^'"]+)['"]/.exec(d);
+    if (c) o = await xe(s, r.url, [["__EVENTTARGET", c[1]], ["__EVENTARGUMENT", c[2]]]);
+    else if ("A" === i.tagName && l && !/^(javascript:|#)/i.test(l)) o = await fetch(new URL(l, r.url).href, { credentials: "include" });
+    else if (p) o = await fetch(new URL(p[1], r.url).href, { credentials: "include" });
+    else if (i.name) o = await xe(s, r.url, [[i.name, i.value || ""]]);
+    else {
+      var u = Pe(i, n, r.url);
+      u && (o = await fetch(u, { credentials: "include" }));
+    }
+    if (!o) throw new Error("unrecognised document button");
+    return await Ae(o, ke(n), 0);
+  }
+  // portal access one at a time (background prefetch and your own request never hit the portal together)
+  var rpPortalQ = Promise.resolve();
+  function rpPortal(fn) {
+    var p = rpPortalQ.then(fn, fn);
+    rpPortalQ = p.then(
+      function () {},
+      function () {},
+    );
+    return p;
+  }
   async function Ee(e, t, lab) {
     if (A) throw new Error("A scan is reading the portal right now — wait for it to finish (or stop it), then open documents.");
     var a = await ye(e.appNo, e.svc);
@@ -2743,46 +2792,20 @@
     }
     try {
       stage = "fetching documents";
-      var kase1 = "Submitted" !== e.patReport,
-        idre = /identity|aadhaar|aadhar|id proof|voter|pan card/i,
-        list = (e.docs || []).filter(function (d) {
-          return !/^All documents/.test(d.label) && !idre.test(d.label);
-        }),
-        idList = kase1
-          ? (e.docs || []).filter(function (d) {
-              return !/^All documents/.test(d.label) && idre.test(d.label);
-            })
-          : [],
-        docs = [],
-        idDocs = [],
-        size = 0;
-      // identity proof: read on the server by local OCR only (Aadhaar check), never sent to an AI reader
-      for (var j = 0; j < idList.length; j++) {
-        chk();
-        status("Fetching identity proof for the Aadhaar check …");
-        try {
-          var ir = await Ee(e, idList[j].i, idList[j].label),
-            ib = ir.blob.type ? ir.blob : new Blob([ir.blob], { type: ir.type || "" });
-          if (ib.size < 12e6) idDocs.push({ label: idList[j].label, type: ir.type || ib.type, data: await rpBlobB64(ib) });
-        } catch (x) {}
-        await C(300);
-      }
-      for (var i = 0; i < list.length; i++) {
-        chk();
-        var d = list[i];
-        status("Fetching document " + (i + 1) + " of " + list.length + ": " + d.label + " …");
-        try {
-          var res = await Ee(e, d.i, d.label),
-            blob = res.blob.type ? res.blob : new Blob([res.blob], { type: res.type || "" });
-          if (/zip/.test(res.type || blob.type)) throw new Error("ZIP skipped");
-          if (size + blob.size > 30e6) throw new Error("too large to send");
-          size += blob.size;
-          docs.push({ label: d.label, type: res.type || blob.type, data: await rpBlobB64(blob) });
-        } catch (err) {
-          docs.push({ label: d.label, error: String((err && err.message) || err).slice(0, 200) });
-        }
-        await C(400);
-      }
+      var pf_ = rpPre[rpKey(e)];
+      delete rpPre[rpKey(e)];
+      var got = pf_ ? await pf_.catch(function () {
+            return null;
+          }) : null;
+      var tf = Date.now();
+      if (!got) got = await rpPortal(function () {
+          return rpFetchDocs(e, status, chk);
+        });
+      var fetchSecs = (Date.now() - tf) / 1e3;
+      rpPrefetchNext(e); // while the analyser works on this one, the next application's documents are fetched
+      var docs = got.docs,
+        idDocs = got.idDocs,
+        ts = Date.now();
       chk();
       stage = "sending to the analyser";
       status(
@@ -2835,6 +2858,7 @@
       var j = await resp.json();
       if (!resp.ok) throw new Error(j.error || "HTTP " + resp.status);
       rpCachePut(e, j.html, j.gist);
+      rpStat(fetchSecs, (Date.now() - ts) / 1e3);
       rpPtsSave(e, j.case, j.points);
       rpSumRefresh();
       rpFpSave(e, j.photo_hash);
@@ -2845,6 +2869,79 @@
       err.stage = err.stage || stage;
       throw err;
     }
+  }
+  // Documents of one application, fetched from a single opening of its page.
+  var rpPre = {},
+    rpStats = { n: 0, f: 0, a: 0 };
+  function rpStat(f, a) {
+    rpStats.n++, (rpStats.f += f), (rpStats.a += a);
+  }
+  function rpPrefetchNext(cur) {
+    try {
+      if (A || rpBG.paused) return;
+      var nx = rpBG.queue.filter(function (q) {
+        return q !== cur && !rpCacheGet(q) && !rpPre[rpKey(q)];
+      })[0];
+      if (!nx || Object.keys(rpPre).length >= 1) return;
+      var k = rpKey(nx);
+      rpPre[k] = rpPortal(function () {
+        if (A) throw new Error("scan running");
+        return rpFetchDocs(nx);
+      });
+      rpPre[k].catch(function () {
+        delete rpPre[k];
+      });
+    } catch (x) {}
+  }
+  async function rpFetchDocs(e, status, chk) {
+    chk = chk || function () {};
+    status = status || function () {};
+    if (A) throw new Error("A scan is reading the portal right now.");
+    var kase1 = "Submitted" !== e.patReport,
+      idre = /identity|aadhaar|aadhar|id proof|voter|pan card/i,
+      want = (e.docs || []).filter(function (d) {
+        return !/^All documents/.test(d.label) && (kase1 || !idre.test(d.label));
+      }),
+      docs = [],
+      idDocs = [],
+      size = 0,
+      dt = null;
+    try {
+      dt = await rpDetailOpen(e);
+    } catch (x) {
+      dt = null;
+    }
+    for (var i = 0; i < want.length; i++) {
+      chk();
+      var d = want[i],
+        isId = idre.test(d.label);
+      status((isId ? "Fetching identity proof for the Aadhaar check" : "Fetching document " + (i + 1) + " of " + want.length + ": " + d.label) + " …");
+      try {
+        var res = null;
+        if (dt)
+          try {
+            res = await rpDetailDoc(dt, d.i, d.label);
+          } catch (x) {
+            res = null;
+          }
+        if (!res) res = await Ee(e, d.i, d.label);
+        var blob = res.blob.type ? res.blob : new Blob([res.blob], { type: res.type || "" });
+        if (/zip/.test(res.type || blob.type)) throw new Error("ZIP skipped");
+        if (isId) {
+          // identity proof: read on the server by local OCR only (Aadhaar check), never sent to an AI reader
+          if (blob.size < 12e6) idDocs.push({ label: d.label, type: res.type || blob.type, data: await rpBlobB64(blob) });
+        } else {
+          if (size + blob.size > 30e6) throw new Error("too large to send");
+          size += blob.size;
+          docs.push({ label: d.label, type: res.type || blob.type, data: await rpBlobB64(blob) });
+        }
+      } catch (err) {
+        if (err && err.name === "AbortError") throw err;
+        isId || docs.push({ label: d.label, error: String((err && err.message) || err).slice(0, 200) });
+      }
+      await C(150);
+    }
+    return { docs: docs, idDocs: idDocs };
   }
   // bg = true for background jobs. A request from you stops a running background job (it is re-queued) and goes first.
   function rpRunFor(e, status, bg) {
@@ -3325,6 +3422,10 @@
       b.total +
       " ready" +
       (b.failed ? ", " + b.failed + " failed" : "") +
+      (rpStats.n
+        ? '<div style="opacity:.85;font-size:12px">Average per application: documents ' + Math.round(rpStats.f / rpStats.n) + " s · analysis " + Math.round(rpStats.a / rpStats.n) +
+          " s (fetching the next one runs alongside)</div>"
+        : "") +
       (b.userWaiting && left ? '<div style="opacity:.85">Paused for your request — resumes automatically.</div>' : "") +
       (b.cur && !b.paused ? '<div style="opacity:.85">Now: ' + L(b.cur) + "</div>" : "") +
       (left && !b.paused
@@ -3414,7 +3515,7 @@
         rpBG.cur = "";
         rpPanel();
         rpMarkButtons();
-        await C(1500);
+        await C(300);
       }
     } finally {
       rpBG.running = !1;
@@ -3425,7 +3526,12 @@
   function Re(e) {
     return null != e.stageDays ? e.stageDays : e.days;
   }
-  var RP_TRACKER_VERSION = "1.9.1";
+  var RP_TRACKER_VERSION = "1.9.3";
+  (function () {
+    try {
+      window.__rpApiBase && fetch(window.__rpApiBase + "/api/ping", { cache: "no-store" }).catch(function () {});
+    } catch (x) {}
+  })();
   function rpVersionBadge() {
     try {
       var el = y.getElementById("rpver"),
