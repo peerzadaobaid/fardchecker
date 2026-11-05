@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.4
+# FARD CHECKER VERSION 1.9.5
 flask==3.0.3
 gunicorn==23.0.0
 pandas==2.2.3

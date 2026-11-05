@@ -1,11 +1,13 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.9.4
+FARD CHECKER VERSION 1.9.5
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.9.4"
+VERSION = "1.9.5"
 DATE = "5 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.9.5", "5 Nov 2026",
+     "Title and share on two bases, as area in the khata of the application: ownership column (share in khewat ÷ khewat total × khata area; heirs by fraction of the deceased's unaccounted remainder) and cultivation column (fraction in the khata's cultivator cell × khata area, inherited through the person named in it). Mutations received / alienated give the balance on each basis; eligibility green on both, amber on one, red on neither."),
     ("1.9.4", "5 Nov 2026",
      "Screen kept awake (like a video) while the tracker is scanning or analysing; released when work stops."),
     ("1.9.3", "5 Nov 2026",
