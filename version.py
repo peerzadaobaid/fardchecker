@@ -1,11 +1,13 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.9.5
+FARD CHECKER VERSION 1.9.6
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.9.5"
-DATE = "5 Nov 2026"
+VERSION = "1.9.6"
+DATE = "6 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.9.6", "6 Nov 2026",
+     "Section 2 lists every khewat/khata holding the survey no. (ownership and cultivation in brief) with a select button; Title and share works on the selected one. Two separate boxes with their own scales: Ownership (khewat) — share, total alienated by the person in all khatas of the khewat (read from the khata column), remaining share; Cultivation (khata) — strictly the khata's cultivator cell (heirs not named → cultivation stands with the deceased). Person chosen from the khewat or khata list; choices remembered."),
     ("1.9.5", "5 Nov 2026",
      "Title and share on two bases, as area in the khata of the application: ownership column (share in khewat ÷ khewat total × khata area; heirs by fraction of the deceased's unaccounted remainder) and cultivation column (fraction in the khata's cultivator cell × khata area, inherited through the person named in it). Mutations received / alienated give the balance on each basis; eligibility green on both, amber on one, red on neither."),
     ("1.9.4", "5 Nov 2026",

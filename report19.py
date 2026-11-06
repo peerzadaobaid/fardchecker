@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.5
+# FARD CHECKER VERSION 1.9.6
 """Analysis report (v1.9).
 
 Case 1 — Pre-scrutiny: only the applicant's submission (no Patwari report yet).
@@ -631,243 +631,323 @@ def parse_cultivators(text):
     if not donors or not donees:
         return {"kind": "manual_check", "message": "transaction in the cell — calculate manually"}
     from fractions import Fraction as Fr
+    verb = hits[0]
+    vt = "sale" if verb in _SALE else ("gift" if verb in _GIFT else "transfer")
+    to_names = ", ".join(d["name"] for d in donees)
     if len(donors) == 1:
         sold = Fr(donors[0]["num"], donors[0]["den"])
         recs = [{"name": d["name"], "num": (Fr(d["num"], d["den"]) * sold).numerator, "den": (Fr(d["num"], d["den"]) * sold).denominator} for d in donees]
         if sold < 1:
             r_ = 1 - sold
             recs.append({"name": donors[0]["name"], "num": r_.numerator, "den": r_.denominator})
-        return {"kind": "transaction", "records": recs}
+        return {"kind": "transaction", "records": recs, "type": vt, "to": to_names,
+                "sold": [{"name": donors[0]["name"], "frac": sold}]}
     if sum(Fr(d["num"], d["den"]) for d in donors) != 1:
         return {"kind": "manual_check", "message": "transaction in the cell — calculate manually"}
-    return {"kind": "transaction", "records": donees}
+    return {"kind": "transaction", "records": donees, "type": vt, "to": to_names,
+            "sold": [{"name": d["name"], "frac": Fr(d["num"], d["den"])} for d in donors]}
 
 
 def _frac_txt(f):
     return f"{f.numerator}/{f.denominator}" if f.denominator != 1 else str(f.numerator)
 
 
-def _khata_of(c, kw):
-    """The khata (in this khewat) in which the applied survey no. is recorded, its entries and total area."""
-    ents = [e for e in c.fam if e["khewat"] == kw]
-    e0 = next((e for e in ents if kn(e["khasra"]) == kn(c.khasra)), ents[0] if ents else None)
-    if not e0:
-        return None, [], 0.0
+def _kw_rows(c, kw):
     idx = c.v["jb"].setdefault("_by_kw", {})
     if not idx:
         for lst in c.v["jb"]["khasras"].values():
             for e in lst:
                 idx.setdefault(e["khewat"], []).append(e)
-    rows = [e for e in idx.get(kw, []) if e["khata"] == e0["khata"]]
-    return e0, rows, sum(e["area_marla"] or 0 for e in rows)
+    return idx.get(kw, [])
 
 
-def owner_figures(c, kw, o, owners, person=None):
-    """Two bases, both as AREA IN THE KHATA of the application:
-       ownership — share in khewat ÷ khewat total × khata area; cultivation — fraction in the khata's cultivator cell × khata area.
-       Then mutations received / alienated → balance on each basis."""
+def survey_groups(c):
+    """Every (khewat, khata) that holds the survey no. or a part of it."""
+    gs = {}
+    for e in c.fam:
+        gs.setdefault((e["khewat"], e["khata"]), []).append(e)
+    out = []
+    for (kw, kt), ents in gs.items():
+        rows = [e for e in _kw_rows(c, kw) if e["khata"] == kt]
+        owners = parse_owners(c.v["jb"]["khewats"].get(kw, {}).get("owners", ""))
+        cell = ents[0].get("cultivator", "")
+        out.append({"kw": kw, "kt": kt, "kwno": first_num(kw), "ktno": ents[0].get("khata_no", ""), "ents": ents, "rows": rows,
+                    "area": sum(e["area_marla"] or 0 for e in ents), "kt_area": sum(e["area_marla"] or 0 for e in rows),
+                    "kw_total": c.v["jb"]["khewats"].get(kw, {}).get("area_marla") or sum(e["area_marla"] or 0 for e in _kw_rows(c, kw)),
+                    "owners": owners, "cell": cell, "pc": parse_cultivators(cell),
+                    "exact": any(kn(e["khasra"]) == kn(c.khasra) for e in ents)})
+    out.sort(key=lambda g: (not g["exact"], int(g["kwno"] or 0), int(first_num(g["ktno"]) or 0)))
+    return out[:8]
+
+
+def _own_brief(g):
+    ow = g["owners"]
+    if not ow:
+        return "—"
+    heirs = {x["parent"] for x in ow if x["fraction"] and x["parent"]}
+    names = ", ".join(x["name"] for x in ow[:3])
+    return (f"{len(ow)} owner{'s' if len(ow) != 1 else ''}: {names}" + (" …" if len(ow) > 3 else "")
+            + (f"; heirs of {', '.join(sorted(heirs))[:60]} by fraction" if heirs else ""))
+
+
+def _cult_brief(g):
+    pc = g["pc"]
+    if pc["kind"] in ("simple", "transaction"):
+        t = ", ".join(f"{r['name']} {r['num']}/{r['den']}" for r in pc["records"][:4]) + (" …" if len(pc["records"]) > 4 else "")
+        return (pc.get("type", "").capitalize() + " → " if pc["kind"] == "transaction" else "") + t
+    return pc.get("message") or norm(g["cell"])[:80] or "—"
+
+
+def groups_html(c, groups, gsel):
+    TD = '<td style="padding:4px 6px;border-bottom:1px solid #eceef2;vertical-align:top">'
+    rows = []
+    for i, g in enumerate(groups):
+        rows.append(f'<tr{" style=background:#eef5ff" if i == gsel else ""}>{TD}<input type="radio" name="rpg" data-rp-group value="{i}"{" checked" if i == gsel else ""}></td>'
+                    f'{TD}<b>{esc(g["kwno"])}</b></td>{TD}{esc(g["ktno"])}</td>{TD}{esc(", ".join(e["khasra"] for e in g["ents"]))}</td>'
+                    f'<td style="padding:4px 6px;border-bottom:1px solid #eceef2;text-align:right;white-space:nowrap">{km(g["area"])}</td>'
+                    f'{TD}{esc(_own_brief(g))}</td>{TD}{esc(_cult_brief(g))}</td></tr>')
+    return ('<div style="margin:8px 0 2px;font-weight:700">Khewats and khatas holding this survey no. — select the one to analyse in “Title and share”</div>'
+            '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px">'
+            '<tr style="background:#f0f2f6"><th></th><th style="text-align:left;padding:4px 6px">Khewat</th><th style="text-align:left;padding:4px 6px">Khata</th>'
+            '<th style="text-align:left;padding:4px 6px">Khasras of this survey no.</th><th style="text-align:right;padding:4px 6px">Area</th>'
+            '<th style="text-align:left;padding:4px 6px">Ownership (brief)</th><th style="text-align:left;padding:4px 6px">Cultivation (khata column, brief)</th></tr>'
+            + "".join(rows) + "</table></div>")
+
+
+def _alienations(c, g, person):
+    """Read every khata of the selected khewat; where the person sold / gave a share in the cultivator cell, area = share × that khata's area."""
     from fractions import Fraction as Fr
-    person = person or (o["name"] if o else c.applicant)
-    out = {"own": None, "cult": None, "own_steps": [], "cult_steps": [], "rec": 0.0, "giv": 0.0, "notes": []}
-    e0, rows, kt_area = _khata_of(c, kw)
-    kwd = c.v["jb"]["khewats"].get(kw, {})
-    kw_total = kwd.get("area_marla") or sum(e["area_marla"] or 0 for e in c.v["jb"].get("_by_kw", {}).get(kw, []))
-    kwno, ktno = first_num(kw), (e0 or {}).get("khata_no", "?")
-    out.update(kw=kwno, kt=ktno, kt_area=kt_area, kt_rows=rows)
-    kh_list = ", ".join(esc(e["khasra"]) for e in rows[:12]) + (f" and {len(rows) - 12} more" if len(rows) > 12 else "")
-    # ── ownership
-    S = out["own_steps"]
-    if o:
+    out, manual = [], []
+    seen = set()
+    for e in _kw_rows(c, g["kw"]):
+        if e["khata"] in seen:
+            continue
+        seen.add(e["khata"])
+        rows = [x for x in _kw_rows(c, g["kw"]) if x["khata"] == e["khata"]]
+        area = sum(x["area_marla"] or 0 for x in rows)
+        cell = e.get("cultivator", "")
+        pc = parse_cultivators(cell)
+        if pc["kind"] == "transaction":
+            for d in pc.get("sold") or []:
+                if _strict(person, _owner_name(d["name"])):
+                    out.append({"kt": e.get("khata_no", ""), "khasras": ", ".join(x["khasra"] for x in rows[:6]) + (" …" if len(rows) > 6 else ""),
+                                "kt_area": area, "entry": cell, "frac": d["frac"], "area": float(d["frac"]) * area, "type": pc.get("type", ""), "to": pc.get("to", "")})
+        elif pc["kind"] in ("compound", "manual_check") and any(_strict(person, _owner_name(w)) for w in re.split(r",|\d+\s*/\s*\d+", cell) if w.strip()):
+            manual.append({"kt": e.get("khata_no", ""), "entry": cell})
+    return out, manual
+
+
+def _find_owner(g, person):
+    best = max(g["owners"], key=lambda x: _who_matches(person, x["name"]), default=None)
+    return best if best is not None and (_strict(person, best["name"]) or _who_matches(person, best["name"]) >= 0.85) else None
+
+
+def ownership_box(c, g, person, o):
+    """Restricted to the ownership column of the selected khewat."""
+    from fractions import Fraction as Fr
+    s = new_sec("Ownership (khewat)")
+    S = []
+    kw_total, kt_area = g["kw_total"], g["kt_area"]
+    owners = g["owners"]
+    share = None
+    if o is None:
+        S.append(f"“{esc(person)}” is not recorded in the ownership column of khewat {esc(g['kwno'])}")
+    elif o["area"] is not None:
+        share = o["area"]
+        S.append(f"Share in khewat {esc(g['kwno'])} (ownership column): <b>{km(share)}</b> of {km(kw_total)}")
+    elif o["fraction"]:
+        fr = Fr(*o["fraction"])
         explicit = sum(x["area"] for x in owners if x["area"] is not None)
         remainder = max(0.0, (kw_total or 0) - explicit)
-        share_kw = None
-        if o["area"] is not None:
-            share_kw = o["area"]
-            S.append(f"Share in khewat {kwno} (ownership column): <b>{km(share_kw)}</b> of {km(kw_total)}")
-        elif o["fraction"]:
-            fr = Fr(*o["fraction"])
-            pred = next((x for x in owners if x is not o and x["area"] is not None and o["parent"] and _strict(x["name"], o["parent"])), None)
-            groups = {}
-            for x in owners:
-                if x["fraction"] and x["area"] is None:
-                    groups.setdefault(name_key(x["parent"]) or "?", []).append(x)
-            if pred:
-                share_kw = float(fr) * pred["area"]
-                S.append(f"Recorded share <b>{_frac_txt(fr)}</b> of {esc(pred['name'])}'s {km(pred['area'])} = <b>{km(share_kw)}</b> in khewat {kwno}")
-            elif len(groups) == 1 and remainder > 0:
-                share_kw = float(fr) * remainder
-                S.append(f"Owners with their own areas hold {km(explicit)} of {km(kw_total)}; the remaining <b>{km(remainder)}</b> is the share of "
-                         f"{esc(o['parent'] or 'the deceased owner')}, whose heirs are recorded by fraction")
-                S.append(f"Recorded share <b>{_frac_txt(fr)}</b> × {km(remainder)} = <b>{km(share_kw)}</b> in khewat {kwno}")
-            else:
-                S.append(f"Recorded share <b>{_frac_txt(fr)}</b> of {esc(o['parent'] or 'the deceased owner')}'s share — "
-                         + ("several deceased owners share the unaccounted area, so it cannot be split from the record alone" if len(groups) > 1 else "the deceased's area is not in the record"))
+        pred = next((x for x in owners if x is not o and x["area"] is not None and o["parent"] and _strict(x["name"], o["parent"])), None)
+        heir_groups = {name_key(x["parent"]) or "?" for x in owners if x["fraction"] and x["area"] is None}
+        if pred:
+            share = float(fr) * pred["area"]
+            S.append(f"Recorded share <b>{_frac_txt(fr)}</b> of {esc(pred['name'])}'s {km(pred['area'])} = <b>{km(share)}</b> in khewat {esc(g['kwno'])}")
+        elif len(heir_groups) == 1 and remainder > 0:
+            share = float(fr) * remainder
+            S.append(f"Owners with their own areas hold {km(explicit)} of {km(kw_total)}; the remaining <b>{km(remainder)}</b> is the share of "
+                     f"{esc(o['parent'] or 'the deceased owner')}, whose heirs are recorded by fraction")
+            S.append(f"Recorded share <b>{_frac_txt(fr)}</b> × {km(remainder)} = <b>{km(share)}</b> in khewat {esc(g['kwno'])}")
         else:
-            S.append(f"Share in khewat {kwno}: no area or fraction stated in the ownership column")
-        if share_kw is not None and kw_total:
-            out["own"] = share_kw / kw_total * kt_area
-            S.append(f"Area in khata {esc(ktno)} (khasras {kh_list}; total {km(kt_area)}): {km(share_kw)} ÷ {km(kw_total)} × {km(kt_area)} = <b>{km(out['own'])}</b>")
+            S.append(f"Recorded share <b>{_frac_txt(fr)}</b> of {esc(o['parent'] or 'the deceased owner')}'s share — "
+                     + ("several deceased owners share the unaccounted area; it cannot be split from the record alone" if len(heir_groups) > 1 else "the deceased's area is not in the record"))
     else:
-        S.append("Not recorded in the ownership column of this khewat")
-    # ── cultivation (only the cultivator cell of the application's khata)
-    C = out["cult_steps"]
-    cell = (e0 or {}).get("cultivator", "")
-    C.append(f"Cultivator column of khata {esc(ktno)}: “{esc(cell[:200]) or '—'}”")
-    pc = parse_cultivators(cell)
-    out["cult_kind"] = pc["kind"]
-    if pc["kind"] in ("simple", "transaction"):
-        recs = pc["records"]
-        hit = next((r for r in recs if _strict(person, _owner_name(r["name"]))), None)
-        if hit:
-            f_ = Fr(hit["num"], hit["den"])
-            out["cult"] = float(f_) * kt_area
-            C.append(f"{esc(person)} holds <b>{_frac_txt(f_)}</b> → {_frac_txt(f_)} × {km(kt_area)} = <b>{km(out['cult'])}</b> in khata {esc(ktno)}")
-        elif o and o["fraction"] and o["parent"]:
-            par = next((r for r in recs if _strict(o["parent"], _owner_name(r["name"]))), None)
-            if par:
-                f_ = Fr(par["num"], par["den"]) * Fr(*o["fraction"])
-                out["cult"] = float(f_) * kt_area
-                C.append(f"Cultivation is recorded with {esc(par['name'])} ({par['num']}/{par['den']}); as heir, {esc(person)} takes "
-                         f"{o['fraction'][0]}/{o['fraction'][1]} of it = <b>{_frac_txt(f_)}</b> → × {km(kt_area)} = <b>{km(out['cult'])}</b>")
-            else:
-                C.append(f"{esc(person)} is not named in this cultivator cell")
-        else:
-            C.append(f"{esc(person)} is not named in this cultivator cell")
-    elif pc["kind"] == "whole_cell" and pc.get("token") == "khudkasht":
-        out["cult"] = out["own"]
-        C.append("Khud Kasht — the owners cultivate themselves, so the cultivation share follows the ownership share"
-                 + (f": <b>{km(out['cult'])}</b>" if out["cult"] is not None else ""))
-    elif pc["kind"] in ("whole_cell", "compound", "manual_check"):
-        C.append(esc(pc.get("message", "")) + " — no individual cultivation share")
-    # ── mutations after the record
-    rec = giv = 0.0
-    det_r, det_g = [], []
+        S.append(f"Share in khewat {esc(g['kwno'])}: no area or fraction stated in the ownership column")
+    # alienated by the person — every khata of this khewat
+    al, manual = _alienations(c, g, person)
+    tot = sum(x["area"] for x in al)
+    tbl = ""
+    if al:
+        TD = "<td style='padding:3px 5px;border-bottom:1px solid #eceef2;vertical-align:top'>"
+        tbl = ("<div style='overflow-x:auto'><table style='width:100%;border-collapse:collapse;font-size:12px;margin:4px 0'>"
+               "<tr style='background:#f0f2f6'><th style='text-align:left;padding:3px 5px'>Khata</th><th style='text-align:left;padding:3px 5px'>Khasras</th>"
+               "<th style='text-align:right;padding:3px 5px'>Khata area</th><th style='text-align:left;padding:3px 5px'>Entry (khata column)</th>"
+               "<th style='text-align:left;padding:3px 5px'>Share sold</th><th style='text-align:right;padding:3px 5px'>Area alienated</th><th style='text-align:left;padding:3px 5px'>To</th></tr>"
+               + "".join(f"<tr>{TD}{esc(x['kt'])}</td>{TD}{esc(x['khasras'])}</td><td style='padding:3px 5px;border-bottom:1px solid #eceef2;text-align:right'>{km(x['kt_area'])}</td>"
+                         f"<td title='{esc(x['entry'])}' style='padding:3px 5px;border-bottom:1px solid #eceef2;vertical-align:top;min-width:140px'>{esc(x['entry'][:70])}{'…' if len(x['entry']) > 70 else ''}</td>{TD}{_frac_txt(x['frac'])} ({esc(x['type'])})</td>"
+                         f"<td style='padding:3px 5px;border-bottom:1px solid #eceef2;text-align:right'>{km(x['area'])}</td>{TD}{esc(x['to'][:60])}</td></tr>" for x in al)
+               + f"<tr style='font-weight:700'><td colspan='5' style='padding:3px 5px'>Total alienated in khewat {esc(g['kwno'])}</td>"
+               f"<td style='padding:3px 5px;text-align:right'>{km(tot)}</td><td></td></tr></table></div>")
+        S.append(f"Alienated by {esc(person)} in khewat {esc(g['kwno'])} (all its khatas): <b>{km(tot)}</b> — see table")
+    else:
+        S.append(f"Alienated by {esc(person)} in khewat {esc(g['kwno'])}: <b>nil</b> found in the khata column of its {len({e['khata'] for e in _kw_rows(c, g['kw'])})} khata(s)")
+    for m_ in manual:
+        S.append(f"Khata {esc(m_['kt'])}: “{esc(m_['entry'][:120])}” — several transactions, check manually")
+    rem = (share - tot) if share is not None else None
+    kt_fig = (rem / kw_total * kt_area) if (rem is not None and kw_total) else None
+    if rem is not None:
+        S.append(f"<b>Remaining share in khewat: {km(max(0.0, rem))}</b>" + (f" · as it falls in khata {esc(g['ktno'])} ({km(kt_area)}): {km(max(0.0, kt_fig))}" if kt_fig is not None else "")
+                 + (f" · area applied <b>{km(c.applied)}</b>" if c.applied is not None else ""))
+    # reference only: mutations on the portal / in the documents
+    ref = []
     for mno, mty, fr_, to, q, src in _mut_parties(c):
-        if re.search(r"inherit|warasat", mty or "", re.I):
+        if not q:
             continue
-        if to and any(_strict(person, _owner_name(t)) for t in re.split(r",|&| and |\(", to)) and q:
-            rec += q
-            det_r.append(f"mutation {mno or '—'} ({mty or '—'}) +{km(q)} from {fr_[:60] or '—'} [{src}]")
-        elif fr_ and any(_strict(person, _owner_name(t)) for t in re.split(r",|&| and |\(", fr_)) and q:
-            giv += q
-            det_g.append(f"mutation {mno or '—'} ({mty or '—'}) −{km(q)} to {to[:60] or '—'} [{src}]")
-    out.update(rec=rec, giv=giv, det_r=det_r, det_g=det_g)
-    out["own_bal"] = (out["own"] + rec - giv) if out["own"] is not None else None
-    out["cult_bal"] = (out["cult"] + rec - giv) if out["cult"] is not None else None
-    out["balance"] = out["own_bal"]
-    return out
+        if any(_strict(person, _owner_name(t)) for t in re.split(r",|&| and |\(", to or "")):
+            ref.append(f"{mno or '—'} ({mty or '—'}): received {km(q)} [{src}]")
+        elif any(_strict(person, _owner_name(t)) for t in re.split(r",|&| and |\(", fr_ or "")):
+            ref.append(f"{mno or '—'} ({mty or '—'}): gave {km(q)} [{src}]")
+    s["items"].append({"lv": "html", "t": "<ol>" + "".join(f"<li>{x}</li>" for x in S) + "</ol>" + tbl, "pt": None})
+    if ref:
+        it(s, "info", "Mutations on the portal / in the documents naming this person (for reference, not subtracted): " + esc("; ".join(ref)) + ".")
+    if o is None:
+        pass
+    elif c.applied is not None and rem is not None:
+        if c.applied > rem + 0.25:
+            it(s, "red", f"Area applied {km(c.applied)} <b>exceeds</b> the remaining share in the khewat ({km(max(0.0, rem))}).",
+               ("title-exceeds", f"Area applied {km(c.applied)} exceeds {person}'s remaining share {km(max(0.0, rem))} in khewat {g['kwno']}."))
+        else:
+            it(s, "green", f"Area applied {km(c.applied)} is within the remaining share in the khewat ({km(rem)}).")
+    elif c.applied is not None:
+        it(s, "amber", "Share could not be converted to an area — eligibility on ownership to be worked out.",
+           ("title-unknown", f"{person}'s share in khewat {g['kwno']} to be worked out."))
+    s.update(share=share, alien=tot, rem=rem, kt_fig=kt_fig, al=al)
+    return s
 
 
-def _bases_html(c, fig):
-    def col(title, steps, val, bal):
-        lis = "".join(f"<li>{x}</li>" for x in steps)
-        tail = ""
-        if fig["det_r"] or fig["det_g"] or val is not None:
-            mut = ""
-            if fig["det_r"]:
-                mut += "<li>Received later: " + esc("; ".join(fig["det_r"])) + "</li>"
-            mut += "<li>Alienated: " + (esc("; ".join(fig["det_g"])) if fig["det_g"] else "nil found <span class='mu'>(only mutations on the portal / in the documents are counted)</span>") + "</li>"
-            tail = mut + (f"<li><b>Balance in khata: {km(bal)}</b>" + (f" · area applied <b>{km(c.applied)}</b>" if c.applied is not None else "") + "</li>" if bal is not None else "")
-        return (f'<div style="flex:1;min-width:250px;border:1px solid #e1e4ea;border-radius:8px;padding:6px 10px;background:#fff">'
-                f'<div style="font-weight:700;font-size:13px">{title}</div><ol>{lis}{tail}</ol></div>')
-    return ('<div style="display:flex;flex-wrap:wrap;gap:10px;margin:6px 0">'
-            + col("Ownership column — khewat " + esc(fig["kw"]), fig["own_steps"], fig["own"], fig["own_bal"])
-            + col("Cultivation column — khata " + esc(fig["kt"]), fig["cult_steps"], fig["cult"], fig["cult_bal"]) + "</div>")
-
-
-def _eligibility(c, s, fig):
-    a = c.applied
-    ob, cb = fig["own_bal"], fig["cult_bal"]
-    if a is None:
-        return
-    ok_o = ob is not None and a <= ob + 0.25
-    ok_c = cb is not None and a <= cb + 0.25
-    if ok_o and ok_c:
-        it(s, "green", f"Area applied {km(a)} is covered on <b>both</b> bases (ownership {km(ob)}, cultivation {km(cb)}).")
-    elif ok_o or ok_c:
-        good, gv, bad, bv = ("ownership", ob, "cultivation", cb) if ok_o else ("cultivation", cb, "ownership", ob)
-        it(s, "amber", f"Area applied {km(a)} is covered on the <b>{good}</b> basis ({km(gv)}) but not on the {bad} basis "
-                       f"({km(bv) if bv is not None else 'not worked out'}).",
-           ("title-onebasis", f"Area applied {km(a)} covered only by the {good} share ({km(gv)}); {bad} share {km(bv) if bv is not None else 'not established'} — verify."))
-    elif ob is None and cb is None:
-        it(s, "amber", "The share could not be converted to an area in the khata on either basis — eligibility to be worked out.",
-           ("title-unknown", f"Applicant's share in khata of survey no. {c.K} to be worked out."))
+def cultivation_box(c, g, person, o):
+    """Restricted to the cultivator cell of the selected khata."""
+    s = new_sec("Cultivation (khata)")
+    pc, kt_area = g["pc"], g["kt_area"]
+    S = [f"Cultivator column of khata {esc(g['ktno'])} (khasras {esc(', '.join(e['khasra'] for e in g['rows'][:10]))}{' …' if len(g['rows']) > 10 else ''}; "
+         f"area {km(kt_area)}): “{esc(g['cell'][:200]) or '—'}”"]
+    area = None
+    if pc["kind"] in ("simple", "transaction"):
+        hit = next((r for r in pc["records"] if _strict(person, _owner_name(r["name"]))), None)
+        if hit:
+            from fractions import Fraction as Fr
+            f_ = Fr(hit["num"], hit["den"])
+            area = float(f_) * kt_area
+            S.append(f"{esc(person)} holds <b>{_frac_txt(f_)}</b> → {_frac_txt(f_)} × {km(kt_area)} = <b>{km(area)}</b> in khata {esc(g['ktno'])}")
+        else:
+            who = ", ".join(f"{r['name']} {r['num']}/{r['den']}" for r in pc["records"][:4])
+            dec = o and o.get("parent") and any(_strict(o["parent"], _owner_name(r["name"])) for r in pc["records"])
+            S.append(f"<b>{esc(person)} is not named</b>; cultivation stands with {esc(who)}" + (" (deceased — the applicant's predecessor)" if dec else ""))
+    elif pc["kind"] == "whole_cell" and pc.get("token") == "khudkasht" and o is not None:
+        if len(g["owners"]) == 1:
+            area = kt_area
+            S.append(f"Khud Kasht — cultivated by the owner himself; {esc(person)} is the sole owner, so the whole khata: <b>{km(area)}</b>")
+        else:
+            S.append(f"Khud Kasht — cultivated by the {len(g['owners'])} owners jointly; {esc(person)} is one of them, but the column gives no individual share")
+            s["khud_joint"] = True
     else:
-        it(s, "red", f"Area applied {km(a)} <b>exceeds</b> the balance on both bases (ownership {km(ob) if ob is not None else '—'}, "
-                     f"cultivation {km(cb) if cb is not None else '—'}).",
-           ("title-exceeds", f"Area applied {km(a)} exceeds the applicant's share in the khata (ownership {km(ob) if ob is not None else '—'}, cultivation {km(cb) if cb is not None else '—'})."))
+        S.append(esc(pc.get("message") or "No cultivator recorded") + " — no individual cultivation share in this column")
+    s["items"].append({"lv": "html", "t": "<ol>" + "".join(f"<li>{x}</li>" for x in S) + "</ol>", "pt": None})
+    if area is not None and c.applied is not None:
+        if c.applied > area + 0.25:
+            it(s, "red", f"Area applied {km(c.applied)} exceeds the cultivation share in the khata ({km(area)}).",
+               ("cult-exceeds", f"Area applied {km(c.applied)} exceeds {person}'s cultivation share {km(area)} in khata {g['ktno']}."))
+        else:
+            it(s, "green", f"Area applied {km(c.applied)} is within the cultivation share in the khata ({km(area)}).")
+    elif area is None and s.get("khud_joint"):
+        it(s, "amber", "Joint Khud Kasht — the applicant's own cultivation share is not recorded in the khata column.",
+           ("cult-joint", f"Joint khud kasht in khata {g['ktno']} — applicant's portion in possession to be verified."))
+    elif area is None:
+        it(s, "amber", f"{esc(person)} is not recorded in the cultivation column of khata {esc(g['ktno'])}.",
+           ("cult-notnamed", f"{person} not recorded in the cultivation (khata) column of khata {g['ktno']} — possession to be verified."))
+    s.update(area=area)
+    return s
+
+
+def _box(title, sec):
+    return (f'<div style="flex:1;min-width:260px;border:1px solid #e1e4ea;border-radius:8px;padding:6px 10px;background:#fff">'
+            f'<div style="font-weight:700;font-size:13.5px">{esc(title)}</div>' + scale_html(sec["title"], sec["score"])
+            + items_html(sec["items"]) + "</div>")
 
 
 def title_section(c):
-    """Returns (sections_per_owner, options, default_index)."""
-    opts, variants = [], []
+    """Variants keyed 'g:p' (g = khewat/khata row chosen in section 2, p = person; -1 = applicant not found).
+    Returns (variants, groups, persons_per_group, default_key)."""
     if not c.v or not c.v.get("jb") or not c.fam:
         s = new_sec("3 · Title and share")
         it(s, "amber", "Title could not be checked — survey no. not found in the Jamabandi on file.",
            ("title-unchecked", "Title of the applicant to be verified from the revenue record."))
         s["score"] = cap_score(50, ["amber"])
-        return [s], [], -1
-    kws = list(dict.fromkeys(e["khewat"] for e in c.fam if e.get("khewat")))
-    kws.sort(key=lambda k: 0 if any(kn(e["khasra"]) == kn(c.khasra) and e["khewat"] == k for e in c.fam) else 1)
+        return {"0:-1": s}, [], {}, "0:-1"
+    groups = survey_groups(c)
     hint = ""
     m = re.search(r"(?:son|daughter|wife)\s+of\s+(.+?)(?:\bwife\b|$)|\b[sdw]/o\s+(.+?)(?:\bw/o\b|$)", pf(c.f, "owners") or pf(c.f, "ownRecords"), re.I)
     if m:
         hint = m.group(1) or m.group(2) or ""
-    cand = []
-    for kw in kws:
-        owners = parse_owners(c.v["jb"]["khewats"].get(kw, {}).get("owners", ""))
-        for o in owners:
-            sc = _who_matches(c.applicant, o["name"])
-            if hint and o["parent"]:
-                sc += 0.15 * _who_matches(hint, o["parent"])
-            cand.append((kw, o, owners, sc))
-    c.n_owners = len(cand)
-    cand = sorted(cand, key=lambda x: -x[3])[:30]          # the 30 closest names are offered in the list
-    default = 0 if cand and cand[0][3] >= 0.8 else -1
     fd = c.ai.get("fard") or {}
     doc_names = " ".join([norm(fd.get("owner_entry")), " ".join(norm(t.get("name")) for m_ in c.ai.get("mutations") or [] for t in (m_.get("to") or []))])
     docs_support = bool(doc_names.strip()) and any(_who_matches(c.applicant, w) >= 0.82 for w in re.split(r",|;|\band\b", doc_names) if w.strip())
-    # "not found as owner" — the cultivation column may still name the applicant
-    s = new_sec("3 · Title and share")
-    fig0 = owner_figures(c, kws[0], None, [], person=c.applicant)
-    if fig0["cult"] is not None:
-        it(s, "amber", f"“{esc(c.applicant)}” is <b>not recorded as owner</b> of survey no. {esc(c.K)}, but is named in the cultivation column of khata {esc(fig0['kt'])}.",
-           ("title-notfound", f"{c.applicant} recorded only as cultivator, not as owner, in survey no. {c.K} — title to be verified."))
-        s["score"] = cap_score(45, ["amber"])
-    elif docs_support:
-        it(s, "amber", f"“{esc(c.applicant)}” is <b>not traced</b> among the owners in the Jamabandi on file, but the uploaded "
-                       f"fard / mutation names the applicant — possibly a recent mutation not yet in the digitised copy.",
-           ("title-notfound", f"Title of {c.applicant} not traced in the digitised Jamabandi — verify from the latest record / mutation."))
-        s["score"] = cap_score(45, ["amber"])
-    else:
-        it(s, "red", f"“{esc(c.applicant)}” is <b>not recorded</b> among the owners of survey no. {esc(c.K)} (khewat {', '.join(first_num(k) for k in kws)}) "
-                     f"in the Jamabandi on file, and no uploaded document shows how the applicant became owner.",
-           ("title-notfound", f"Applicant {c.applicant} not recorded as owner in survey no. {c.K} as per the digitised Jamabandi."))
-        s["score"] = cap_score(10, ["red"])
-    s["items"].append({"lv": "html", "t": _bases_html(c, fig0), "pt": None})
-    if cand:
-        close = cand[:3]
-        it(s, "info", "Closest names in the ownership column: " + esc("; ".join(f"{x[1]['name']}" + (f" ({x[1].get('rel', 's/o')} {x[1]['parent']})" if x[1]['parent'] else "") for x in close))
-           + ". If one of them is the applicant, choose it in the list above.")
-    _title_box(c, s, None)
-    variants_nf = s
-    for i, (kw, o, owners, sc) in enumerate(cand):
-        s = new_sec("3 · Title and share")
-        fig = owner_figures(c, kw, o, owners)
-        it(s, "info", f"Owner: <b>{esc(o['name'])}</b>" + (f" ({esc(o.get('rel', ''))} {esc(o['parent'])})" if o["parent"] else "")
-           + f" — khewat {esc(first_num(kw))}" + ("" if i == default else " — chosen in the list") + f". Entry as written: “{esc(o['entry'][:200])}”.")
-        s["items"].append({"lv": "html", "t": _bases_html(c, fig), "pt": None})
-        _eligibility(c, s, fig)
-        if len(owners) > 1:
-            it(s, "info", f"Joint khewat: {len(owners)} owner entries.")
-        _title_box(c, s, fig, joint=len(owners) > 1)
-        lv = levels(s)
-        s["score"] = cap_score(92 - (8 if sc < 0.9 and i == default else 0) - 12 * lv.count("amber") - 30 * lv.count("red"), lv)
-        variants.append(s)
-        lab = f"{o['name']}" + (f" ({o.get('rel', '')} {o['parent']})" if o["parent"] else "") + f" — khewat {first_num(kw)}" + \
-              (f" · {km(o['area'])}" if o["area"] is not None else (f" · {o['fraction'][0]}/{o['fraction'][1]}" if o["fraction"] else ""))
-        opts.append(lab)
-    return [variants_nf] + variants, opts, default
+    # choose the default row: where the applicant is found (owner, then cultivator), else the exact khasra
+    def gscore(g):
+        so = max([_who_matches(c.applicant, o["name"]) for o in g["owners"]] or [0])
+        sc = 1.0 if g["pc"]["kind"] in ("simple", "transaction") and any(_strict(c.applicant, _owner_name(r["name"])) for r in g["pc"]["records"]) else 0
+        return max(so, sc) + (0.05 if g["exact"] else 0)
+    gdef = max(range(len(groups)), key=lambda i: gscore(groups[i]))
+    variants, persons = {}, {}
+    for gi, g in enumerate(groups):
+        cap = 18 if gi == gdef else 8
+        own = sorted(range(len(g["owners"])), key=lambda i: -(_who_matches(c.applicant, g["owners"][i]["name"])
+                                                             + (0.15 * _who_matches(hint, g["owners"][i]["parent"]) if hint and g["owners"][i]["parent"] else 0)))[:cap]
+        plist = [("o", g["owners"][i]) for i in own]
+        if g["pc"]["kind"] in ("simple", "transaction"):
+            for r in g["pc"]["records"][:8]:
+                if not any(kind == "o" and _strict(r["name"], x["name"]) for kind, x in plist):
+                    plist.append(("c", r))
+        persons[gi] = plist
+        best = max(range(len(plist)), key=lambda i: (_strict(c.applicant, _owner_name(plist[i][1]["name"])), _who_matches(c.applicant, plist[i][1]["name"])), default=-1)
+        pdef = best if best >= 0 and (_strict(c.applicant, _owner_name(plist[best][1]["name"])) or _who_matches(c.applicant, plist[best][1]["name"]) >= 0.8) else -1
+        g["pdef"] = pdef
+        for pi in [-1] + list(range(len(plist))):
+            if pi == -1:
+                person, o = c.applicant, _find_owner(g, c.applicant) if False else None
+            else:
+                kind, x = plist[pi]
+                person = x["name"] if kind == "o" else _owner_name(x["name"]).title()
+                o = x if kind == "o" else _find_owner(g, person)
+            ob = ownership_box(c, g, person, o)
+            cb = cultivation_box(c, g, person, o)
+            s = new_sec("3 · Title and share")
+            if pi == -1:
+                if docs_support:
+                    it(s, "amber", f"“{esc(c.applicant)}” is <b>not traced</b> in khewat {esc(g['kwno'])}, but the uploaded fard / mutation names the applicant — possibly a recent mutation not yet in the digitised copy.",
+                       ("title-notfound", f"Title of {c.applicant} not traced in the digitised Jamabandi — verify from the latest record / mutation."))
+                else:
+                    it(s, "red", f"“{esc(c.applicant)}” is <b>not recorded</b> as owner in khewat {esc(g['kwno'])} of survey no. {esc(c.K)} in the Jamabandi on file. "
+                                 "If the spelling differs, choose the right name in the list.",
+                       ("title-notfound", f"Applicant {c.applicant} not recorded as owner in survey no. {c.K} (khewat {g['kwno']}) as per the digitised Jamabandi."))
+            lvo, lvc = levels(ob), levels(cb)
+            ob["score"] = cap_score(92 - 12 * lvo.count("amber") - 35 * lvo.count("red") - (40 if (pi == -1 and not docs_support) else 0), lvo + (["red"] if pi == -1 and not docs_support else []))
+            cb["score"] = cap_score(92 - 12 * lvc.count("amber") - 35 * lvc.count("red"), lvc)
+            s["items"].append({"lv": "html", "t": '<div style="display:flex;flex-wrap:wrap;gap:10px;margin:6px 0">' + _box("Box 1 · Ownership — khewat " + g["kwno"], ob)
+                               + _box("Box 2 · Cultivation — khata " + g["ktno"], cb) + "</div>", "pt": None})
+            # carry the findings (for points / overall) without showing them twice
+            for x in ob["items"] + cb["items"]:
+                if x["lv"] in ("red", "amber", "green") and x.get("pt") or x["lv"] in ("red", "amber"):
+                    s["items"].append(dict(x, hidden=True))
+            fig = {"balance": ob.get("kt_fig"), "giv": ob.get("alien") or 0.0, "share": ob.get("share"), "rem": ob.get("rem")}
+            _title_box(c, s, fig if o else None, joint=len(g["owners"]) > 1)
+            lv = levels(s)
+            base = 0.6 * ob["score"] + 0.4 * cb["score"]
+            s["score"] = cap_score(base, (["red"] if ob["score"] < 40 else []) + (["amber"] if (ob["score"] < 70 or cb["score"] < 70) else []) + [x for x in lv if x != "green"])
+            s["own_score"], s["cult_score"] = ob["score"], cb["score"]
+            variants[f"{gi}:{pi}"] = s
+    return variants, groups, persons, f"{gdef}:{groups[gdef]['pdef']}"
 
 
 def _title_box(c, s, fig, joint=False):
@@ -880,12 +960,14 @@ def _title_box(c, s, fig, joint=False):
     txt = " · ".join(f"{a}: <b>{esc(b or '—')}</b>" for a, b in rows)
     it(s, "info", "Patwari's figures — " + txt + ".", box=True)
     if fig:
+        hk = parse_area(skw)
+        ref = fig.get("rem")
+        if hk is not None and ref is not None and abs(hk - ref) > max(1.0, 0.05 * ref):
+            it(s, "amber", f"Patwari's share in khewat ({esc(skw)}) differs from the remaining share worked out from the record ({km(ref)}).",
+               ("share-differs", "Give owner-wise share calculation (Patwari's share in khewat differs from the record)."), box=True)
+        elif hk is not None and ref is not None:
+            it(s, "green", "Patwari's share in khewat agrees with the record.", box=True)
         hk = parse_area(skh)
-        if hk is not None and fig["balance"] is not None and abs(hk - fig["balance"]) > max(1.0, 0.05 * fig["balance"]):
-            it(s, "amber", f"Patwari's share in khasra ({esc(skh)}) differs from the balance worked out above ({km(fig['balance'])}).",
-               ("share-differs", "Give owner-wise share calculation for the khasra (Patwari's figure differs from record)."), box=True)
-        elif hk is not None and fig["balance"] is not None:
-            it(s, "green", "Patwari's share in khasra agrees with the record.", box=True)
         if c.applied is not None and hk is not None and c.applied > hk + 0.25:
             it(s, "red", f"Area proposed ({km(c.applied)}) exceeds the Patwari's own share figure ({esc(skh)}).", ("share-exceeds", "Area proposed exceeds share in khasra."), box=True)
         a1, a2 = parse_area(ak) if not re.fullmatch(r"\s*0\s*", ak or "") else 0.0, parse_area(akh) if not re.fullmatch(r"\s*0\s*", akh or "") else 0.0
@@ -1359,7 +1441,10 @@ def build(app, ai, ai_err=None, pages=None, id_pages=None, doc_labels=None, prev
     secs = {}
     secs["photo"] = photo_section(c, photo_page, other_fps)
     secs["survey"] = survey_section(c)
-    titles, opts, default = title_section(c)
+    titles, groups, persons, default = title_section(c)
+    c.groups, c.persons = groups, persons
+    if groups:
+        secs["survey"]["items"].append({"lv": "html", "t": groups_html(c, groups, int(default.split(":")[0])), "pt": None})
     # tatima + overlay (for both cases; Case 1 shows the rough sketch beside the map)
     try:
         rep.tatima = E.pick_tatima_page(pages, ai)
@@ -1381,9 +1466,9 @@ def build(app, ai, ai_err=None, pages=None, id_pages=None, doc_labels=None, prev
     else:
         secs["tatima"] = tatima_section(c, rep.tatima)
         secs["report"] = report_section(c, sat_pre)
-    ovs = [overall(c, secs, t, prev_points) for t in titles]
-    out = render(c, rep, secs, titles, opts, default, ovs, reader_status, ai_err, skipped)
-    d = default + 1                                   # variant index (0 = not found)
+    ovs = {k: overall(c, secs, t, prev_points) for k, t in titles.items()}
+    out = render(c, rep, secs, titles, default, ovs, reader_status, ai_err, skipped)
+    d = default
     gist = {"case": c.case, "score": ovs[d]["score"], "band": band(ovs[d]["score"])[0],
             "text": " · ".join(p_["text"] for p_ in ovs[d]["points"][:3]) or "No objection on record."}
     return {"html": out, "case": c.case, "gist": gist, "points": [{"id": p_["id"], "text": p_["text"]} for p_ in ovs[d]["points"]],
@@ -1437,7 +1522,7 @@ def _sec_html(s, extra_top="", scale_title=None):
     return "".join(h)
 
 
-def render(c, rep, secs, titles, opts, default, ovs, rs, ai_err, skipped):
+def render(c, rep, secs, titles, default, ovs, rs, ai_err, skipped):
     hd = rep.head
     h = [STYLE + '<div class="rpa r19" style="font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d2330;padding:14px;max-width:900px;margin:0 auto">']
     h.append(f'<h2 style="margin:0 0 4px;font-size:18px">{esc(hd["service"] or "Application")} — Survey no. {esc(hd["khasra"] or "?")}, {esc(hd["village"] or "?")}</h2>')
@@ -1448,20 +1533,19 @@ def render(c, rep, secs, titles, opts, default, ovs, rs, ai_err, skipped):
     if not c.v:
         h.append(f'<div style="margin:6px 0;padding:8px 10px;border-radius:8px;background:#fdecea;color:#b42318">Village records not found for “{esc(c.village)}” — record checks could not run.</div>')
     # chips (owner-dependent ones in variants)
-    nvar = len(titles)
-    d = default + 1
+    d = default
 
-    def vwrap(i, inner, block=True):
-        disp = "" if i == d else "display:none"
+    def vwrap(k, inner, block=True):
+        disp = "" if k == d else "display:none"
         tag = "div" if block else "span"
-        return f'<{tag} data-owner="{i - 1}" style="{disp}">{inner}</{tag}>'
+        return f'<{tag} data-owner="{k}" style="{disp}">{inner}</{tag}>'
 
     fixed = chip("Photo", secs["photo"]["score"]) + chip("Survey record", secs["survey"]["score"])
     if c.case == 1:
         fixed += chip("Documents", secs["docs"]["score"])
     else:
         fixed += chip("Tatima", secs["tatima"]["score"]) + chip("Report", secs["report"]["score"])
-    chips = "".join(vwrap(i, chip("Overall", ovs[i]["score"]) + chip("Title", titles[i]["score"]), block=False) for i in range(nvar))
+    chips = "".join(vwrap(k, chip("Overall", ovs[k]["score"]) + chip("Title", titles[k]["score"]), block=False) for k in titles)
     h.append(f'<div style="margin:4px 0 8px">{chips}{fixed}</div>')
     # 1 photo (+ map in Case 1)
     ph_extra = ""
@@ -1479,22 +1563,32 @@ def render(c, rep, secs, titles, opts, default, ovs, rs, ai_err, skipped):
     h.append(_sec_html(secs["photo"], ph_extra, "Photo satisfaction"))
     # 2 survey
     h.append(_sec_html(secs["survey"]))
-    # 3 title (owner drop-down)
-    sel = ""
-    if opts:
-        o_html = '<option value="-1">— Applicant not among these owners —</option>' + "".join(
-            f'<option value="{i}"{" selected" if i == default else ""}>{esc(t)}</option>' for i, t in enumerate(opts))
-        sel = (f'<div style="margin:4px 0 8px;font-size:13px">Owner matched to the applicant: '
-               f'<select data-rp-owner data-app="{esc(hd["appNo"] or "")}" style="font:inherit;max-width:100%;padding:4px;border:1px solid #c9ced8;border-radius:6px">{o_html}</select>'
-               f'<div style="color:#5b6475;font-size:12px">If the spelling match picked the wrong person, choose the right owner — the figures, the scale and the overall update at once. '
-               f'The list shows the {len(opts)} names closest to the applicant out of {getattr(c, "n_owners", len(opts))} owner entries.</div></div>')
+    # 3 title — person chooser for the khewat / khata selected in section 2
+    sels = []
+    groups, persons = getattr(c, "groups", []), getattr(c, "persons", {})
+    dg = d.split(":")[0]
+    for gi, g in enumerate(groups):
+        plist = persons.get(gi, [])
+        ow = "".join(f'<option value="{i}"{" selected" if i == g.get("pdef", -1) else ""}>{esc(x["name"])}'
+                     + (f' ({esc(x.get("rel", ""))} {esc(x["parent"])})' if x.get("parent") else "")
+                     + (f' · {km(x["area"])}' if x.get("area") is not None else (f' · {x["fraction"][0]}/{x["fraction"][1]}' if x.get("fraction") else "")) + "</option>"
+                     for i, (kind, x) in enumerate(plist) if kind == "o")
+        cu = "".join(f'<option value="{i}"{" selected" if i == g.get("pdef", -1) else ""}>{esc(x["name"])} · {x["num"]}/{x["den"]}</option>'
+                     for i, (kind, x) in enumerate(plist) if kind == "c")
+        sels.append(f'<div data-gsel="{gi}" style="margin:4px 0 8px;font-size:13px{"" if str(gi) == dg else ";display:none"}">'
+                    f'Khewat <b>{esc(g["kwno"])}</b> · khata <b>{esc(g["ktno"])}</b> (change in section 2) — person: '
+                    f'<select data-rp-person data-g="{gi}" style="font:inherit;max-width:100%;padding:4px;border:1px solid #c9ced8;border-radius:6px">'
+                    f'<option value="-1"{" selected" if g.get("pdef", -1) == -1 else ""}>— Applicant ({esc(c.applicant)}) not in these lists —</option>'
+                    + (f'<optgroup label="Ownership column (khewat {esc(g["kwno"])})">{ow}</optgroup>' if ow else "")
+                    + (f'<optgroup label="Cultivation column (khata {esc(g["ktno"])})">{cu}</optgroup>' if cu else "")
+                    + '</select><div style="color:#5b6475;font-size:12px">If the spelling match picked the wrong person, choose the right name — both boxes, the scales and the overall update at once.</div></div>')
     th, heads = [], []
-    for i, s_ in enumerate(titles):
-        inner = scale_html("Eligibility", s_["score"]) + items_html([x for x in s_["items"] if not x.get("hidden")]) + box_html(s_["box"])
-        th.append(vwrap(i, inner))
+    for k, s_ in titles.items():
+        inner = scale_html("Eligibility (ownership and cultivation together)", s_["score"]) + items_html([x for x in s_["items"] if not x.get("hidden")]) + box_html([x for x in s_["box"] if not x.get("hidden")])
+        th.append(vwrap(k, inner))
         lv_, line_ = _headline(s_)
-        heads.append(vwrap(i, chip("Score", s_["score"]) + (f'<div class="sl {lv_}">{esc(_html.unescape(line_))[:180]}</div>' if line_ else ""), block=False))
-    h.append(f'<details class="sec"><summary><span class="stt">3 · Title and share</span>{"".join(heads)}</summary>{sel}{"".join(th)}</details>')
+        heads.append(vwrap(k, chip("Score", s_["score"]) + (f'<div class="sl {lv_}">{esc(_html.unescape(line_))[:180]}</div>' if line_ else ""), block=False))
+    h.append(f'<details class="sec"><summary><span class="stt">3 · Title and share</span>{"".join(heads)}</summary>{"".join(sels)}{"".join(th)}</details>')
     # 4 / 5
     if c.case == 1:
         h.append(_sec_html(secs["docs"]))
@@ -1511,7 +1605,7 @@ def render(c, rep, secs, titles, opts, default, ovs, rs, ai_err, skipped):
             sat = f'<div style="font-size:12px;color:#5b6475">Satellite check: {esc(c.sat_why)}.</div>'
         h.append(_sec_html(secs["report"], sat, "Report consistency"))
     # overall
-    oh = "".join(vwrap(i, overall_html(c, ovs[i])) for i in range(nvar))
+    oh = "".join(vwrap(k, overall_html(c, ovs[k])) for k in titles)
     h.append(f'<details class="sec ov" open><summary><span class="stt">Overall</span></summary>{oh}</details>')
     # case for Claude (default owner)
     h.append(f'<pre id="rpa-case" style="display:none">{esc(case_text(c, secs, titles[d], ovs[d]))}</pre>')
