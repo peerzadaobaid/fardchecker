@@ -1,11 +1,13 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.9.6
+FARD CHECKER VERSION 1.9.7
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.9.6"
+VERSION = "1.9.7"
 DATE = "6 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.9.7", "6 Nov 2026",
+     "Scan sync: the last scan of each login, analysis gists, choices, pre-scrutiny points and photo prints are kept in a private GitHub data repo (DATA_REPO + GITHUB_TOKEN on Render) and can be opened from any browser with the access key. Phone / Aadhaar numbers removed before saving. New file sync.py."),
     ("1.9.6", "6 Nov 2026",
      "Section 2 lists every khewat/khata holding the survey no. (ownership and cultivation in brief) with a select button; Title and share works on the selected one. Two separate boxes with their own scales: Ownership (khewat) — share, total alienated by the person in all khatas of the khewat (read from the khata column), remaining share; Cultivation (khata) — strictly the khata's cultivator cell (heirs not named → cultivation stands with the deceased). Person chosen from the khewat or khata list; choices remembered."),
     ("1.9.5", "5 Nov 2026",

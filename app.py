@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.6
+# FARD CHECKER VERSION 1.9.7
 """Revenue Plus Tracker — hosted tracker + application analyser (Flask, for Render).
 
 Environment variables (Render → Environment):
@@ -16,7 +16,7 @@ from flask import Flask, Response, jsonify, request, send_file
 import engine
 import version
 
-APP_FILES = ["version.py", "app.py", "engine.py", "report19.py", "tracker.js", "statuspdf.py", "pluscode.py", "gunicorn.conf.py", "requirements.txt"]
+APP_FILES = ["version.py", "app.py", "engine.py", "report19.py", "sync.py", "tracker.js", "statuspdf.py", "pluscode.py", "gunicorn.conf.py", "requirements.txt"]
 
 
 def file_versions():
@@ -85,8 +85,85 @@ def ping():
     fv = file_versions()
     return jsonify(ok=True, version=version.VERSION, version_date=version.DATE, files_ok=all(v == version.VERSION for v in fv.values()), files=fv,
                    key_ok=ok_key(), ai=reader != "free-ocr", reader=reader,
+                   sync=bool(os.environ.get("DATA_REPO") and os.environ.get("GITHUB_TOKEN")),
                    gemini_model=os.environ.get("GEMINI_MODEL", "gemini-3.8-flash") if reader == "gemini" else None,
                    python=sys.version.split()[0], versions=vers)
+
+
+# ── scan sync (private GitHub data repo) ──
+@app.get("/api/sync/status")
+def sync_status():
+    if not ok_key():
+        return jsonify(error="Wrong or missing access key"), 401
+    import sync
+    return jsonify(sync.check())
+
+
+@app.get("/api/sync/index")
+def sync_index():
+    if not ok_key():
+        return jsonify(error="Wrong or missing access key"), 401
+    import sync
+    if not sync.configured():
+        return jsonify(configured=False)
+    try:
+        return jsonify(configured=True, index=sync.index())
+    except Exception as e:
+        return jsonify(configured=True, error=str(e)[:300]), 502
+
+
+@app.post("/api/sync/scan")
+def sync_save_scan():
+    if not ok_key():
+        return jsonify(error="Wrong or missing access key"), 401
+    import sync
+    if not sync.configured():
+        return jsonify(error="Scan sync is not set up (DATA_REPO / GITHUB_TOKEN)"), 503
+    d = request.get_json(force=True, silent=True) or {}
+    try:
+        return jsonify(ok=True, index=sync.save_scan(d.get("login"), d.get("scan") or {}))
+    except Exception as e:
+        return jsonify(error=str(e)[:300]), 502
+
+
+@app.get("/api/sync/scan")
+def sync_load_scan():
+    if not ok_key():
+        return jsonify(error="Wrong or missing access key"), 401
+    import sync
+    if not sync.configured():
+        return jsonify(error="Scan sync is not set up"), 503
+    try:
+        return jsonify(scan=sync.load_scan(request.args.get("login")))
+    except Exception as e:
+        return jsonify(error=str(e)[:300]), 502
+
+
+@app.post("/api/sync/state")
+def sync_save_state():
+    if not ok_key():
+        return jsonify(error="Wrong or missing access key"), 401
+    import sync
+    if not sync.configured():
+        return jsonify(error="Scan sync is not set up"), 503
+    d = request.get_json(force=True, silent=True) or {}
+    try:
+        return jsonify(ok=True, counts=sync.save_state(d))
+    except Exception as e:
+        return jsonify(error=str(e)[:300]), 502
+
+
+@app.get("/api/sync/state")
+def sync_load_state():
+    if not ok_key():
+        return jsonify(error="Wrong or missing access key"), 401
+    import sync
+    if not sync.configured():
+        return jsonify(error="Scan sync is not set up"), 503
+    try:
+        return jsonify(state=sync.load_state())
+    except Exception as e:
+        return jsonify(error=str(e)[:300]), 502
 
 
 @app.get("/api/test-reader")
@@ -324,6 +401,13 @@ input{{font:inherit;padding:8px;border:1px solid #c9ced8;border-radius:8px}}
 if(!r.ok){{o.innerHTML='<span style="color:#b42318">'+(d.error||r.status)+'</span>';return}}
 o.innerHTML=(d.ok?'<b style="color:#145c36">✓ Working</b>':'<b style="color:#b42318">✗ Not working</b>')+' — '+(d.reader||'')+(d.model?' ('+d.model+')':'')+(d.secs!=null?' · '+d.secs+' s':'')+'<div class=m>'+String(d.reply||d.error||'').replace(/[<>&]/g,'')+'</div>'+
 (d.tried?'<div class=m>'+d.tried.map(function(t){{return (t.ok?'✓ ':'✗ ')+t.model+(t.why?' — '+String(t.why).replace(/[<>&]/g,''):'')}}).join('<br>')+'</div>':'')+(d.tried&&!d.ok&&d.tried.every(function(t){{return /limit 0/.test(t.why||'')}})?'<div class=m><b>All free limits show 0</b> — this key\'s Google project has no free quota. Create the key in a <b>new project</b> at aistudio.google.com (Get API key → Create API key in new project), or enable billing on the project.</div>':'')+(d.status==404?'<div class=m>Model name not found — set GEMINI_MODEL on Render to a current model.</div>':'')+(d.status==400||d.status==403?'<div class=m>Check the API key value on Render.</div>':'')}}catch(e){{o.textContent='Error: '+e}}}}</script></div>
+<div class="c"><h2>Scan sync (any browser)</h2><p class="m">Keeps the last scan of each login, the analysis gists and your choices in a <b>private</b> GitHub repo used only for data, so any browser with the access key can open them.
+Set <code>DATA_REPO</code> (e.g. peerzadaobaid/fardchecker-data) and <code>GITHUB_TOKEN</code> (fine-grained, that repo only, Contents: Read and write) in Render → Environment.</p>
+<p><input id="k3" placeholder="Access key" type="password"> <button onclick="testSync()">Check scan sync</button></p><div id="sy"></div>
+<script>async function testSync(){{var o=document.getElementById('sy');o.textContent='Checking…';try{{var r=await fetch('/api/sync/status?key='+encodeURIComponent(document.getElementById('k3').value));var d=await r.json();
+if(!r.ok){{o.innerHTML='<span style="color:#b42318">'+(d.error||r.status)+'</span>';return}}
+var ix=d.index||{{}};o.innerHTML=(d.ok?'<b style="color:#145c36">✓ Connected</b> to '+d.repo:'<b style="color:#b42318">✗ Not working</b> — '+String(d.why||'').replace(/[<>&]/g,''))+
+(d.ok?'<div class=m>'+(Object.keys(ix).length?Object.keys(ix).map(function(k){{return 'Last scan ('+k+'): '+new Date(ix[k].at).toLocaleString()+' — '+ix[k].n+' applications'+(ix[k].partial?' (partial)':'')}}).join('<br>'):'No scan saved yet.')+'</div>':'')}}catch(e){{o.textContent='Error: '+e}}}}</script></div>
 <div class="c"><h2>3 · Village data</h2><p class="m">One folder per village in GitHub: <code>villages/&lt;Village name&gt;/</code> with the Jamabandi .xlsx and the shapefile (.shp .shx .dbf .prj). To add a village, open the <code>villages</code> folder on GitHub → Add file → Upload files → drag the whole village folder. Optional <code>aliases.txt</code> (one spelling per line) if the portal spells the village differently. A tehsil-wide shapefile with a Village column can go in <code>villages/_maps/</code> instead of a shapefile per village.</p>
 <p><input id="k" placeholder="Access key" type="password"> <button onclick="load()">Show villages</button> <button onclick="all_()" style="background:#12355b">Check all</button></p><div id="vs"></div></div>
 <script>
