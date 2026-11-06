@@ -1,4 +1,4 @@
-// FARD CHECKER VERSION 1.9.9
+// FARD CHECKER VERSION 1.9.10
 !(function () {
   "use strict";
   if (window.__rpTracker) window.__rpTracker.open();
@@ -243,7 +243,7 @@
     b.style.cssText = "position:fixed;inset:0;z-index:2147483647;";
     var y = b.attachShadow({ mode: "open" });
     y.innerHTML =
-      '<style>:host{all:initial}*{box-sizing:border-box}.wrap{position:fixed;inset:0;background:#f4f5f7;color:#1d2330;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:auto;-webkit-text-size-adjust:100%}.bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 14px;background:#12355b;color:#fff}.bar b{font-size:16px;flex:1}.bar small{opacity:.8;font-weight:400;display:block;font-size:11px}button{font:inherit;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;background:#e6e9ef;color:#1d2330}button.pri{background:#1a7f5a;color:#fff}button.x{background:transparent;color:#fff;font-size:22px;padding:2px 8px}.box{max-width:1100px;margin:0 auto;padding:14px}.card{background:#fff;border:1px solid #e1e4ea;border-radius:12px;padding:14px;margin-bottom:12px}.warn{background:#fff7e0;border-color:#f0d58a}.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}.tile{background:#fff;border:1px solid #e1e4ea;border-radius:10px;padding:10px;cursor:pointer}.tile.on{outline:2px solid #12355b}.tile .n{font-size:24px;font-weight:700}.tile .l{font-size:12px;color:#5b6475}.prog{height:10px;background:#e1e4ea;border-radius:6px;overflow:hidden;margin:10px 0}.prog i{display:block;height:100%;background:#1a7f5a;width:0}.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}input.s{flex:1;min-width:180px;padding:9px 12px;border:1px solid #c9ced8;border-radius:8px;font:inherit}.chip{padding:6px 10px;border-radius:20px;background:#e6e9ef;font-size:12px}.chip.on{background:#12355b;color:#fff}table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}th,td{text-align:left;padding:8px;border-bottom:1px solid #eceef2;vertical-align:top}th{background:#f0f2f6;font-size:12px}tr.r{cursor:pointer}tr.r:hover{background:#f7f9fc}.st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;white-space:nowrap}.s0{background:#fde2e2;color:#8a1c1c}.s1{background:#fff0d6;color:#7a4b00}.s2{background:#dcecff;color:#123f7a}.s3{background:#dff5e8;color:#145c36}.s9{background:#eee;color:#555}.apps tr.lv-p,.apps tr.lv-p td{background:#fff7da}.apps tr.lv-p td:first-child{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g,.apps tr.lv-g td{background:#ddf3ef}.apps tr.lv-g td:first-child{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n,.apps tr.lv-n td{background:#ece5fb}.apps tr.lv-n td:first-child{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t,.apps tr.lv-t td{background:#eceef2}.apps tr.lv-t td:first-child{box-shadow:inset 5px 0 0 #6b7385}@media(max-width:640px){.apps tr.lv-p{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t{box-shadow:inset 5px 0 0 #6b7385}.apps tr.r td:first-child{box-shadow:none}}.lvl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.lv{border-radius:10px;padding:10px;cursor:pointer;border:1px solid #e1e4ea;background:#fff}.lv .n{font-size:22px;font-weight:700}.lv .l{font-size:12px;color:#5b6475}.lv.on{outline:2px solid #12355b}.lv.k-p{background:#fff7da;border-left:5px solid #d9a400}.lv.k-g{background:#ddf3ef;border-left:5px solid #1f9184}.lv.k-n{background:#ece5fb;border-left:5px solid #6b48c8}.lv.k-t{background:#eceef2;border-left:5px solid #6b7385}.lv.k-0{border-left:5px solid #c9ced8}input.num{width:56px;padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit}select{padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit;max-width:100%}table.tlv tr.vrow{cursor:pointer}table.tlv tr.vrow:hover td{background:#f7f9fc}table.tlv tr.sel td{background:#e4ecf7}table.tl td,table.tl th{padding:5px 8px}.d{font-weight:700}.d.hi{color:#c62828}.flag{color:#c62828;font-size:12px}.det td{background:#fafbfd;font-size:12px}.det p{margin:4px 0}.scroll{overflow-x:auto;border-radius:10px;border:1px solid #e1e4ea}h3{margin:0 0 8px;font-size:15px}.muted{color:#5b6475;font-size:12px}@media(max-width:640px){.apps thead{display:none}.apps tr.r{display:block;padding:8px 6px;border-bottom:1px solid #eceef2}.apps tr.r td{display:inline-block;border:0;padding:2px 10px 2px 0;vertical-align:top}.apps tr.det td{display:block}.bar b{font-size:15px}}.modal{font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d2330;position:fixed;inset:0;z-index:10;background:rgba(10,20,35,.6);display:flex;align-items:center;justify-content:center;padding:10px}.modal[hidden]{display:none}.mbox{background:#fff;border-radius:12px;width:min(980px,100%);height:min(92vh,960px);display:flex;flex-direction:column;overflow:hidden}.mhead{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #e1e4ea}.mhead b{flex:1;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mbody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#eef0f4}.mbody img{max-width:100%;max-height:100%;object-fit:contain}.mbody iframe{width:100%;height:100%;border:0;background:#fff}.docs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.docs button{padding:6px 10px;font-size:12px;background:#e4ecf7;color:#12355b}</style><div class="wrap"><div class="bar"><b>Revenue Plus Tracker<small>Read-only — never submits or changes anything · <span id="rpver">version 1.9.9</span><span id="rpwake"></span></small></b><button class="x" id="close">×</button></div><div id="rpscanbar" hidden style="position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid #d5dbe6;box-shadow:0 3px 8px rgba(16,32,60,.08)"></div><div class="box" id="main"></div></div><div class="modal" id="modal" hidden><div class="mbox"><div class="mhead"><b id="mtitle"></b><span id="macts" style="display:flex;gap:6px"></span><button id="mclose">Close</button></div><div class="mbody" id="mbody"></div></div></div>';
+      '<style>:host{all:initial}*{box-sizing:border-box}.wrap{position:fixed;inset:0;background:#f4f5f7;color:#1d2330;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:auto;-webkit-text-size-adjust:100%}.bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 14px;background:#12355b;color:#fff}.bar b{font-size:16px;flex:1}.bar small{opacity:.8;font-weight:400;display:block;font-size:11px}button{font:inherit;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;background:#e6e9ef;color:#1d2330}button.pri{background:#1a7f5a;color:#fff}button.x{background:transparent;color:#fff;font-size:22px;padding:2px 8px}.box{max-width:1100px;margin:0 auto;padding:14px}.card{background:#fff;border:1px solid #e1e4ea;border-radius:12px;padding:14px;margin-bottom:12px}.warn{background:#fff7e0;border-color:#f0d58a}.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}.tile{background:#fff;border:1px solid #e1e4ea;border-radius:10px;padding:10px;cursor:pointer}.tile.on{outline:2px solid #12355b}.tile .n{font-size:24px;font-weight:700}.tile .l{font-size:12px;color:#5b6475}.prog{height:10px;background:#e1e4ea;border-radius:6px;overflow:hidden;margin:10px 0}.prog i{display:block;height:100%;background:#1a7f5a;width:0}.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}input.s{flex:1;min-width:180px;padding:9px 12px;border:1px solid #c9ced8;border-radius:8px;font:inherit}.chip{padding:6px 10px;border-radius:20px;background:#e6e9ef;font-size:12px}.chip.on{background:#12355b;color:#fff}table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}th,td{text-align:left;padding:8px;border-bottom:1px solid #eceef2;vertical-align:top}th{background:#f0f2f6;font-size:12px}tr.r{cursor:pointer}tr.r:hover{background:#f7f9fc}.st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;white-space:nowrap}.s0{background:#fde2e2;color:#8a1c1c}.s1{background:#fff0d6;color:#7a4b00}.s2{background:#dcecff;color:#123f7a}.s3{background:#dff5e8;color:#145c36}.s9{background:#eee;color:#555}.apps tr.lv-p,.apps tr.lv-p td{background:#fff7da}.apps tr.lv-p td:first-child{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g,.apps tr.lv-g td{background:#ddf3ef}.apps tr.lv-g td:first-child{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n,.apps tr.lv-n td{background:#ece5fb}.apps tr.lv-n td:first-child{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t,.apps tr.lv-t td{background:#eceef2}.apps tr.lv-t td:first-child{box-shadow:inset 5px 0 0 #6b7385}@media(max-width:640px){.apps tr.lv-p{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t{box-shadow:inset 5px 0 0 #6b7385}.apps tr.r td:first-child{box-shadow:none}}.lvl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.lv{border-radius:10px;padding:10px;cursor:pointer;border:1px solid #e1e4ea;background:#fff}.lv .n{font-size:22px;font-weight:700}.lv .l{font-size:12px;color:#5b6475}.lv.on{outline:2px solid #12355b}.lv.k-p{background:#fff7da;border-left:5px solid #d9a400}.lv.k-g{background:#ddf3ef;border-left:5px solid #1f9184}.lv.k-n{background:#ece5fb;border-left:5px solid #6b48c8}.lv.k-t{background:#eceef2;border-left:5px solid #6b7385}.lv.k-0{border-left:5px solid #c9ced8}input.num{width:56px;padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit}select{padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit;max-width:100%}table.tlv tr.vrow{cursor:pointer}table.tlv tr.vrow:hover td{background:#f7f9fc}table.tlv tr.sel td{background:#e4ecf7}table.tl td,table.tl th{padding:5px 8px}.d{font-weight:700}.d.hi{color:#c62828}.flag{color:#c62828;font-size:12px}.det td{background:#fafbfd;font-size:12px}.det p{margin:4px 0}.scroll{overflow-x:auto;border-radius:10px;border:1px solid #e1e4ea}h3{margin:0 0 8px;font-size:15px}.muted{color:#5b6475;font-size:12px}@media(max-width:640px){.apps thead{display:none}.apps tr.r{display:block;padding:8px 6px;border-bottom:1px solid #eceef2}.apps tr.r td{display:inline-block;border:0;padding:2px 10px 2px 0;vertical-align:top}.apps tr.det td{display:block}.bar b{font-size:15px}}.modal{font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d2330;position:fixed;inset:0;z-index:10;background:rgba(10,20,35,.6);display:flex;align-items:center;justify-content:center;padding:10px}.modal[hidden]{display:none}.mbox{background:#fff;border-radius:12px;width:min(980px,100%);height:min(92vh,960px);display:flex;flex-direction:column;overflow:hidden}.mhead{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #e1e4ea}.mhead b{flex:1;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mbody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#eef0f4}.mbody img{max-width:100%;max-height:100%;object-fit:contain}.mbody iframe{width:100%;height:100%;border:0;background:#fff}.docs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.docs button{padding:6px 10px;font-size:12px;background:#e4ecf7;color:#12355b}</style><div class="wrap"><div class="bar"><b>Revenue Plus Tracker<small>Read-only — never submits or changes anything · <span id="rpver">version 1.9.10</span><span id="rpwake"></span></small></b><button class="x" id="close">×</button></div><div id="rpscanbar" hidden style="position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid #d5dbe6;box-shadow:0 3px 8px rgba(16,32,60,.08)"></div><div class="box" id="main"></div></div><div class="modal" id="modal" hidden><div class="mbox"><div class="mhead"><b id="mtitle"></b><span id="macts" style="display:flex;gap:6px"></span><button id="mclose">Close</button></div><div class="mbody" id="mbody"></div></div></div>';
     var w = y.getElementById("main");
     (y.getElementById("close").onclick = function () {
       location.assign(k.split("#")[0]);
@@ -2756,6 +2756,109 @@
       localStorage.setItem("rpPhotoFp", JSON.stringify(m));
     } catch (x) {}
   }
+  // ── v1.9.10 failed analyses: marked with the reason and a Redo button. A temporary failure (analyser busy, portal slow,
+  // connection dropped) is retried once by itself after 5 minutes and marked only if that also fails. Kept on this browser.
+  var RP_RETRY_MS = 5 * 6e4;
+  function rpFailTemp(err) {
+    var m = String((err && err.message) || err || "");
+    // busy / gateway errors / time-outs / dropped connection, and Render's own error page (HTML instead of the analyser's answer)
+    return !!err && (err.name === "AbortError" ||
+      /busy|HTTP 50[234]|timed?\s?out|did not respond|within 90|failed to fetch|networkerror|network error|connection|load failed|not valid JSON|Unexpected token/i.test(m));
+  }
+  function rpFailGet(e) {
+    var f = rpJ("rpFail")[rpKey(e)];
+    return f && f.ver === rpVer(e) && (f.at || 0) > rpReAllAt() ? f : null;
+  }
+  function rpFailHard(e) {
+    var f = rpFailGet(e);
+    return !!f && !f.retry;
+  }
+  function rpFailSave(m) {
+    try {
+      var ks = Object.keys(m).sort(function (a, b) {
+        return (m[b].at || 0) - (m[a].at || 0);
+      });
+      ks.slice(500).forEach(function (k) {
+        delete m[k];
+      });
+      localStorage.setItem("rpFail", JSON.stringify(m));
+    } catch (x) {}
+  }
+  function rpLive(e) {
+    var k = rpKey(e);
+    return (rpBG.items || []).filter(function (q) {
+      return rpKey(q) === k;
+    })[0] || e;
+  }
+  function rpFailNote(e, err, bg) {
+    var m = rpJ("rpFail"),
+      k = rpKey(e),
+      old = m[k] && m[k].ver === rpVer(e) ? m[k] : null,
+      temp = rpFailTemp(err),
+      o = {
+        ver: rpVer(e), n: ((old && old.n) || 0) + 1, at: Date.now(), temp: temp,
+        why: (err && err.stage ? "while " + err.stage + ": " : "") + String((err && err.message) || err || "unknown error").slice(0, 160),
+      };
+    o.retry = !!bg && temp && o.n === 1; // one automatic retry for a temporary failure
+    m[k] = o;
+    rpFailSave(m);
+    o.retry &&
+      setTimeout(function () {
+        var x = rpLive(e),
+          f = rpFailGet(x);
+        f && f.retry && !rpReady(x) && rpBGAdd(x, 0);
+      }, window.__rpRetryMs || RP_RETRY_MS);
+    rpFailShow();
+  }
+  function rpFailClear(e) {
+    var m = rpJ("rpFail");
+    if (m[rpKey(e)]) delete m[rpKey(e)], rpFailSave(m);
+  }
+  function rpRedo(e) {
+    e = rpLive(e);
+    rpFailClear(e);
+    rpBGAdd(e, -1); // ahead of everything else
+    rpFailShow();
+  }
+  function rpFailShow() {
+    rpSumRefresh();
+    rpRegPaint();
+    rpMarkButtons();
+    try {
+      rpPanel();
+    } catch (x) {}
+  }
+  function rpFailLine(e) {
+    var f = rpFailGet(e);
+    if (!f) return "";
+    return f.retry
+      ? '<span style="color:#8a5300">⟳ failed once — retrying by itself shortly</span> <span class="muted">(' + L(f.why) + ")</span>"
+      : '<b style="color:#b42318">✗ Analysis failed</b>' + (f.n > 1 ? " (" + f.n + " times)" : "") + ' <span class="muted">— ' + L(f.why) + " · " +
+          L(new Date(f.at).toLocaleString("en-IN")) + "</span>";
+  }
+  function rpRedoBtn(e) {
+    return ' <button data-redo="' + L(rpKey(e)) + '" style="padding:3px 10px;font-size:12px;background:#b42318;color:#fff">Redo</button>';
+  }
+  function rpBindRedo(root) {
+    if (!root) return;
+    Array.prototype.forEach.call(root.querySelectorAll("[data-redo]"), function (b) {
+      b.onclick = function (ev) {
+        ev.stopPropagation();
+        var e = (rpBG.items || rpSumItems || []).filter(function (q) {
+          return rpKey(q) === b.dataset.redo;
+        })[0];
+        e && ((b.disabled = !0), (b.textContent = "Queued …"), rpRedo(e));
+      };
+    });
+    var all = root.querySelector("#rpredoall");
+    all &&
+      (all.onclick = function (ev) {
+        ev.stopPropagation();
+        (rpSumItems || []).forEach(function (e) {
+          rpFailGet(e) && !rpReady(e) && rpRedo(e);
+        });
+      });
+  }
   // ── Analysis summary: one line per application, Case 1 and Case 2 in separate tables
   var rpSumItems = null,
     rpSumGo = null;
@@ -2783,7 +2886,9 @@
               ? '<b style="color:' + col + '">' + (g.score == null ? "—" : g.score) + "/100</b> — " + L(g.text || "") +
                 (rpReverted(e) ? ' <b style="color:#8a5300">· ↩ reverted to Patwari, awaiting resubmission</b>' : "") +
                 ((rpReady(e) || {}).appv && (rpReady(e) || {}).appv !== rpAppVersion() ? ' <span class="muted">· v' + L((rpReady(e) || {}).appv) + "</span>" : "")
-              : '<span class="muted">' + (rpEligible(e) ? "Analysis pending (runs in the background)" : "No documents to analyse") + "</span>") +
+              : rpFailGet(e)
+                ? rpFailLine(e) + rpRedoBtn(e)
+                : '<span class="muted">' + (rpEligible(e) ? "Analysis pending (runs in the background)" : "No documents to analyse") + "</span>") +
             "</td></tr>"
           );
         })
@@ -2794,13 +2899,31 @@
         (rows || '<tr><td colspan="5" class="muted">None</td></tr>') + "</tbody></table></div></div>"
       );
     }
+    var fl = (items || []).filter(function (e) {
+        return rpEligible(e) && !rpReady(e) && rpFailGet(e);
+      }),
+      failCard = fl.length
+        ? '<div class="card" style="border:2px solid #b42318"><div class="tools" style="margin:0 0 6px"><h3 style="margin:0;flex:1">Analysis failed (' + fl.length +
+          ')</h3><button id="rpredoall" style="background:#b42318;color:#fff">Redo all failed</button></div><div class="muted" style="margin:0 0 6px">A temporary failure (analyser busy, portal slow) is retried once by itself; these need Redo. The mark clears when the analysis succeeds.</div><div class="scroll"><table><thead><tr><th>App. no.</th><th>Applicant</th><th>Village</th><th>Survey no.</th><th>Why</th></tr></thead><tbody>' +
+          fl
+            .map(function (e) {
+              return (
+                '<tr class="sumr" data-k="' + L(rpKey(e)) + '" style="cursor:pointer"><td><b>…' + L(String(e.appNo || "").slice(-4)) + '</b><div class="muted">' + L(e.service || "") + "</div></td><td>" +
+                L(e.name || "") + "</td><td>" + L(e.village || "") + "</td><td>" + L(e.khasra || "") + "</td><td>" + rpFailLine(e) + rpRedoBtn(e) + "</td></tr>"
+              );
+            })
+            .join("") +
+          "</tbody></table></div></div>"
+        : "";
     return (
+      failCard +
       tbl(c1, "Stage 1 — Applicant's submission (Patwari report and tatima not yet in)", "Photo, survey record, title and documents. Tap a row to open that application.") +
       tbl(c2, "Stage 2 — Patwari's report and tatima submitted", "Includes the tatima and the report's contradictions. Tap a row to open that application.")
     );
   }
   function rpSumBind() {
     var box = y.getElementById("rpsum");
+    rpBindRedo(box);
     box &&
       Array.prototype.forEach.call(box.querySelectorAll("tr.sumr"), function (r) {
         r.onclick = function () {
@@ -3244,6 +3367,7 @@
       var j = await resp.json();
       if (!resp.ok) throw new Error(j.error || "HTTP " + resp.status);
       rpCachePut(e, j.html, j.gist);
+      rpFailClear(e);
       if (j.saved_online) {
         var rr = rpJ("rpRepRemote");
         rr[rpKey(e)] = { ver: rpVer(e), appv: rpAppVersion(), at: Date.now() };
@@ -3483,6 +3607,7 @@
       show(html);
       rpStartBackground(); // key may have just been entered
     } catch (err) {
+      err && err.stage !== "key" && err.stage !== "aborted" && rpFailNote(e, err, !1);
       st(
         "Analysis failed while " +
           (err.stage || "working") +
@@ -3694,10 +3819,16 @@
           failed.push("KMZ (analysis failed: " + String((x && x.message) || x).slice(0, 100) + ")");
         }
       }
-      var km = html && /download="([^"]+\.kmz)"\s+href="data:application\/vnd\.google-earth\.kmz;base64,([^"]+)"/.exec(html);
-      if (km) await put(base + " - map with tatima.kmz", rpB64Blob(km[2], "application/vnd.google-earth.kmz"));
-      else if (html) failed.push("KMZ (village map or khasra not found, or no tatima — so no KMZ was made)");
-      var nearM = html && /Survey no\. (\S+) not on map — nearest available (\S+) shown/.exec(html);
+      // v1.9.10: a KMZ is always saved — with the tatima when there is one, and of the nearest available survey no. when this one is not on the map
+      var km = html && /download="([^"]+\.kmz)"\s+href="data:application\/vnd\.google-earth\.kmz;base64,([^"]+)"/.exec(html),
+        nearM = km && /^survey_(.+)_not_on_map_nearest_(.+?)(?:_with_tatima)?\.kmz$/.exec(km[1]),
+        withT = km && /_with_tatima\.kmz$/.test(km[1]);
+      if (km)
+        await put(
+          base + (nearM ? " - map of nearest " + nearM[2] + " (" + nearM[1] + " not on map)" : " - map") + (withT ? " with tatima" : "") + ".kmz",
+          rpB64Blob(km[2], "application/vnd.google-earth.kmz"),
+        );
+      else if (html) failed.push("KMZ — no village map on file for " + (e.village || "this village") + ", so no KMZ could be made");
       var out = [
         "Survey no.: " + (e.khasra || ""),
         "Village: " + (e.village || ""),
@@ -3831,6 +3962,9 @@
     }
     var b = rpBG,
       left = b.queue.length + (b.cur ? 1 : 0);
+    b.items && (b.done = b.items.filter(function (q) {
+      return rpEligible(q) && rpReady(q);
+    }).length); // counted from what is actually ready (failed ones are not "ready")
     if (!b.total) return (p.style.display = "none"), p;
     p.style.display = "block";
     p.innerHTML =
@@ -3839,7 +3973,12 @@
       " of " +
       b.total +
       " ready" +
-      (b.failed ? ", " + b.failed + " failed" : "") +
+      (function () {
+        var nf = (b.items || []).filter(function (q) {
+          return rpEligible(q) && !rpReady(q) && rpFailHard(q);
+        }).length;
+        return nf ? ", <b>" + nf + " failed</b> — see “Analysis failed” in the summary (Redo there)" : "";
+      })() +
       (rpStats.n
         ? '<div style="opacity:.85;font-size:12px">Average per application: documents ' + Math.round(rpStats.f / rpStats.n) + " s · analysis " + Math.round(rpStats.a / rpStats.n) +
           " s (fetching the next one runs alongside)</div>"
@@ -3873,9 +4012,11 @@
         return rpKey(t) === btn.dataset.k;
       })[0];
       if (!it) return;
-      var ready = rpReady(it);
-      btn.textContent = ready ? "Open analysis ✓ (ready)" : "Analyse with village records";
-      btn.style.background = ready ? "#1a7f5a" : "#12355b";
+      var ready = rpReady(it),
+        fl = !ready && rpFailGet(it);
+      btn.textContent = ready ? "Open analysis ✓ (ready)" : fl ? (fl.retry ? "Failed once — retrying shortly (tap to run now)" : "Analysis failed — Redo") : "Analyse with village records";
+      btn.style.background = ready ? "#1a7f5a" : fl && !fl.retry ? "#b42318" : "#12355b";
+      btn.title = fl ? "Last failure: " + fl.why : "";
     });
   }
   function rpStartBackground(items) {
@@ -3884,7 +4025,7 @@
       rpBG.gen++;
       rpBG.items = items;
       rpBG.queue = items.filter(function (e) {
-        return rpEligible(e) && !rpReady(e);
+        return rpEligible(e) && !rpReady(e) && !rpFailHard(e); // marked failures wait for Redo
       });
       rpBG.total = items.filter(rpEligible).length;
       rpBG.done = rpBG.total - rpBG.queue.length;
@@ -3902,8 +4043,8 @@
     try {
       while (rpBG.queue.length && !rpBG.paused && gen === rpBG.gen && !A && !rpBG.userWaiting) {
         var e = rpBG.queue.shift();
-        if (rpReady(e)) {
-          rpBG.done++;
+        if (rpReady(e) || rpFailHard(e)) {
+          rpReady(e) && rpBG.done++;
           continue;
         }
         rpBG.cur = (e.name || e.appNo) + (e.village ? " · " + e.village : "") + (e.khasra ? " · khasra " + e.khasra : "");
@@ -3928,7 +4069,7 @@
             rpBG.queue.unshift(e);
             rpBG.failed--;
             await C(30000); // Render waking up — retry in 30 s
-          }
+          } else rpFailNote(e, err, !0);
         }
         rpBG.cur = "";
         rpPanel();
@@ -4229,6 +4370,7 @@
     if (rpReady(e)) return '<b style="color:#145c36">ready ✓</b>';
     if (!rpEligible(e)) return '<span class="muted">no documents to analyse</span>';
     if (rpCurrent && rpCurrent.ck === rpKey(e)) return '<b style="color:#12355b">being analysed now …</b>';
+    if (rpFailGet(e)) return rpFailLine(e) + rpRedoBtn(e);
     return '<span style="color:#8a5300">queued for analysis</span>';
   }
   function rpRegRow(e, extra) {
@@ -4336,6 +4478,7 @@
           e && rpReady(e) ? rpAnalyse(e, !1) : rpSumGo && rpSumGo(r.dataset.k);
         };
       });
+      rpBindRedo(top), rpBindRedo(bot);
       var det = y.getElementById("rparch");
       det &&
         (det.ontoggle = function () {
@@ -4352,7 +4495,7 @@
   function Re(e) {
     return null != e.stageDays ? e.stageDays : e.days;
   }
-  var RP_TRACKER_VERSION = "1.9.9";
+  var RP_TRACKER_VERSION = "1.9.10";
   (function () {
     try {
       window.__rpApiBase && fetch(window.__rpApiBase + "/api/ping", { cache: "no-store" }).catch(function () {});

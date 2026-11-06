@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.9
+# FARD CHECKER VERSION 1.9.10
 """Revenue Plus application analyser — village records, document reading and checks.
 
 Village data lives in the repo:  villages/<Village name>/<anything>.xlsx  (Jamabandi export)
@@ -1954,10 +1954,12 @@ def sketch_overlay(rep):
 def build_kmz(rep):
     import zipfile
     buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-        z.writestr("doc.kml", build_kml(rep, "files/tatima.jpg"))
-        z.writestr("files/tatima.jpg", base64.b64decode(rep.tatima["data"]))
-        if getattr(rep, "overlay", None):
+    tat = getattr(rep, "tatima", None)
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:     # v1.9.10: a KMZ is always made; the tatima goes in when there is one
+        z.writestr("doc.kml", build_kml(rep, "files/tatima.jpg" if tat else None))
+        if tat:
+            z.writestr("files/tatima.jpg", base64.b64decode(tat["data"]))
+        if tat and getattr(rep, "overlay", None):
             z.writestr("files/sketch.png", base64.b64decode(rep.overlay["png"]))
     return base64.b64encode(buf.getvalue()).decode()
 
@@ -1986,14 +1988,18 @@ def coords_block(rep):
                     f'<div style="font:12px/1.6 ui-monospace,monospace;color:#3b4456">{esc(pts)}</div></details>')
     # KML / KMZ downloads (KMZ also carries the Patwari's tatima page)
     href = "data:application/vnd.google-earth.kml+xml;charset=utf-8," + urllib.parse.quote(build_kml(rep))
-    links = f'<a {a} download="khasra_{esc(p["khasra"])}.kml" href="{href}">Download KML</a>'
-    if getattr(rep, "tatima", None):
-        try:
-            kmz = "data:application/vnd.google-earth.kmz;base64," + build_kmz(rep)
-            links = (f'<a {a} download="khasra_{esc(p["khasra"])}_with_tatima.kmz" href="{kmz}">Download KMZ with Patwari\'s tatima'
-                     + (" (sketch laid over the map)" if getattr(rep, "overlay", None) else "") + '</a> · ' + links)
-        except Exception:
-            pass
+    nr = getattr(rep, "near", None)
+    stem = (f"survey_{nr['asked']}_not_on_map_nearest_{p['khasra']}" if nr else f"khasra_{p['khasra']}").replace("/", "-")
+    links = f'<a {a} download="{esc(stem)}.kml" href="{href}">Download KML</a>'
+    tat = getattr(rep, "tatima", None)
+    try:
+        kmz = "data:application/vnd.google-earth.kmz;base64," + build_kmz(rep)
+        what = ("KMZ with Patwari\'s tatima" + (" (sketch laid over the map)" if getattr(rep, "overlay", None) else "")) if tat else "KMZ"
+        if nr:
+            what += f" — nearest available {esc(p['khasra'])}, {esc(nr['asked'])} is not on the map"
+        links = (f'<a {a} data-kmz="1" download="{esc(stem)}{"_with_tatima" if tat else ""}.kmz" href="{kmz}">Download {what}</a> · ' + links)
+    except Exception:
+        pass
     rows.append(f'<div style="margin-top:4px">{links} <span style="color:#5b6475">(open in Google Earth)</span></div></div>')
     return "".join(rows)
 

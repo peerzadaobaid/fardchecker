@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.9
+# FARD CHECKER VERSION 1.9.10
 """Analysis report (v1.9).
 
 Stage 1 — only the applicant's submission (no Patwari report yet).
@@ -363,6 +363,40 @@ def photo_section(c, photo_page, other_fps):
 
 
 # ───────────────────────────── 2. Survey no. and its record ─────────────────────────────
+def _survey_area_point(c, s, K):
+    """v1.9.10 — always the first point of section 2: area of the survey no. as drawn on the village map against the total of
+    all its entries (every khewat / khata) in the Jamabandi. Agree = within 15% (at least 3 marla)."""
+    total = sum(e["area_marla"] or 0 for e in c.fam)
+    kk = []
+    for e in c.fam:
+        x = f'{e["khewat_no"]}/{e["khata_no"]}'
+        x in kk or kk.append(x)
+    jb_txt = (f"in the Jamabandi <b>{km(total)}</b> (total of {len(c.fam)} entr{'y' if len(c.fam) == 1 else 'ies'}"
+              + (f" in khewat/khata {esc(', '.join(kk[:8]))}{' …' if len(kk) > 8 else ''}" if kk else "") + ")")
+    head = f"<b>Area of survey no. {esc(K)}:</b> "
+    mp = c.v.get("map") if c.v else None
+    if not mp:
+        it(s, "amber", head + f"no village map on file for {esc(c.village)} — the map area cannot be compared and no KML / KMZ can be made. "
+                              f"Area {jb_txt}.")
+    else:
+        on_map = [q for q in mp["parcels"] if main_no(q["khasra"], c.v) == K]
+        if on_map:
+            m2 = sum(q["m"].area for q in on_map) / MARLA_M2
+            d = m2 - total
+            pct = (abs(d) / total * 100) if total else None
+            txt = (head + f"on the map <b>{km(m2)}</b> ({len(on_map)} parcel{'s' if len(on_map) != 1 else ''}) · {jb_txt} · difference <b>{km(abs(d))}</b>"
+                   + (f" ({pct:.0f}%)" if pct is not None else "") + (" — map larger" if d > 0.25 else " — map smaller" if d < -0.25 else ""))
+            if total and abs(d) > max(3, 0.15 * total):
+                it(s, "amber", txt + " — more than 15% apart.")
+            else:
+                it(s, "green", txt + " — they agree.")
+        else:
+            it(s, "amber", head + f"not drawn on the village map, so the map area is not available"
+                                  + (f"; the nearest available survey no. <b>{esc(c.near['shown'])}</b> is shown on the map and in the KML / KMZ for locality only" if c.near else "")
+                                  + f". Area {jb_txt}.")
+    s["items"].insert(0, s["items"].pop())          # first point of the section
+
+
 def survey_section(c):
     s = new_sec(f"2 · Survey no. {c.K or c.khasra or '?'} and its record")
     c.total = c.alien = None
@@ -384,6 +418,7 @@ def survey_section(c):
            ("survey-missing", f"Survey no. {c.khasra} not found in the digitised Jamabandi of {c.village}."))
         s["score"] = cap_score(10, ["red"])
         return s
+    _survey_area_point(c, s, K)
     TD = '<td style="padding:4px 6px;border-bottom:1px solid #eceef2;vertical-align:top">'
     rows = ['<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px;margin:4px 0">'
             '<tr style="background:#f0f2f6"><th style="text-align:left;padding:4px 6px">Khasra</th><th style="text-align:left;padding:4px 6px">Khewat / Khata</th>'
@@ -424,15 +459,6 @@ def survey_section(c):
                ("survey-balance", f"Area applied {km(c.applied)} exceeds the unalienated balance {km(bal)} of survey no. {K}."))
         else:
             it(s, "green", f"Area applied ({km(c.applied)}) is within the unalienated balance ({km(bal)}).")
-    # map
-    if c.v.get("map"):
-        on_map = [q for q in c.v["map"]["parcels"] if main_no(q["khasra"], c.v) == K]
-        if on_map:
-            m2 = sum(q["m"].area for q in on_map) / MARLA_M2
-            if total and abs(m2 - total) > max(3, 0.15 * total):
-                it(s, "amber", f"Measured on the map {km(m2)} against {km(total)} in the Jamabandi (more than 15% apart).")
-        elif c.near:
-            it(s, "amber", f"Survey no. {esc(K)} is not drawn on the village map — nearest available {esc(c.near['shown'])} is shown for locality only.")
     # Case 2 box: certificate vs record, final mutation
     if c.case == 2:
         f = c.f

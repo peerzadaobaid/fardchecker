@@ -1,11 +1,13 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.9.9
+FARD CHECKER VERSION 1.9.10
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.9.9"
-DATE = "6 Nov 2026"
+VERSION = "1.9.10"
+DATE = "7 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.9.10", "7 Nov 2026",
+     "A KMZ is always made — with the Patwari's tatima when there is one; when the survey no. is not on the village map, of the nearest available survey no. and its neighbours, named and labelled as such (only a village with no map on file has none, and the report says so). Section 2 opens with the area of the survey no. on the map against the total of all its entries in the Jamabandi (agree within 15%, at least 3 marla). Failed analyses are marked with the reason and a Redo button (Analysis failed list, Redo all failed); a temporary failure is retried once by itself after 5 minutes."),
     ("1.9.9", "6 Nov 2026",
      "Fard register: on opening, every application known from earlier scans (this browser or the online register) is shown at once with its saved analysis. The Dashboard list is then compared with the register — new applications are read and analysed first, those no longer on the list move to the Disposed archive (kept ARCHIVE_DAYS days, default 365), and the rest are re-read quietly; only a stage change, a Patwari resubmission or changed documents is analysed again. Analysed reports are saved online (photo, compression and satellite pictures removed, tatima as a reduced copy) so any browser opens them; this browser keeps full reports without the earlier limit of 12. Screen: New since last time, Ready (Stage 1 / Stage 2), Updating, Disposed. 'New scan' is now 'Full rescan'."),
     ("1.9.8", "6 Nov 2026",

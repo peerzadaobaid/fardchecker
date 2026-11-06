@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.9
+# FARD CHECKER VERSION 1.9.10
 """Scan sync — keeps the last scan (per login) and the shared tracker state in a PRIVATE GitHub repo,
 so any browser with the access key can open them.
 
@@ -215,6 +215,8 @@ def slim_html(html, clean=None):
         return ('<div style="display:inline-block;padding:10px 12px;border:1px dashed #c9ced8;border-radius:6px;color:#5b6475;font-size:12px">'
                 f'{alt or "picture"} — not kept in the online copy (tap Run again for the full report)</div>')
     html = _IMG.sub(one, html or "")
+    # downloads inside the report (KML / KMZ) are kept as they are, and never touched by the number scrubbing
+    html = re.sub(r'href="(data:[^"]+)"', lambda m: (keep.append(m.group(0)), f"\x00IMG{len(keep) - 1}\x00")[1], html)
     html = _IMG_ANY.sub('<span style="color:#5b6475;font-size:12px">[picture not kept online]</span>', html)
     if clean:
         html = clean(html)
