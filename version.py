@@ -1,11 +1,15 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.9.7
+FARD CHECKER VERSION 1.9.9
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.9.7"
+VERSION = "1.9.9"
 DATE = "6 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.9.9", "6 Nov 2026",
+     "Fard register: on opening, every application known from earlier scans (this browser or the online register) is shown at once with its saved analysis. The Dashboard list is then compared with the register — new applications are read and analysed first, those no longer on the list move to the Disposed archive (kept ARCHIVE_DAYS days, default 365), and the rest are re-read quietly; only a stage change, a Patwari resubmission or changed documents is analysed again. Analysed reports are saved online (photo, compression and satellite pictures removed, tatima as a reduced copy) so any browser opens them; this browser keeps full reports without the earlier limit of 12. Screen: New since last time, Ready (Stage 1 / Stage 2), Updating, Disposed. 'New scan' is now 'Full rescan'."),
+    ("1.9.8", "6 Nov 2026",
+     "Two stages: Stage 1 (applicant only; a Patwari comment alone stays Stage 1) and Stage 2 (Patwari report + tatima). Re-analysed only when the stage changes, the Patwari resubmits or documents change — not on Girdawar / Naib Tehsildar / Tehsildar comments, and not on a new version. Reverted-to-Patwari note on the report; after a resubmission the earlier points are marked corrected / still open. Re-analyse all button. Case 1/2 renamed Stage 1/2."),
     ("1.9.7", "6 Nov 2026",
      "Scan sync: the last scan of each login, analysis gists, choices, pre-scrutiny points and photo prints are kept in a private GitHub data repo (DATA_REPO + GITHUB_TOKEN on Render) and can be opened from any browser with the access key. Phone / Aadhaar numbers removed before saving. New file sync.py."),
     ("1.9.6", "6 Nov 2026",

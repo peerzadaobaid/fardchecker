@@ -1,4 +1,4 @@
-// FARD CHECKER VERSION 1.9.7
+// FARD CHECKER VERSION 1.9.9
 !(function () {
   "use strict";
   if (window.__rpTracker) window.__rpTracker.open();
@@ -243,7 +243,7 @@
     b.style.cssText = "position:fixed;inset:0;z-index:2147483647;";
     var y = b.attachShadow({ mode: "open" });
     y.innerHTML =
-      '<style>:host{all:initial}*{box-sizing:border-box}.wrap{position:fixed;inset:0;background:#f4f5f7;color:#1d2330;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:auto;-webkit-text-size-adjust:100%}.bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 14px;background:#12355b;color:#fff}.bar b{font-size:16px;flex:1}.bar small{opacity:.8;font-weight:400;display:block;font-size:11px}button{font:inherit;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;background:#e6e9ef;color:#1d2330}button.pri{background:#1a7f5a;color:#fff}button.x{background:transparent;color:#fff;font-size:22px;padding:2px 8px}.box{max-width:1100px;margin:0 auto;padding:14px}.card{background:#fff;border:1px solid #e1e4ea;border-radius:12px;padding:14px;margin-bottom:12px}.warn{background:#fff7e0;border-color:#f0d58a}.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}.tile{background:#fff;border:1px solid #e1e4ea;border-radius:10px;padding:10px;cursor:pointer}.tile.on{outline:2px solid #12355b}.tile .n{font-size:24px;font-weight:700}.tile .l{font-size:12px;color:#5b6475}.prog{height:10px;background:#e1e4ea;border-radius:6px;overflow:hidden;margin:10px 0}.prog i{display:block;height:100%;background:#1a7f5a;width:0}.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}input.s{flex:1;min-width:180px;padding:9px 12px;border:1px solid #c9ced8;border-radius:8px;font:inherit}.chip{padding:6px 10px;border-radius:20px;background:#e6e9ef;font-size:12px}.chip.on{background:#12355b;color:#fff}table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}th,td{text-align:left;padding:8px;border-bottom:1px solid #eceef2;vertical-align:top}th{background:#f0f2f6;font-size:12px}tr.r{cursor:pointer}tr.r:hover{background:#f7f9fc}.st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;white-space:nowrap}.s0{background:#fde2e2;color:#8a1c1c}.s1{background:#fff0d6;color:#7a4b00}.s2{background:#dcecff;color:#123f7a}.s3{background:#dff5e8;color:#145c36}.s9{background:#eee;color:#555}.apps tr.lv-p,.apps tr.lv-p td{background:#fff7da}.apps tr.lv-p td:first-child{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g,.apps tr.lv-g td{background:#ddf3ef}.apps tr.lv-g td:first-child{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n,.apps tr.lv-n td{background:#ece5fb}.apps tr.lv-n td:first-child{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t,.apps tr.lv-t td{background:#eceef2}.apps tr.lv-t td:first-child{box-shadow:inset 5px 0 0 #6b7385}@media(max-width:640px){.apps tr.lv-p{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t{box-shadow:inset 5px 0 0 #6b7385}.apps tr.r td:first-child{box-shadow:none}}.lvl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.lv{border-radius:10px;padding:10px;cursor:pointer;border:1px solid #e1e4ea;background:#fff}.lv .n{font-size:22px;font-weight:700}.lv .l{font-size:12px;color:#5b6475}.lv.on{outline:2px solid #12355b}.lv.k-p{background:#fff7da;border-left:5px solid #d9a400}.lv.k-g{background:#ddf3ef;border-left:5px solid #1f9184}.lv.k-n{background:#ece5fb;border-left:5px solid #6b48c8}.lv.k-t{background:#eceef2;border-left:5px solid #6b7385}.lv.k-0{border-left:5px solid #c9ced8}input.num{width:56px;padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit}select{padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit;max-width:100%}table.tlv tr.vrow{cursor:pointer}table.tlv tr.vrow:hover td{background:#f7f9fc}table.tlv tr.sel td{background:#e4ecf7}table.tl td,table.tl th{padding:5px 8px}.d{font-weight:700}.d.hi{color:#c62828}.flag{color:#c62828;font-size:12px}.det td{background:#fafbfd;font-size:12px}.det p{margin:4px 0}.scroll{overflow-x:auto;border-radius:10px;border:1px solid #e1e4ea}h3{margin:0 0 8px;font-size:15px}.muted{color:#5b6475;font-size:12px}@media(max-width:640px){.apps thead{display:none}.apps tr.r{display:block;padding:8px 6px;border-bottom:1px solid #eceef2}.apps tr.r td{display:inline-block;border:0;padding:2px 10px 2px 0;vertical-align:top}.apps tr.det td{display:block}.bar b{font-size:15px}}.modal{font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d2330;position:fixed;inset:0;z-index:10;background:rgba(10,20,35,.6);display:flex;align-items:center;justify-content:center;padding:10px}.modal[hidden]{display:none}.mbox{background:#fff;border-radius:12px;width:min(980px,100%);height:min(92vh,960px);display:flex;flex-direction:column;overflow:hidden}.mhead{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #e1e4ea}.mhead b{flex:1;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mbody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#eef0f4}.mbody img{max-width:100%;max-height:100%;object-fit:contain}.mbody iframe{width:100%;height:100%;border:0;background:#fff}.docs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.docs button{padding:6px 10px;font-size:12px;background:#e4ecf7;color:#12355b}</style><div class="wrap"><div class="bar"><b>Revenue Plus Tracker<small>Read-only — never submits or changes anything · <span id="rpver">version 1.9.7</span><span id="rpwake"></span></small></b><button class="x" id="close">×</button></div><div id="rpscanbar" hidden style="position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid #d5dbe6;box-shadow:0 3px 8px rgba(16,32,60,.08)"></div><div class="box" id="main"></div></div><div class="modal" id="modal" hidden><div class="mbox"><div class="mhead"><b id="mtitle"></b><span id="macts" style="display:flex;gap:6px"></span><button id="mclose">Close</button></div><div class="mbody" id="mbody"></div></div></div>';
+      '<style>:host{all:initial}*{box-sizing:border-box}.wrap{position:fixed;inset:0;background:#f4f5f7;color:#1d2330;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:auto;-webkit-text-size-adjust:100%}.bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:10px 14px;background:#12355b;color:#fff}.bar b{font-size:16px;flex:1}.bar small{opacity:.8;font-weight:400;display:block;font-size:11px}button{font:inherit;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;background:#e6e9ef;color:#1d2330}button.pri{background:#1a7f5a;color:#fff}button.x{background:transparent;color:#fff;font-size:22px;padding:2px 8px}.box{max-width:1100px;margin:0 auto;padding:14px}.card{background:#fff;border:1px solid #e1e4ea;border-radius:12px;padding:14px;margin-bottom:12px}.warn{background:#fff7e0;border-color:#f0d58a}.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}.tile{background:#fff;border:1px solid #e1e4ea;border-radius:10px;padding:10px;cursor:pointer}.tile.on{outline:2px solid #12355b}.tile .n{font-size:24px;font-weight:700}.tile .l{font-size:12px;color:#5b6475}.prog{height:10px;background:#e1e4ea;border-radius:6px;overflow:hidden;margin:10px 0}.prog i{display:block;height:100%;background:#1a7f5a;width:0}.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}input.s{flex:1;min-width:180px;padding:9px 12px;border:1px solid #c9ced8;border-radius:8px;font:inherit}.chip{padding:6px 10px;border-radius:20px;background:#e6e9ef;font-size:12px}.chip.on{background:#12355b;color:#fff}table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}th,td{text-align:left;padding:8px;border-bottom:1px solid #eceef2;vertical-align:top}th{background:#f0f2f6;font-size:12px}tr.r{cursor:pointer}tr.r:hover{background:#f7f9fc}.st{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;white-space:nowrap}.s0{background:#fde2e2;color:#8a1c1c}.s1{background:#fff0d6;color:#7a4b00}.s2{background:#dcecff;color:#123f7a}.s3{background:#dff5e8;color:#145c36}.s9{background:#eee;color:#555}.apps tr.lv-p,.apps tr.lv-p td{background:#fff7da}.apps tr.lv-p td:first-child{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g,.apps tr.lv-g td{background:#ddf3ef}.apps tr.lv-g td:first-child{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n,.apps tr.lv-n td{background:#ece5fb}.apps tr.lv-n td:first-child{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t,.apps tr.lv-t td{background:#eceef2}.apps tr.lv-t td:first-child{box-shadow:inset 5px 0 0 #6b7385}@media(max-width:640px){.apps tr.lv-p{box-shadow:inset 5px 0 0 #d9a400}.apps tr.lv-g{box-shadow:inset 5px 0 0 #1f9184}.apps tr.lv-n{box-shadow:inset 5px 0 0 #6b48c8}.apps tr.lv-t{box-shadow:inset 5px 0 0 #6b7385}.apps tr.r td:first-child{box-shadow:none}}.lvl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.lv{border-radius:10px;padding:10px;cursor:pointer;border:1px solid #e1e4ea;background:#fff}.lv .n{font-size:22px;font-weight:700}.lv .l{font-size:12px;color:#5b6475}.lv.on{outline:2px solid #12355b}.lv.k-p{background:#fff7da;border-left:5px solid #d9a400}.lv.k-g{background:#ddf3ef;border-left:5px solid #1f9184}.lv.k-n{background:#ece5fb;border-left:5px solid #6b48c8}.lv.k-t{background:#eceef2;border-left:5px solid #6b7385}.lv.k-0{border-left:5px solid #c9ced8}input.num{width:56px;padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit}select{padding:6px;border:1px solid #c9ced8;border-radius:6px;font:inherit;max-width:100%}table.tlv tr.vrow{cursor:pointer}table.tlv tr.vrow:hover td{background:#f7f9fc}table.tlv tr.sel td{background:#e4ecf7}table.tl td,table.tl th{padding:5px 8px}.d{font-weight:700}.d.hi{color:#c62828}.flag{color:#c62828;font-size:12px}.det td{background:#fafbfd;font-size:12px}.det p{margin:4px 0}.scroll{overflow-x:auto;border-radius:10px;border:1px solid #e1e4ea}h3{margin:0 0 8px;font-size:15px}.muted{color:#5b6475;font-size:12px}@media(max-width:640px){.apps thead{display:none}.apps tr.r{display:block;padding:8px 6px;border-bottom:1px solid #eceef2}.apps tr.r td{display:inline-block;border:0;padding:2px 10px 2px 0;vertical-align:top}.apps tr.det td{display:block}.bar b{font-size:15px}}.modal{font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1d2330;position:fixed;inset:0;z-index:10;background:rgba(10,20,35,.6);display:flex;align-items:center;justify-content:center;padding:10px}.modal[hidden]{display:none}.mbox{background:#fff;border-radius:12px;width:min(980px,100%);height:min(92vh,960px);display:flex;flex-direction:column;overflow:hidden}.mhead{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #e1e4ea}.mhead b{flex:1;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mbody{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;background:#eef0f4}.mbody img{max-width:100%;max-height:100%;object-fit:contain}.mbody iframe{width:100%;height:100%;border:0;background:#fff}.docs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.docs button{padding:6px 10px;font-size:12px;background:#e4ecf7;color:#12355b}</style><div class="wrap"><div class="bar"><b>Revenue Plus Tracker<small>Read-only — never submits or changes anything · <span id="rpver">version 1.9.9</span><span id="rpwake"></span></small></b><button class="x" id="close">×</button></div><div id="rpscanbar" hidden style="position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid #d5dbe6;box-shadow:0 3px 8px rgba(16,32,60,.08)"></div><div class="box" id="main"></div></div><div class="modal" id="modal" hidden><div class="mbox"><div class="mhead"><b id="mtitle"></b><span id="macts" style="display:flex;gap:6px"></span><button id="mclose">Close</button></div><div class="mbody" id="mbody"></div></div></div>';
     var w = y.getElementById("main");
     (y.getElementById("close").onclick = function () {
       location.assign(k.split("#")[0]);
@@ -1676,8 +1676,9 @@
       window.scrollTo(0, 0)),
       ge();
   }
-  function ge() {
+  function ge(manual) {
     setTimeout(rpVersionBadge, 0);
+    manual === !0 && rpReg && (rpReg.gen++, (rpReg.on = !1));
     var e = x.forms[0],
       a = G(x),
       r = e && he(e),
@@ -1702,6 +1703,13 @@
             '<div class="tools"><button class="pri" id="rpresume">' +
             (rpUS.complete ? "Retry " + rpUS.errs + " unread" : "Resume scan (" + (rpUS.N - rpUS.read + rpUS.errs) + " left)") +
             '</button><button id="rpsofar">Show results so far</button></div><p class="muted" style="margin:8px 0 0">Starting a new scan below discards this unfinished one.</p></div>';
+    // v1.9.9: straight into the register — saved applications at once, new ones prepared in the background
+    if (manual !== !0 && !rpCard && e && a.length && window.__rpApiBase) {
+      w.innerHTML = '<div class="card"><h3>Opening the register …</h3></div>';
+      return void setTimeout(function () {
+        rpRegisterOpen(i); // after the rest of the tracker has initialised
+      }, 0);
+    }
     setTimeout(function () {
       rpSyncOffer(i && i.at);
     }, 0);
@@ -1726,7 +1734,7 @@
       w.innerHTML =
         rpCard +
         '<div id="rpsynccard"></div>' +
-        '<div class="card"><h3>' + (rpCard ? "Or start a new scan" : "Scan pending applications") + '</h3><p class="muted">The tracker presses “Process” for each application in the background, only to read the Patwari, Girdawar and Naib Tehsildar remarks. It never types remarks or presses Submit.</p><div class="tools"><button class="pri" id="one">Scan this list' +
+        '<div class="card"><h3>' + (rpCard ? "Or start a new scan" : "Scan pending applications") + '</h3>' + (i ? '<div class="tools" style="margin:0 0 8px"><button class="pri" id="rpopenreg" style="background:#5b3fa8">Open the register (saved applications at once, only new ones prepared)</button></div>' : "") + '<p class="muted">The tracker presses “Process” for each application in the background, only to read the Patwari, Girdawar and Naib Tehsildar remarks. It never types remarks or presses Submit.</p><div class="tools"><button class="pri" id="one">Scan this list' +
         (n ? " (" + L(n) + ")" : "") +
         " — " +
         a.length +
@@ -1740,6 +1748,11 @@
             i.items.length +
             ' applications</span><button id="showlast">Show last scan</button></div></div>'
           : "");
+      var orb = y.getElementById("rpopenreg");
+      orb &&
+        (orb.onclick = function () {
+          rpRegisterOpen(i);
+        });
       var o = y.getElementById("one");
       o &&
         (o.onclick = function () {
@@ -2339,6 +2352,7 @@
     };
   }
   async function Se(a) {
+    rpReg.gen++, (rpReg.on = !1);
     rpBG.gen++, (rpBG.queue = []), (rpBG.total = 0);
     if (!A) {
       (A = !0), (T = !1);
@@ -2404,6 +2418,76 @@
     })),
       await rpRunPlan(r, {});
   }
+  // Read one application from the portal: reload the Dashboard (unless its row is already in hand), press Process, parse the page.
+  async function rpReadOne(E, memIn, first, tmArr, setNo) {
+      var S = { ok: !1 },
+        mem = memIn,
+        gone = !1,
+        tf = Date.now(),
+        th = tf,
+        tdb = 0,
+        tab = 0,
+        dashRaw = "";
+      try {
+        var R,
+          Nn = null;
+        if (!first || !mem) {
+          Nn = await ye(E.appNo, E.svc);
+          (th = Date.now()), (tdb = (Nn && Nn.bytes) || 0), (dashRaw = (Nn && Nn.dash) || "");
+          if (Nn && "logout" === Nn.why) return { logout: !0 };
+          if (Nn && "gone" === Nn.why) gone = !0;
+          else if (!Nn.row) {
+            if (!mem) throw new Error(E_MSG(Nn.why));
+            Nn = null;
+          }
+        }
+        if (!gone) {
+          R = Nn
+            ? await ue(Nn.row.form, Nn.baseUrl, [[Nn.row.btnName, Nn.row.btnValue]])
+            : await ue(mem.row.form, mem.baseUrl, [[mem.row.btnName, mem.row.btnValue]]);
+          tab = R.html.length;
+          var tm = tmArr;
+          tm.push({ d: th - tf, db: tdb, a: Date.now() - th, ab: tab, tot: 0 }), tm.length > 200 && tm.shift();
+          S = I(R.html);
+          if (!S.ok) {
+            var dd = j(R.html);
+            if (we(dd, R.url)) return { logout: !0 };
+            (S.diag = fe(R)), (S.err = !0);
+            S.why = /Remarks\s*:/i.test(R.html) ? "page opened but its layout was not recognised" : "the portal did not return the application page";
+            rpDiag = {
+              app: E.appNo, at: new Date().toLocaleString("en-IN"), why: S.why,
+              button: Nn ? Nn.row.btnName + " = " + Nn.row.btnValue : mem ? mem.row.btnName + " = " + mem.row.btnValue : "",
+              dash: dashRaw, first: (R.diag && R.diag.html) || "", firstUrl: (R.diag && R.diag.url) || "",
+              final: R.html, finalUrl: R.url, timing: tm[tm.length - 1],
+            };
+          }
+        }
+      } catch (err) {
+        var why =
+          err && "AbortError" === err.name
+            ? "the portal did not respond within 90 s"
+            : /Dashboard/i.test(String(err && err.message))
+              ? "the Dashboard did not load / application not found on it"
+              : "error: " + String((err && err.message) || err).slice(0, 120);
+        S = { ok: !1, err: !0, why: why, diag: "Error: " + why };
+        rpDiag = { app: E.appNo, at: new Date().toLocaleString("en-IN"), why: why, button: "", dash: dashRaw, first: "", firstUrl: "", final: "", finalUrl: "" };
+      }
+      if (gone) return { gone: !0 };
+      var O = Q(S);
+      return {
+        item: {
+          service: E.service, appNo: E.appNo, name: E.name, mobile: E.mobile, village: E.village, khasra: E.khasra,
+          purpose: E.purpose, appDate: E.appDate, revert: E.revert, days: E.days,
+          khewat: S.khewat || "", pat: S.pat || "", gir: S.gir || "", nt: S.nt || "", teh: S.teh || "",
+          stage: O.stage, flag: O.flag, diag: S.diag || "", holder: O.holder || "", lastBy: O.lastBy || "",
+          lastT: O.lastT || 0, lastRemark: O.lastRemark || "", stageDays: null == O.stageDays ? null : O.stageDays,
+          svc: E.svc || "", docs: S.docs || [], fields: S.fields || null, adj: S.adj || null, mut: S.mut || null,
+          patReport: O.patReport || "", level: O.level || "", levelBy: O.levelBy || "", levelT: O.levelT || 0,
+          history: O.history || [], vendee: S.vendee || "", area: S.area || "", set: setNo, err: !!S.err, errWhy: S.why || "",
+          readAt: Date.now(),
+        },
+      };
+  }
   async function rpRunPlan(r, refs) {
     if (A) return;
     (A = !0), (T = !1), (P = !1), (rpStopSet = !1), (rpDiag = null);
@@ -2428,79 +2512,15 @@
       if (done[key]) continue;
       var setNo = Math.floor(ix / 10) + 1;
       rpScanBar(r, setNo, ix % 10);
-      var S = { ok: !1 },
-        mem = refs[key],
-        gone = !1,
-        tf = Date.now(),
-        th = tf,
-        tdb = 0,
-        tab = 0,
-        dashRaw = "";
-      try {
-        var R,
-          Nn = null;
-        if (!first || !mem) {
-          Nn = await ye(E.appNo, E.svc);
-          (th = Date.now()), (tdb = (Nn && Nn.bytes) || 0), (dashRaw = (Nn && Nn.dash) || "");
-          if (Nn && "logout" === Nn.why) {
-            (T = !0), (P = !0);
-            break;
-          }
-          if (Nn && "gone" === Nn.why) gone = !0;
-          else if (!Nn.row) {
-            if (!mem) throw new Error(E_MSG(Nn.why));
-            Nn = null;
-          }
-        }
-        if (!gone) {
-          R = Nn
-            ? await ue(Nn.row.form, Nn.baseUrl, [[Nn.row.btnName, Nn.row.btnValue]])
-            : await ue(mem.row.form, mem.baseUrl, [[mem.row.btnName, mem.row.btnValue]]);
-          tab = R.html.length;
-          var tm = (r.timing = r.timing || []);
-          tm.push({ d: th - tf, db: tdb, a: Date.now() - th, ab: tab, tot: 0 }), tm.length > 200 && tm.shift();
-          S = I(R.html);
-          if (!S.ok) {
-            var dd = j(R.html);
-            if (we(dd, R.url)) {
-              (T = !0), (P = !0);
-              break;
-            }
-            (S.diag = fe(R)), (S.err = !0);
-            S.why = /Remarks\s*:/i.test(R.html) ? "page opened but its layout was not recognised" : "the portal did not return the application page";
-            rpDiag = {
-              app: E.appNo, at: new Date().toLocaleString("en-IN"), why: S.why,
-              button: Nn ? Nn.row.btnName + " = " + Nn.row.btnValue : mem ? mem.row.btnName + " = " + mem.row.btnValue : "",
-              dash: dashRaw, first: (R.diag && R.diag.html) || "", firstUrl: (R.diag && R.diag.url) || "",
-              final: R.html, finalUrl: R.url, timing: tm[tm.length - 1],
-            };
-          }
-        }
-      } catch (err) {
-        var why =
-          err && "AbortError" === err.name
-            ? "the portal did not respond within 90 s"
-            : /Dashboard/i.test(String(err && err.message))
-              ? "the Dashboard did not load / application not found on it"
-              : "error: " + String((err && err.message) || err).slice(0, 120);
-        S = { ok: !1, err: !0, why: why, diag: "Error: " + why };
-        rpDiag = { app: E.appNo, at: new Date().toLocaleString("en-IN"), why: why, button: "", dash: dashRaw, first: "", firstUrl: "", final: "", finalUrl: "" };
+      var tf = Date.now(),
+        one = await rpReadOne(E, refs[key], first, (r.timing = r.timing || []), setNo);
+      if (one.logout) {
+        (T = !0), (P = !0);
+        break;
       }
       (first = !1), runRead++;
-      if (gone) r.gone.push(key);
-      else {
-        var O = Q(S);
-        r.items.push({
-          service: E.service, appNo: E.appNo, name: E.name, mobile: E.mobile, village: E.village, khasra: E.khasra,
-          purpose: E.purpose, appDate: E.appDate, revert: E.revert, days: E.days,
-          khewat: S.khewat || "", pat: S.pat || "", gir: S.gir || "", nt: S.nt || "", teh: S.teh || "",
-          stage: O.stage, flag: O.flag, diag: S.diag || "", holder: O.holder || "", lastBy: O.lastBy || "",
-          lastT: O.lastT || 0, lastRemark: O.lastRemark || "", stageDays: null == O.stageDays ? null : O.stageDays,
-          svc: E.svc || "", docs: S.docs || [], fields: S.fields || null, adj: S.adj || null, mut: S.mut || null,
-          patReport: O.patReport || "", level: O.level || "", levelBy: O.levelBy || "", levelT: O.levelT || 0,
-          history: O.history || [], vendee: S.vendee || "", area: S.area || "", set: setNo, err: !!S.err, errWhy: S.why || "",
-        });
-      }
+      if (one.gone) r.gone.push(key);
+      else r.items.push(one.item);
       r.timing && r.timing.length && !r.timing[r.timing.length - 1].tot && (r.timing[r.timing.length - 1].tot = Date.now() - tf + e);
       (done[key] = 1), rpScanSave(r);
       if ((ix + 1) % 10 == 0 || ix === r.plan.length - 1) {
@@ -2569,10 +2589,39 @@
   function rpKey(e) {
     return e.appNo + "|" + e.service;
   }
+  // Stage 1: only the applicant (a Patwari comment alone is still Stage 1). Stage 2: Patwari's report submitted AND tatima uploaded.
+  function rpStage(e) {
+    var tat = (e.docs || []).some(function (d) {
+      return /tatima/i.test(d.label);
+    });
+    return "Submitted" === e.patReport && tat ? 2 : 1;
+  }
+  function rpPatCount(e) {
+    return (e.history || []).filter(function (h) {
+      return X(h.by) === "Patwari";
+    }).length;
+  }
+  // Sent back to the Patwari after his report (Naib Tehsildar / Girdawar / Tehsildar acted after him and the file is with the Patwari again)
+  function rpReverted(e) {
+    var h = e.history || [],
+      lastPat = -1;
+    h.forEach(function (x, i) {
+      X(x.by) === "Patwari" && (lastPat = i);
+    });
+    if (lastPat < 0 || !/Patwari/i.test(e.stage || "")) return null;
+    var after = h.slice(lastPat + 1).filter(function (x) {
+      return X(x.by) !== "Patwari";
+    });
+    if (!after.length) return null;
+    var last = after[after.length - 1];
+    return { by: last.by, date: last.date };
+  }
   function rpVer(e) {
-    // changes when the file moves, the Patwari report changes or documents change → old analysis is not reused
-    // … and when Fard Checker is updated to a new version → every case is analysed afresh
-    return [(e.history || []).length, e.patReport || "", (e.docs || []).length, e.appDate || "", "v" + rpAppVersion()].join("|");
+    // A new analysis is needed only when the stage changes, the Patwari resubmits (one more Patwari entry), or documents change.
+    // Comments / forwarding by the Girdawar, Naib Tehsildar or Tehsildar do not change the analysis.
+    // A new Fard Checker version does NOT discard analyses — "Run again" or "Re-analyse all" uses the new version.
+    var st = rpStage(e);
+    return ["S" + st, st === 2 ? rpPatCount(e) : 0, (e.docs || []).length, e.appDate || ""].join("|");
   }
   // owner chosen in the report's drop-down — remembered per application
   function rpOwnerGet(e) {
@@ -2665,8 +2714,18 @@
   }
   function rpPtsSave(e, kase, points) {
     try {
-      var m = JSON.parse(localStorage.getItem("rpPts") || "{}") || {};
-      if (kase === 1 || !m[rpKey(e)]) m[rpKey(e)] = { case: kase, points: points || [], at: Date.now() };
+      var m = JSON.parse(localStorage.getItem("rpPts") || "{}") || {},
+        k = rpKey(e),
+        o = m[k] || {};
+      if (o.case && !o.s1 && !o.s2) o = o.case === 1 ? { s1: { points: o.points, at: o.at } } : { s2: { points: o.points, at: o.at, key: "" } };
+      var key = rpVer(e);
+      if (kase === 1) o.s1 = { points: points || [], at: Date.now() };
+      else {
+        if (o.s2 && o.s2.key !== key) o.s2prev = o.s2;           // the Patwari resubmitted — keep the previous report's points
+        o.s2 = { points: points || [], at: Date.now(), key: key };
+      }
+      o.at = Date.now();
+      m[k] = o;
       var ks = Object.keys(m).sort(function (a, b) {
         return (m[b].at || 0) - (m[a].at || 0);
       });
@@ -2704,7 +2763,7 @@
     var c1 = [],
       c2 = [];
     (items || []).forEach(function (e) {
-      ("Submitted" === e.patReport ? c2 : c1).push(e);
+      (rpStage(e) === 2 ? c2 : c1).push(e);
     });
     function tbl(list, title, note) {
       var ready = 0;
@@ -2712,7 +2771,7 @@
         .map(function (e) {
           var g = (rpCacheGet(e) || {}).gist || (function () {
               var r = rpJ("rpGistRemote")[rpKey(e)];
-              return r && r.ver === rpVer(e) ? r.gist : null;
+              return r && r.ver === rpVer(e) && (r.at || 0) > rpReAllAt() ? r.gist : null;
             })(),
             col = g ? { red: "#b42318", amber: "#8a5300", green: "#145c36" }[g.band] || "#5b6475" : "#5b6475";
           g && ready++;
@@ -2721,7 +2780,9 @@
             '<div class="muted">' + L(e.service || "") + "</div></td><td>" + L(e.name || "") + "</td><td>" + L(e.village || "") + "</td><td>" + L(e.khasra || "") +
             '</td><td style="min-width:240px">' +
             (g
-              ? '<b style="color:' + col + '">' + (g.score == null ? "—" : g.score) + "/100</b> — " + L(g.text || "")
+              ? '<b style="color:' + col + '">' + (g.score == null ? "—" : g.score) + "/100</b> — " + L(g.text || "") +
+                (rpReverted(e) ? ' <b style="color:#8a5300">· ↩ reverted to Patwari, awaiting resubmission</b>' : "") +
+                ((rpReady(e) || {}).appv && (rpReady(e) || {}).appv !== rpAppVersion() ? ' <span class="muted">· v' + L((rpReady(e) || {}).appv) + "</span>" : "")
               : '<span class="muted">' + (rpEligible(e) ? "Analysis pending (runs in the background)" : "No documents to analyse") + "</span>") +
             "</td></tr>"
           );
@@ -2734,8 +2795,8 @@
       );
     }
     return (
-      tbl(c1, "Case 1 — Pre-scrutiny (Patwari report not yet submitted)", "Photo, survey record, title and documents. Tap a row to open that application.") +
-      tbl(c2, "Case 2 — After the Patwari's report", "Includes tatima and the report's contradictions. Tap a row to open that application.")
+      tbl(c1, "Stage 1 — Applicant's submission (Patwari report and tatima not yet in)", "Photo, survey record, title and documents. Tap a row to open that application.") +
+      tbl(c2, "Stage 2 — Patwari's report and tatima submitted", "Includes the tatima and the report's contradictions. Tap a row to open that application.")
     );
   }
   function rpSumBind() {
@@ -2863,6 +2924,7 @@
       rpMergeLocal("rpPts", st.points);
       rpMergeLocal("rpPhotoFp", st.fps);
       rpMergeLocal("rpGistRemote", st.gists);
+      rpMergeLocal("rpRepRemote", st.reps);
       rpSumRefresh();
     } catch (x) {}
   }
@@ -2949,17 +3011,55 @@
   function rpAppVersion() {
     return String(window.__rpVersion || RP_TRACKER_VERSION || "");
   }
-  // drop analyses saved by an older version (frees the browser storage too)
-  (function () {
+  function rpReanalyseAll(items) {
     try {
-      var cur = rpAppVersion(),
-        was = localStorage.getItem("rpAnaCacheVer");
-      if (cur && was !== cur) {
-        localStorage.removeItem(RP_LS);
-        localStorage.setItem("rpAnaCacheVer", cur);
-      }
+      localStorage.setItem("rpReAllAt", String(Date.now())); // saved analyses here and online count as not ready
     } catch (x) {}
-  })();
+    rpAnaCache = {};
+    rpPre = {};
+    rpMarkButtons();
+    rpSumRefresh();
+    rpStartBackground(items || rpSumItems || []);
+  }
+  // v1.9.9 register: the report text lives in IndexedDB (no limit of 12), the list of ready reports in localStorage.
+  // A report saved online (no photos, reduced tatima) also counts as ready, so any browser opens it at once.
+  function rpRepDb(mode, k, val) {
+    return new Promise(function (ok) {
+      try {
+        var rq = indexedDB.open("rpReports", 1);
+        rq.onupgradeneeded = function () {
+          rq.result.createObjectStore("html");
+        };
+        rq.onerror = function () {
+          ok(null);
+        };
+        rq.onsuccess = function () {
+          try {
+            var tx = rq.result.transaction("html", mode === "get" ? "readonly" : "readwrite"),
+              st = tx.objectStore("html"),
+              r2 = mode === "get" ? st.get(k) : st.put(val, k);
+            r2.onsuccess = function () {
+              ok(mode === "get" ? r2.result || null : !0);
+            };
+            r2.onerror = function () {
+              ok(null);
+            };
+          } catch (x) {
+            ok(null);
+          }
+        };
+      } catch (x) {
+        ok(null);
+      }
+    });
+  }
+  function rpReAllAt() {
+    try {
+      return +(localStorage.getItem("rpReAllAt") || 0);
+    } catch (x) {
+      return 0;
+    }
+  }
   function rpCacheGet(e) {
     var k = rpKey(e),
       c = rpAnaCache[k];
@@ -2968,33 +3068,59 @@
         c = (JSON.parse(localStorage.getItem(RP_LS) || "{}") || {})[k];
       } catch (x) {}
     }
-    return c && c.ver === rpVer(e) ? c : null;
+    return c && c.ver === rpVer(e) && (c.at || 0) > rpReAllAt() ? c : null;
+  }
+  function rpRemoteRep(e) {
+    var r = rpJ("rpRepRemote")[rpKey(e)];
+    return r && r.ver === rpVer(e) && (r.at || 0) > rpReAllAt() ? r : null;
+  }
+  function rpReady(e) {
+    return rpCacheGet(e) || rpRemoteRep(e);
+  }
+  // full report: memory → this browser (IndexedDB / older localStorage copy) → online copy
+  async function rpHtmlGet(e, k, ver) {
+    k = k || rpKey(e);
+    ver = ver || rpVer(e);
+    var c = rpAnaCache[k];
+    if (c && c.ver === ver && c.html) return c;
+    var m = null;
+    try {
+      m = (JSON.parse(localStorage.getItem(RP_LS) || "{}") || {})[k];
+    } catch (x) {}
+    if (m && m.ver === ver) {
+      if (m.html) return (rpAnaCache[k] = m);
+      var h = await rpRepDb("get", k);
+      if (h && h.ver === ver && h.html) return (rpAnaCache[k] = Object.assign({}, m, { html: h.html }));
+    }
+    try {
+      var j = await rpSyncCall("GET", "/api/sync/report?key=" + encodeURIComponent(k)),
+        r = j.report;
+      if (r && r.html && r.ver === ver) {
+        var o = { ver: r.ver, html: r.html, at: r.at, gist: r.gist, appv: r.appv, online: !0 };
+        rpAnaCache[k] = o;
+        return o;
+      }
+    } catch (x) {}
+    return null;
   }
   function rpCachePut(e, html, gist) {
     var k = rpKey(e),
-      c = { ver: rpVer(e), html: html, at: Date.now(), gist: gist || null };
+      c = { ver: rpVer(e), html: html, at: Date.now(), gist: gist || null, appv: rpAppVersion() };
     rpAnaCache[k] = c;
+    rpRepDb("put", k, { ver: c.ver, html: html, at: c.at });
     try {
       var all = JSON.parse(localStorage.getItem(RP_LS) || "{}") || {};
-      all[k] = c;
+      all[k] = { ver: c.ver, at: c.at, gist: c.gist, appv: c.appv };
+      Object.keys(all).forEach(function (x) {
+        all[x] && all[x].html && x !== k && (rpRepDb("put", x, { ver: all[x].ver, html: all[x].html, at: all[x].at }), delete all[x].html); // move older copies out of localStorage
+      });
       var keys = Object.keys(all).sort(function (a, b) {
         return all[b].at - all[a].at;
       });
-      keys.slice(12).forEach(function (x) {
+      keys.slice(3000).forEach(function (x) {
         delete all[x];
       });
-      for (var n = 0; n < 5; n++) {
-        try {
-          localStorage.setItem(RP_LS, JSON.stringify(all));
-          break;
-        } catch (q) {
-          keys = Object.keys(all).sort(function (a, b) {
-            return all[a].at - all[b].at;
-          });
-          if (!keys.length) break;
-          delete all[keys[0]];
-        }
-      }
+      localStorage.setItem(RP_LS, JSON.stringify(all));
     } catch (x) {}
   }
   function rpGetKey(ask) {
@@ -3074,16 +3200,25 @@
           app: {
             appNo: e.appNo, name: e.name, village: e.village, khasra: e.khasra, service: e.service,
             purpose: e.purpose, appDate: e.appDate, area: e.area, fields: e.fields, adj: e.adj, mut: e.mut, history: e.history,
-            patReport: e.patReport || "", stage: e.stage || "",
+            patReport: e.patReport || "", stage: e.stage || "", stageN: rpStage(e),
           },
           docs: docs,
           id_docs: idDocs,
+          rp_key: rpKey(e),
+          rp_ver: rpVer(e),
+          rp_appv: rpAppVersion(),
           doc_labels: (e.docs || []).map(function (d) {
             return d.label;
           }),
           prev_points: (function () {
-            var pp = rpPtsGet(e);
-            return pp && pp.case === 1 ? pp.points : null;
+            var pp = rpPtsGet(e) || {};
+            return pp.s1 ? pp.s1.points : pp.case === 1 ? pp.points : null;
+          })(),
+          prev_report_points: (function () {
+            var pp = rpPtsGet(e) || {};
+            if (rpStage(e) !== 2) return null;
+            if (pp.s2 && pp.s2.key && pp.s2.key !== rpVer(e)) return pp.s2.points;   // first analysis after a resubmission
+            return pp.s2prev ? pp.s2prev.points : null;                               // "Run again" on the same submission
           })(),
           photo_fps: (function () {
             var m = rpFpAll();
@@ -3109,6 +3244,14 @@
       var j = await resp.json();
       if (!resp.ok) throw new Error(j.error || "HTTP " + resp.status);
       rpCachePut(e, j.html, j.gist);
+      if (j.saved_online) {
+        var rr = rpJ("rpRepRemote");
+        rr[rpKey(e)] = { ver: rpVer(e), appv: rpAppVersion(), at: Date.now() };
+        try {
+          localStorage.setItem("rpRepRemote", JSON.stringify(rr));
+        } catch (x) {}
+      }
+      rpRegPaint();
       rpStat(fetchSecs, (Date.now() - ts) / 1e3);
       rpPtsSave(e, j.case, j.points);
       rpSumRefresh();
@@ -3132,7 +3275,7 @@
     try {
       if (A || rpBG.paused) return;
       var nx = rpBG.queue.filter(function (q) {
-        return q !== cur && !rpCacheGet(q) && !rpPre[rpKey(q)];
+        return q !== cur && !rpReady(q) && !rpPre[rpKey(q)];
       })[0];
       if (!nx || Object.keys(rpPre).length >= 1) return;
       var k = rpKey(nx);
@@ -3149,7 +3292,7 @@
     chk = chk || function () {};
     status = status || function () {};
     if (A) throw new Error("A scan is reading the portal right now.");
-    var kase1 = "Submitted" !== e.patReport,
+    var kase1 = rpStage(e) === 1,
       idre = /identity|aadhaar|aadhar|id proof|voter|pan card/i,
       want = (e.docs || []).filter(function (d) {
         return !/^All documents/.test(d.label) && (kase1 || !idre.test(d.label));
@@ -3196,7 +3339,7 @@
     return { docs: docs, idDocs: idDocs };
   }
   // bg = true for background jobs. A request from you stops a running background job (it is re-queued) and goes first.
-  function rpRunFor(e, status, bg) {
+  function rpRunFor(e, status, bg, force) {
     var ck = rpKey(e);
     if (rpCurrent && rpCurrent.ck === ck) {
       if (!bg) rpCurrent.bg = !1; // you asked for the one already running: let it finish
@@ -3213,8 +3356,10 @@
     }
     var key = rpGetKey(!1);
     var job = rpSerial(async function () {
-      var hit = rpCacheGet(e);
-      if (hit) return hit.html;
+      if (!force && rpReady(e)) {
+        var hit = await rpHtmlGet(e);
+        if (hit) return hit.html;
+      }
       if (bg && rpBG.userWaiting) throw rpAbortErr(); // let your request go first
       var ctl = { aborted: !1, ac: window.AbortController ? new AbortController() : null };
       var p = rpCore(e, key, status, ctl);
@@ -3262,14 +3407,29 @@
         rpSaveRecord(e, this);
       };
     }
-    function show(html, cachedAt) {
+    function show(html, cachedAt, online, appv) {
+      var rv = rpReverted(e),
+        cc = rpReady(e) || {},
+        oldV = cachedAt && (appv || cc.appv) && (appv || cc.appv) !== rpAppVersion() ? appv || cc.appv : "";
       body.innerHTML =
         '<div style="align-self:flex-start;width:100%;background:#f4f5f7">' +
-        (cachedAt
-          ? '<div style="max-width:900px;margin:8px auto 0;padding:0 14px;font-size:12px;color:#5b6475">Prepared in the background at ' +
-            L(new Date(cachedAt).toLocaleTimeString()) +
-            " · tap “Run again” for a fresh analysis</div>"
+        (rv
+          ? '<div style="max-width:900px;margin:8px auto 0;padding:8px 14px;border-radius:8px;background:#fff4e0;color:#8a5300;font-weight:600">↩ Reverted to Patwari' +
+            (rv.date ? " on " + L(String(rv.date).replace(/\s+\d{1,2}:\d{2}.*$/, "")) : "") + " by " + L(rv.by || "") +
+            " — awaiting resubmission. This is the report on his previous submission.</div>"
           : "") +
+        (oldV
+          ? '<div style="max-width:900px;margin:8px auto 0;padding:8px 14px;border-radius:8px;background:#eef0f4;color:#3b4456">Made with version ' + L(oldV) +
+            " — tap <b>Run again</b> to analyse with version " + L(rpAppVersion()) + ".</div>"
+          : "") +
+        (online
+          ? '<div style="max-width:900px;margin:8px auto 0;padding:8px 14px;border-radius:8px;background:#eef5ff;color:#12355b">Saved copy from the online register (' +
+            L(new Date(cachedAt).toLocaleString()) + ") — the photo, compression check and satellite pictures are not kept online; the tatima is a reduced copy. Tap <b>Run again</b> for the full report.</div>"
+          : cachedAt
+            ? '<div style="max-width:900px;margin:8px auto 0;padding:0 14px;font-size:12px;color:#5b6475">Prepared in the background at ' +
+              L(new Date(cachedAt).toLocaleString()) +
+              " · tap “Run again” for a fresh analysis</div>"
+            : "") +
         html +
         "</div>";
       rpWireOwner(body, e);
@@ -3295,10 +3455,15 @@
       again();
     }
     if (!API) return st("This tracker was not loaded from the Render app.", !0);
+    if (!force && (rpReady(e) || e._archived)) {
+      st("Opening the saved analysis …");
+      var hit = await rpHtmlGet(e, e._archived ? rpKey(e) : null, e._archived ? e.ver : null);
+      if (hit) return show(hit.html, hit.at, hit.online, hit.appv);
+      if (e._archived) return st("No saved analysis of this application was found (it is no longer on the Dashboard, so it cannot be analysed again).", !0);
+    }
+    if (e._archived) return st("This application is no longer on the Dashboard — only its saved analysis can be opened.", !0);
     if (A) return st("A scan is reading the portal right now. Analyse becomes available when it finishes — or tap “Stop after this set”.", !0);
     if (!e.fields) return st("Run a new scan first — this application was read by an older tracker version.", !0);
-    var hit = !force && rpCacheGet(e);
-    if (hit) return show(hit.html, hit.at);
     if (!rpGetKey(!0)) return (S.hidden = !0), void 0;
     if (force) {
       delete rpAnaCache[rpKey(e)];
@@ -3314,7 +3479,7 @@
         : "Connecting to the analyser …",
     );
     try {
-      var html = await rpRunFor(e, st);
+      var html = await rpRunFor(e, st, !1, !!force);
       show(html);
       rpStartBackground(); // key may have just been entered
     } catch (err) {
@@ -3518,6 +3683,7 @@
       }
       // KMZ with the tatima over the khasra (from the analysis)
       var html = (rpCacheGet(e) || {}).html;
+      if (!html && rpCacheGet(e)) html = ((await rpHtmlGet(e)) || {}).html;
       if (!html && window.__rpApiBase && e.fields) {
         say("Preparing KMZ (analysing) …");
         try {
@@ -3707,7 +3873,7 @@
         return rpKey(t) === btn.dataset.k;
       })[0];
       if (!it) return;
-      var ready = rpCacheGet(it);
+      var ready = rpReady(it);
       btn.textContent = ready ? "Open analysis ✓ (ready)" : "Analyse with village records";
       btn.style.background = ready ? "#1a7f5a" : "#12355b";
     });
@@ -3718,7 +3884,7 @@
       rpBG.gen++;
       rpBG.items = items;
       rpBG.queue = items.filter(function (e) {
-        return rpEligible(e) && !rpCacheGet(e);
+        return rpEligible(e) && !rpReady(e);
       });
       rpBG.total = items.filter(rpEligible).length;
       rpBG.done = rpBG.total - rpBG.queue.length;
@@ -3736,7 +3902,7 @@
     try {
       while (rpBG.queue.length && !rpBG.paused && gen === rpBG.gen && !A && !rpBG.userWaiting) {
         var e = rpBG.queue.shift();
-        if (rpCacheGet(e)) {
+        if (rpReady(e)) {
           rpBG.done++;
           continue;
         }
@@ -3775,10 +3941,418 @@
       rpPanel();
     }
   }
+  // ───── v1.9.9 Fard register ─────
+  // On opening, every application known from earlier scans (this browser or the online register) is shown at once with its
+  // saved analysis. In the background: the Dashboard list is compared with the register — new applications are read and
+  // analysed first, those no longer on the list go to the archive (disposed), then the others are re-read quietly and only
+  // the ones whose stage changed, that were resubmitted or whose documents changed are analysed again.
+  var rpReg = { on: !1, gen: 0, running: !1, phase: "", msg: "", M: null, pending: [], reading: "", newKeys: {}, upd: {}, doneN: 0, totN: 0, days: 365 };
+  var RP_REFRESH_GAP = 20 * 6e4; // existing applications re-read at most every 20 minutes
+  function rpDisposedAll() {
+    var m = rpJ("rpDisposed"),
+      cut = Date.now() - rpReg.days * 864e5,
+      out = {};
+    Object.keys(m).forEach(function (k) {
+      m[k] && (m[k].disposedAt || m[k].at || 0) >= cut && (out[k] = m[k]);
+    });
+    return out;
+  }
+  function rpDisposedPut(add, back) {
+    var m = rpDisposedAll();
+    Object.keys(add || {}).forEach(function (k) {
+      m[k] = add[k];
+    });
+    (back || []).forEach(function (k) {
+      delete m[k];
+    });
+    try {
+      localStorage.setItem("rpDisposed", JSON.stringify(m));
+    } catch (x) {}
+    (Object.keys(add || {}).length || (back || []).length) &&
+      rpSyncCall("POST", "/api/sync/disposed", { items: add || {}, back: back || [] }).catch(function () {});
+  }
+  async function rpDisposedPull() {
+    try {
+      var j = await rpSyncCall("GET", "/api/sync/disposed");
+      j.days && (rpReg.days = j.days);
+      rpMergeLocal("rpDisposed", j.items || {});
+      rpRegPaint();
+    } catch (x) {}
+  }
+  function rpSlim(e) {
+    var g = (rpReady(e) || {}).gist || (rpJ("rpGistRemote")[rpKey(e)] || {}).gist || null;
+    return {
+      appNo: e.appNo, service: e.service, svc: e.svc || "", name: e.name || "", village: e.village || "", khasra: e.khasra || "",
+      appDate: e.appDate || "", stage: e.stage || "", patReport: e.patReport || "", lastBy: e.lastBy || "", lastRemark: String(e.lastRemark || "").slice(0, 300),
+      stageN: rpStage(e), ver: rpVer(e), gist: g, disposedAt: Date.now(), at: Date.now(),
+    };
+  }
+  function rpCurrentRows() {
+    var n = x.forms[0],
+      h = n && he(n),
+      out = { plan: [], refs: {}, svc: h ? h.value : "", service: h && h.options[h.selectedIndex] ? h.options[h.selectedIndex].text : "" };
+    G(x).forEach(function (E) {
+      var pl = {
+        service: out.service, svc: out.svc, appNo: E.appNo, name: E.name, mobile: E.mobile, village: E.village,
+        khasra: E.khasra, purpose: E.purpose, appDate: E.appDate, revert: E.revert, days: E.days,
+      };
+      out.plan.push(pl), (out.refs[rpScanKey(pl)] = { row: E, baseUrl: k });
+    });
+    return out;
+  }
+  function rpRegSaveLocal(reg) {
+    try {
+      localStorage.setItem(t, JSON.stringify(reg));
+    } catch (x) {}
+  }
+  function rpRegShow(reg, first) {
+    rpReg.M = reg;
+    reg.partial = !1;
+    first && (N.sum = !0); // the Stage 1 / Stage 2 tables are the "Ready" lists of the register
+    rpShowResults(reg);
+    first && rpStartBackground(reg.items);
+  }
+  async function rpRegisterOpen(local) {
+    rpReg.on = !0;
+    var gen = ++rpReg.gen,
+      cur = rpCurrentRows(),
+      reg = local && local.items ? local : null;
+    rpReg.phase = "open";
+    rpReg.msg = "Checking the online register …";
+    if (reg) rpRegShow(reg, !0);
+    else w.innerHTML = '<div class="card"><h3>Opening the register …</h3><p class="muted" style="margin:0">Loading the applications saved online.</p></div>';
+    var online = null;
+    try {
+      var j = await rpSyncCall("GET", "/api/sync/index");
+      if (j.configured) {
+        var me_ = (j.index || {})[rpLogin()];
+        if (me_ && (!reg || (me_.at || 0) > (reg.at || 0))) {
+          var r2 = await rpSyncCall("GET", "/api/sync/scan?login=" + encodeURIComponent(rpLogin()));
+          r2.scan && r2.scan.items && (online = r2.scan);
+        }
+        await rpSyncPull();
+        rpDisposedPull();
+      }
+    } catch (x) {}
+    if (gen !== rpReg.gen) return;
+    if (online) (reg = online), rpRegSaveLocal(reg), rpRegShow(reg, !0);
+    if (!reg) return (rpReg.on = !1), ge(!0); // first time on this login: the normal start screen
+    rpRegisterRefresh(reg, cur, gen);
+  }
+  function rpWhyChanged(o, n) {
+    var a = rpStage(o),
+      b = rpStage(n);
+    if (a !== b) return b === 2 ? "Patwari's report and tatima submitted — now Stage 2" : "back to Stage 1 (report or tatima withdrawn)";
+    if (b === 2 && rpPatCount(n) > rpPatCount(o)) return "Patwari resubmitted his report";
+    if ((n.docs || []).length !== (o.docs || []).length) return "documents changed (" + (o.docs || []).length + " → " + (n.docs || []).length + ")";
+    return "application details changed";
+  }
+  // put one application in the background-analysis queue: new ones first (prio 0), updated ones next (1), the rest after (2)
+  function rpBGAdd(e, prio) {
+    var k = rpKey(e);
+    rpBG.queue = rpBG.queue.filter(function (q) {
+      return rpKey(q) !== k;
+    });
+    if (rpEligible(e) && !rpReady(e)) {
+      e._prio = prio;
+      var at = rpBG.queue.length;
+      for (var i = 0; i < rpBG.queue.length; i++)
+        if ((rpBG.queue[i]._prio == null ? 2 : rpBG.queue[i]._prio) > prio) {
+          at = i;
+          break;
+        }
+      rpBG.queue.splice(at, 0, e);
+    }
+    rpBG.total = (rpBG.items || []).filter(rpEligible).length;
+    rpBG.done = Math.max(0, rpBG.total - rpBG.queue.length - (rpBG.cur ? 1 : 0));
+    rpStartBackground();
+  }
+  async function rpRegisterRefresh(reg, cur, gen) {
+    if (rpReg.running) return;
+    rpReg.running = !0;
+    var tm = [],
+      onList = {},
+      dirty = 0;
+    function alive() {
+      return gen === rpReg.gen && !A;
+    }
+    function same(e) {
+      return onList[e.appNo] ? !0 : cur.svc && e.svc ? e.svc === cur.svc : (e.service || "") === cur.service;
+    }
+    function idxOf(key) {
+      for (var i = 0; i < reg.items.length; i++) if (reg.items[i].appNo === key) return i;
+      return -1;
+    }
+    function dispose(list) {
+      var add = {};
+      list.forEach(function (e) {
+        add[rpKey(e)] = rpSlim(e);
+        var i = idxOf(e.appNo);
+        i >= 0 && reg.items.splice(i, 1);
+        rpBG.queue = rpBG.queue.filter(function (q) {
+          return rpKey(q) !== rpKey(e);
+        });
+      });
+      list.length && (rpDisposedPut(add), dirty++);
+    }
+    try {
+      if (!cur.plan.length) {
+        rpReg.phase = "done";
+        rpReg.msg = "No application list on this Dashboard page — showing the register as last saved.";
+        return rpRegPaint();
+      }
+      // 1 · compare the Dashboard list with the register
+      cur.plan.forEach(function (p) {
+        onList[p.appNo] = p;
+      });
+      var have = {};
+      reg.items.forEach(function (e) {
+        have[e.appNo] = e;
+      });
+      dispose(
+        reg.items.filter(function (e) {
+          return same(e) && !onList[e.appNo];
+        }),
+      );
+      var newRows = cur.plan.filter(function (p) {
+          return !have[p.appNo];
+        }),
+        arch = rpDisposedAll(),
+        back = newRows
+          .map(function (p) {
+            return p.appNo + "|" + p.service;
+          })
+          .filter(function (k) {
+            return arch[k];
+          });
+      back.length && rpDisposedPut({}, back);
+      rpReg.pending = newRows.slice();
+      rpReg.phase = "new";
+      rpReg.totN = newRows.length;
+      rpReg.doneN = 0;
+      rpReg.msg = newRows.length ? "Reading " + newRows.length + " new application(s) …" : "";
+      dirty && (rpRegSaveLocal(reg), rpShowResults(reg));
+      rpRegPaint();
+      // 2 · new applications: read, then analysed first
+      for (var i = 0; i < newRows.length && alive(); i++) {
+        var E = newRows[i];
+        rpReg.reading = E.appNo;
+        rpRegPaint();
+        var one = await rpPortal(function () {
+          return rpReadOne(E, null, !1, tm, 0);
+        });
+        rpReg.pending = rpReg.pending.filter(function (p) {
+          return p !== E;
+        });
+        rpReg.doneN++;
+        if (one.logout) {
+          rpReg.phase = "stopped";
+          rpReg.msg = "The portal logged you out — log in again and run Tracker; the register is kept.";
+          return rpRegPaint();
+        }
+        if (one.gone) continue;
+        reg.items.push(one.item);
+        rpReg.newKeys[rpKey(one.item)] = Date.now();
+        rpBG.items !== reg.items && (rpBG.items = reg.items);
+        rpBGAdd(one.item, 0);
+        rpRegSaveLocal(reg);
+        rpShowResults(reg);
+      }
+      rpReg.reading = "";
+      if (!alive()) return;
+      newRows.length && ((reg.at = Date.now()), rpRegSaveLocal(reg), rpSyncScan(reg));
+      // 3 · quiet refresh of the others
+      var ex = reg.items.filter(function (e) {
+        return onList[e.appNo] && !rpReg.newKeys[rpKey(e)] && Date.now() - (e.readAt || 0) > (window.__rpRefreshGap != null ? window.__rpRefreshGap : RP_REFRESH_GAP);
+      });
+      rpReg.phase = "refresh";
+      rpReg.totN = ex.length;
+      rpReg.doneN = 0;
+      rpReg.msg = "";
+      rpRegPaint();
+      for (var j2 = 0; j2 < ex.length && alive(); j2++) {
+        var old = ex[j2],
+          k2 = old.appNo,
+          E2 = onList[k2];
+        rpReg.reading = old.appNo;
+        rpRegPaint();
+        var r2 = await rpPortal(function () {
+          return rpReadOne(E2, null, !1, tm, old.set || 0);
+        });
+        rpReg.doneN++;
+        if (r2.logout) {
+          rpReg.phase = "stopped";
+          rpReg.msg = "The portal logged you out after " + rpReg.doneN + " of " + rpReg.totN + " — log in again and run Tracker; the rest are refreshed then.";
+          break;
+        }
+        if (r2.gone) {
+          dispose([old]);
+          continue;
+        }
+        if (r2.item.err) continue; // keep what we had
+        var ix = idxOf(k2);
+        if (ix < 0) continue;
+        var nu = r2.item,
+          changed = rpVer(old) !== rpVer(nu);
+        nu.set = old.set;
+        reg.items[ix] = nu;
+        if (changed) (rpReg.upd[rpKey(nu)] = { why: rpWhyChanged(old, nu), at: Date.now() }), rpBGAdd(nu, 1);
+        else
+          rpBG.queue = rpBG.queue.map(function (q) {
+            return q === old ? nu : q;
+          });
+        if (changed || nu.stage !== old.stage || nu.lastT !== old.lastT || nu.lastRemark !== old.lastRemark) dirty++;
+        if (dirty >= 5 || changed) (dirty = 0), rpRegSaveLocal(reg), rpShowResults(reg);
+      }
+      rpReg.reading = "";
+      if (gen !== rpReg.gen) return;
+      reg.at = Date.now();
+      rpReg.phase === "stopped" || ((reg.refreshedAt = reg.at), (rpReg.phase = "done"), (rpReg.msg = ""));
+      try {
+        de(reg.items, reg.at);
+      } catch (x) {}
+      rpRegSaveLocal(reg);
+      rpSyncScan(reg);
+      rpShowResults(reg);
+    } catch (err) {
+      rpReg.phase = "stopped";
+      rpReg.msg = "Refresh stopped: " + String((err && err.message) || err).slice(0, 150);
+      rpRegPaint();
+    } finally {
+      rpReg.running = !1;
+      rpReg.reading = "";
+      rpRegPaint();
+    }
+  }
+  function rpRegStatus(e) {
+    if (e.err) return '<span style="color:#b42318">could not be read — tap Full rescan later</span>';
+    if (rpReady(e)) return '<b style="color:#145c36">ready ✓</b>';
+    if (!rpEligible(e)) return '<span class="muted">no documents to analyse</span>';
+    if (rpCurrent && rpCurrent.ck === rpKey(e)) return '<b style="color:#12355b">being analysed now …</b>';
+    return '<span style="color:#8a5300">queued for analysis</span>';
+  }
+  function rpRegRow(e, extra) {
+    var g = (rpReady(e) || {}).gist || null;
+    return (
+      '<tr class="regr" data-k="' + L(rpKey(e)) + '" style="cursor:pointer"><td><b>…' + L(String(e.appNo || "").slice(-4)) + '</b><div class="muted">' + L(e.service || "") +
+      "</div></td><td>" + L(e.name || "") + "</td><td>" + L(e.village || "") + "</td><td>" + L(e.khasra || "") + "</td><td>" + (extra ? extra + "<br>" : "") + rpRegStatus(e) +
+      (g && g.text ? '<div class="muted">' + (g.score == null ? "" : "<b>" + g.score + "/100</b> — ") + L(g.text) + "</div>" : "") + "</td></tr>"
+    );
+  }
+  var RP_REG_HEAD = '<div class="scroll"><table><thead><tr><th>App. no.</th><th>Applicant</th><th>Village</th><th>Survey no.</th><th>Status</th></tr></thead><tbody>';
+  function rpRegPaint() {
+    try {
+      if (!rpReg.on || !rpReg.M) return;
+      var top = y.getElementById("rpregnew"),
+        bot = y.getElementById("rpregrest");
+      if (!top || !bot) return;
+      var reg = rpReg.M,
+        byKey = {};
+      reg.items.forEach(function (e) {
+        byKey[rpKey(e)] = e;
+      });
+      var ph = rpReg.phase,
+        line =
+          ph === "open"
+            ? "Checking the online register …"
+            : ph === "new"
+              ? "Reading new applications · " + rpReg.doneN + " of " + rpReg.totN
+              : ph === "refresh"
+                ? "Refreshing the other applications quietly · " + rpReg.doneN + " of " + rpReg.totN + " re-read — only a changed stage, a resubmission or changed documents is analysed again"
+                : ph === "done"
+                  ? "Up to date — Dashboard list checked " + new Date(reg.at || Date.now()).toLocaleTimeString()
+                  : "";
+      rpReg.msg && (line = rpReg.msg + (line && ph !== "stopped" ? " · " + line : ""));
+      var newer = Object.keys(rpReg.newKeys)
+          .map(function (k) {
+            return byKey[k];
+          })
+          .filter(Boolean),
+        rows =
+          rpReg.pending
+            .map(function (p) {
+              return (
+                "<tr><td><b>…" + L(String(p.appNo || "").slice(-4)) + "</b></td><td>" + L(p.name || "") + "</td><td>" + L(p.village || "") + "</td><td>" + L(p.khasra || "") + "</td><td>" +
+                (rpReg.reading === p.appNo ? '<b style="color:#12355b">being read from the portal …</b>' : '<span class="muted">new — being prepared</span>') + "</td></tr>"
+              );
+            })
+            .join("") +
+          newer
+            .map(function (e) {
+              return rpRegRow(e, '<b style="color:#5b3fa8">New</b>');
+            })
+            .join("");
+      var busy = rpReg.running && (ph === "new" || ph === "refresh");
+      top.innerHTML =
+        '<div class="card" style="border:2px solid #5b3fa8"><h3 style="margin-bottom:4px">Fard register · ' + reg.items.length + ' applications <span class="muted">(' +
+        L(rpLogin().replace(/-/g, " ")) + ")</span></h3>" +
+        '<div class="muted" style="margin:0 0 6px;' + (ph === "stopped" ? "color:#8a5300" : "") + '">' + (busy ? "⟳ " : "") + L(line) +
+        (ph === "refresh" && rpReg.totN ? '<div class="prog" style="height:5px;margin-top:4px"><i style="width:' + Math.round((rpReg.doneN / rpReg.totN) * 100) + '%"></i></div>' : "") +
+        "</div>" +
+        (rows
+          ? "<b>New since last time (" + (rpReg.pending.length + newer.length) + ")</b> — read and analysed first" + RP_REG_HEAD + rows + "</tbody></table></div>"
+          : ph === "open" || ph === "new"
+            ? ""
+            : '<div class="muted">No new applications on this list since the last check.</div>') +
+        "</div>";
+      var upd = Object.keys(rpReg.upd)
+          .map(function (k) {
+            var e = byKey[k];
+            return e ? rpRegRow(e, L(rpReg.upd[k].why)) : "";
+          })
+          .join(""),
+        arch = rpDisposedAll(),
+        ak = Object.keys(arch).sort(function (a, b) {
+          return (arch[b].disposedAt || 0) - (arch[a].disposedAt || 0);
+        });
+      bot.innerHTML =
+        (upd
+          ? '<div class="card"><h3>Updating (' + Object.keys(rpReg.upd).length + ')</h3><div class="muted" style="margin:-4px 0 6px">Changed since the last check — analysed again in the background (after the new ones).</div>' +
+            RP_REG_HEAD + upd + "</tbody></table></div></div>"
+          : "") +
+        '<div class="card"><details id="rparch"' + (rpReg.archOpen ? " open" : "") + '><summary style="cursor:pointer"><b>Disposed — archive (' + ak.length +
+        ")</b> <span class=\"muted\">applications no longer on the Dashboard list, kept " + Math.round(rpReg.days / 30) + " months</span></summary>" +
+        (ak.length
+          ? RP_REG_HEAD.replace("<th>Status</th>", "<th>Last seen</th>") +
+            ak
+              .slice(0, 400)
+              .map(function (k) {
+                var a = arch[k],
+                  g = a.gist;
+                return (
+                  '<tr class="arcr" data-k="' + L(k) + '" style="cursor:pointer"><td><b>…' + L(String(a.appNo || "").slice(-4)) + '</b><div class="muted">' + L(a.service || "") + "</div></td><td>" +
+                  L(a.name) + "</td><td>" + L(a.village) + "</td><td>" + L(a.khasra) + "</td><td>Disposed by " + L(new Date(a.disposedAt).toLocaleDateString("en-IN")) +
+                  " · last " + L(a.stage || "") + " · Stage " + (a.stageN || 1) +
+                  (g && g.text ? '<div class="muted">' + (g.score == null ? "" : "<b>" + g.score + "/100</b> — ") + L(g.text) + "</div>" : "") + "</td></tr>"
+                );
+              })
+              .join("") +
+            "</tbody></table></div>" + (ak.length > 400 ? '<div class="muted">Showing the latest 400.</div>' : "")
+          : '<div class="muted" style="margin-top:6px">None yet.</div>') +
+        "</details></div>";
+      Array.prototype.forEach.call(w.querySelectorAll("tr.regr"), function (r) {
+        r.onclick = function () {
+          var e = byKey[r.dataset.k];
+          e && rpReady(e) ? rpAnalyse(e, !1) : rpSumGo && rpSumGo(r.dataset.k);
+        };
+      });
+      var det = y.getElementById("rparch");
+      det &&
+        (det.ontoggle = function () {
+          rpReg.archOpen = det.open;
+        });
+      Array.prototype.forEach.call(w.querySelectorAll("tr.arcr"), function (r) {
+        r.onclick = function () {
+          var a = arch[r.dataset.k];
+          a && rpAnalyse(Object.assign({ _archived: !0 }, a), !1);
+        };
+      });
+    } catch (x) {}
+  }
   function Re(e) {
     return null != e.stageDays ? e.stageDays : e.days;
   }
-  var RP_TRACKER_VERSION = "1.9.7";
+  var RP_TRACKER_VERSION = "1.9.9";
   (function () {
     try {
       window.__rpApiBase && fetch(window.__rpApiBase + "/api/ping", { cache: "no-store" }).catch(function () {});
@@ -4013,8 +4587,8 @@
           : e.partial
             ? " (stopped early)"
             : "") +
-        '</span><span style="flex:1"></span><button id="rpsumbtn" style="background:#5b3fa8;color:#fff">' + (N.sum ? "Hide analysis summary" : "Analysis summary") + '</button><button id="stpdf" style="background:#12355b;color:#fff">Status PDF</button><button id="csv">Download Excel (CSV)</button><button id="json">Download all data</button><button id="wa">Copy summary</button><button id="again">New scan</button></div>' +
-        '<div id="rpsum"' + (N.sum ? "" : " hidden") + ">" + (N.sum ? rpSumHtml(t) : "") + "</div>" +
+        '</span><span style="flex:1"></span><button id="rpsumbtn" style="background:#5b3fa8;color:#fff">' + (N.sum ? "Hide analysis summary" : "Analysis summary") + '</button><button id="rpreall" title="Discard all saved analyses and analyse every application again with version ' + L(rpAppVersion()) + '">Re-analyse all</button><button id="stpdf" style="background:#12355b;color:#fff">Status PDF</button><button id="csv">Download Excel (CSV)</button><button id="json">Download all data</button><button id="wa">Copy summary</button><button id="again" title="Read every application again from the start screen">' + (rpReg.on ? "Full rescan" : "New scan") + "</button></div>" +
+        '<div id="rpregnew"></div><div id="rpsum"' + (N.sum ? "" : " hidden") + ">" + (N.sum ? rpSumHtml(t) : "") + '</div><div id="rpregrest"></div>' +
         l +
         (t.some(function (e) {
           return e.level;
@@ -4820,6 +5394,13 @@
         }),
         (rpSumItems = t),
         (function () {
+          var ra = y.getElementById("rpreall");
+          ra &&
+            (ra.onclick = function () {
+              if (!confirm("Analyse every application again with version " + rpAppVersion() + "? Saved analyses are discarded; this runs in the background and takes a while.")) return;
+              rpReanalyseAll(t);
+              ra.textContent = "Re-analysing …";
+            });
           var bt = y.getElementById("rpsumbtn");
           bt &&
             (bt.onclick = function () {
@@ -4834,6 +5415,7 @@
             row && row.scrollIntoView({ behavior: "smooth", block: "center" });
           };
           rpSumBind();
+          rpRegPaint();
         })(),
         rpMarkButtons(),
         (function () {
@@ -5205,7 +5787,9 @@
               : prompt("Copy this:", f);
           })(t, n, e.at, this);
         }),
-        (y.getElementById("again").onclick = ge);
+        (y.getElementById("again").onclick = function () {
+          ge(!0);
+        });
     })();
   }
 })();

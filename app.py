@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.7
+# FARD CHECKER VERSION 1.9.9
 """Revenue Plus Tracker — hosted tracker + application analyser (Flask, for Render).
 
 Environment variables (Render → Environment):
@@ -164,6 +164,61 @@ def sync_load_state():
         return jsonify(state=sync.load_state())
     except Exception as e:
         return jsonify(error=str(e)[:300]), 502
+
+
+@app.get("/api/sync/report")
+def sync_load_report():
+    if not ok_key():
+        return jsonify(error="Wrong or missing access key"), 401
+    import sync
+    if not sync.configured():
+        return jsonify(error="Scan sync is not set up"), 503
+    try:
+        return jsonify(report=sync.load_report(request.args.get("key")))
+    except Exception as e:
+        return jsonify(error=str(e)[:300]), 502
+
+
+@app.post("/api/sync/disposed")
+def sync_save_disposed():
+    if not ok_key():
+        return jsonify(error="Wrong or missing access key"), 401
+    import sync
+    if not sync.configured():
+        return jsonify(error="Scan sync is not set up"), 503
+    d = request.get_json(force=True, silent=True) or {}
+    try:
+        return jsonify(ok=True, n=sync.save_disposed(d.get("items") or {}, d.get("back") or []), days=sync.archive_days())
+    except Exception as e:
+        return jsonify(error=str(e)[:300]), 502
+
+
+@app.get("/api/sync/disposed")
+def sync_load_disposed():
+    if not ok_key():
+        return jsonify(error="Wrong or missing access key"), 401
+    import sync
+    if not sync.configured():
+        return jsonify(error="Scan sync is not set up"), 503
+    try:
+        return jsonify(items=sync.load_disposed(), days=sync.archive_days())
+    except Exception as e:
+        return jsonify(error=str(e)[:300]), 502
+
+
+def _save_report_later(key, ver, appv, gist, html):
+    """The analysed report goes to the online register in the background — the answer to the tracker is not delayed."""
+    import sync
+    if not (key and ver and sync.configured()):
+        return False
+
+    def run():
+        try:
+            sync.save_report(key, ver, appv, gist, html)
+        except Exception as e:
+            print("report not saved online:", key, e, flush=True)
+    threading.Thread(target=run, daemon=True).start()
+    return True
 
 
 @app.get("/api/test-reader")
@@ -367,11 +422,12 @@ def _analyse():
                 pass
     res = report19.build(appd, ai, ai_err, pages=pages, id_pages=id_pages, doc_labels=data.get("doc_labels"),
                          prev_points=data.get("prev_points"), other_fps=data.get("photo_fps"), reader_status=reader_status, skipped=skipped,
-                         sat_pre=sat_pre)
+                         sat_pre=sat_pre, prev_report_points=data.get("prev_report_points"))
     del id_pages
     ai_safe = {k: v for k, v in (ai or {}).items() if k != "pages"}
     timing = {"prepare": round(t1 - t0, 1), "read": reader_status["secs"], "total": round(time.time() - t0, 1)}
-    out = jsonify(html=res["html"], case=res["case"], gist=res["gist"], points=res["points"], photo_hash=res["photo_hash"], owner_default=res["owner_default"],
+    saved = _save_report_later(data.get("rp_key"), data.get("rp_ver"), data.get("rp_appv"), res["gist"], res["html"])
+    out = jsonify(saved_online=saved, html=res["html"], case=res["case"], gist=res["gist"], points=res["points"], photo_hash=res["photo_hash"], owner_default=res["owner_default"],
                   timing=timing, ai=ai_safe)
     pages.clear()
     engine.trim_memory()
@@ -402,7 +458,8 @@ if(!r.ok){{o.innerHTML='<span style="color:#b42318">'+(d.error||r.status)+'</spa
 o.innerHTML=(d.ok?'<b style="color:#145c36">✓ Working</b>':'<b style="color:#b42318">✗ Not working</b>')+' — '+(d.reader||'')+(d.model?' ('+d.model+')':'')+(d.secs!=null?' · '+d.secs+' s':'')+'<div class=m>'+String(d.reply||d.error||'').replace(/[<>&]/g,'')+'</div>'+
 (d.tried?'<div class=m>'+d.tried.map(function(t){{return (t.ok?'✓ ':'✗ ')+t.model+(t.why?' — '+String(t.why).replace(/[<>&]/g,''):'')}}).join('<br>')+'</div>':'')+(d.tried&&!d.ok&&d.tried.every(function(t){{return /limit 0/.test(t.why||'')}})?'<div class=m><b>All free limits show 0</b> — this key\'s Google project has no free quota. Create the key in a <b>new project</b> at aistudio.google.com (Get API key → Create API key in new project), or enable billing on the project.</div>':'')+(d.status==404?'<div class=m>Model name not found — set GEMINI_MODEL on Render to a current model.</div>':'')+(d.status==400||d.status==403?'<div class=m>Check the API key value on Render.</div>':'')}}catch(e){{o.textContent='Error: '+e}}}}</script></div>
 <div class="c"><h2>Scan sync (any browser)</h2><p class="m">Keeps the last scan of each login, the analysis gists and your choices in a <b>private</b> GitHub repo used only for data, so any browser with the access key can open them.
-Set <code>DATA_REPO</code> (e.g. peerzadaobaid/fardchecker-data) and <code>GITHUB_TOKEN</code> (fine-grained, that repo only, Contents: Read and write) in Render → Environment.</p>
+Set <code>DATA_REPO</code> (e.g. peerzadaobaid/fardchecker-data) and <code>GITHUB_TOKEN</code> (fine-grained, that repo only, Contents: Read and write) in Render → Environment.
+From v1.9.9 it also holds the <b>fard register</b>: each analysed report (photos removed, tatima as a reduced copy) and the archive of disposed applications, kept for <code>ARCHIVE_DAYS</code> days (optional setting, default 365).</p>
 <p><input id="k3" placeholder="Access key" type="password"> <button onclick="testSync()">Check scan sync</button></p><div id="sy"></div>
 <script>async function testSync(){{var o=document.getElementById('sy');o.textContent='Checking…';try{{var r=await fetch('/api/sync/status?key='+encodeURIComponent(document.getElementById('k3').value));var d=await r.json();
 if(!r.ok){{o.innerHTML='<span style="color:#b42318">'+(d.error||r.status)+'</span>';return}}

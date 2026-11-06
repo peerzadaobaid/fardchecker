@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.7
+# FARD CHECKER VERSION 1.9.9
 """Scan sync — keeps the last scan (per login) and the shared tracker state in a PRIVATE GitHub repo,
 so any browser with the access key can open them.
 
@@ -9,7 +9,11 @@ Render settings (Environment):
 Files written:
     scans/last-scan-<login>.json   the last scan of that login (application list, stages, remarks)
     scans/index.json               {login: {at, n, partial}}
-    state/shared.json              gists / scores / points, owner & khata choices, pre-scrutiny points, photo prints
+    state/shared.json              gists / scores / points, owner & khata choices, pre-scrutiny points, photo prints,
+                                   and "reps": which applications have a saved report online (key → version of the analysis)
+    reports/<application>.json     the saved analysis report (v1.9.9) — photos, compression and satellite pictures removed,
+                                   the tatima sketch kept as a reduced copy
+    archive/disposed.json          applications no longer on the Dashboard list (disposed), kept ARCHIVE_DAYS days (default 365)
 Phone numbers, Aadhaar and other 10/12-digit numbers are removed before anything is saved.
 """
 import base64
@@ -134,7 +138,7 @@ def index():
     return obj or {}
 
 
-STATE_PARTS = ("gists", "choices", "points", "fps")
+STATE_PARTS = ("gists", "choices", "points", "fps", "reps")
 
 
 def _merge(old, new):
@@ -172,6 +176,112 @@ def save_state(part_updates):
 def load_state():
     obj, _ = get("state/shared.json")
     return obj or {}
+
+
+# ── saved reports (v1.9.9): the register opens any analysed application at once, on any browser
+_IMG = re.compile(r'<img\b[^>]*?\balt="([^"]*)"[^>]*?\bsrc="data:image/[a-z+]+;base64,([A-Za-z0-9+/=]+)"[^>]*>', re.I)
+_IMG_ANY = re.compile(r'<img\b[^>]*?\bsrc="data:[^"]*"[^>]*>', re.I)
+
+
+def _small_jpeg(b64, side=900, q=60):
+    from io import BytesIO
+    from PIL import Image
+    im = Image.open(BytesIO(base64.b64decode(b64)))
+    im = im.convert("L") if im.mode in ("L", "LA", "1") else im.convert("RGB")
+    im.thumbnail((side, side))
+    out = BytesIO()
+    im.save(out, "JPEG", quality=q, optimize=True)
+    return base64.b64encode(out.getvalue()).decode()
+
+
+def slim_html(html, clean=None):
+    """Report as kept online: the tatima sketch is reduced, every other picture (photo, compression check, satellite) is removed.
+    clean(text) is applied to the text only — never to the picture data."""
+    keep = []
+
+    def one(m):
+        r = _one(m)
+        keep.append(r)
+        return f"\x00IMG{len(keep) - 1}\x00"
+
+    def _one(m):
+        alt = (m.group(1) or "").lower()
+        if alt == "sketch":
+            try:
+                return ('<img alt="sketch" src="data:image/jpeg;base64,' + _small_jpeg(m.group(2)) +
+                        '" style="max-width:100%;max-height:420px;object-fit:contain">')
+            except Exception:
+                pass
+        return ('<div style="display:inline-block;padding:10px 12px;border:1px dashed #c9ced8;border-radius:6px;color:#5b6475;font-size:12px">'
+                f'{alt or "picture"} — not kept in the online copy (tap Run again for the full report)</div>')
+    html = _IMG.sub(one, html or "")
+    html = _IMG_ANY.sub('<span style="color:#5b6475;font-size:12px">[picture not kept online]</span>', html)
+    if clean:
+        html = clean(html)
+    return re.sub(r"\x00IMG(\d+)\x00", lambda m: keep[int(m.group(1))], html)
+
+
+def _rep_path(key):
+    return "reports/" + re.sub(r"[^A-Za-z0-9_-]+", "_", str(key))[:120] + ".json"
+
+
+def save_report(key, ver, appv, gist, html):
+    if not key or not ver:
+        return None
+    rec = scrub({"key": key, "ver": ver, "appv": appv, "gist": gist, "at": int(time.time() * 1000)})
+    rec["html"] = slim_html(html, scrub)
+    with _lock:
+        for attempt in range(3):
+            try:
+                _, sha = get(_rep_path(key))
+                put(_rep_path(key), rec, sha, f"report {key}")
+                break
+            except ConflictError:
+                time.sleep(1 + attempt)
+    save_state({"reps": {key: {"ver": ver, "appv": appv, "at": rec["at"]}},
+                "gists": {key: {"ver": ver, "gist": gist, "at": rec["at"]}} if gist else {}})
+    return len(rec["html"])
+
+
+def load_report(key):
+    obj, _ = get(_rep_path(key))
+    return obj
+
+
+# ── disposed applications (no longer on the Dashboard list)
+def archive_days():
+    try:
+        return max(1, int(os.environ.get("ARCHIVE_DAYS", "365")))
+    except ValueError:
+        return 365
+
+
+def _trim_archive(arc):
+    cut = int(time.time() * 1000) - archive_days() * 86400000
+    return {k: v for k, v in (arc or {}).items() if isinstance(v, dict) and (v.get("disposedAt") or v.get("at") or 0) >= cut}
+
+
+def save_disposed(items, back=()):
+    """items: {key: slim application with disposedAt}; back: keys that are on the Dashboard again."""
+    items = scrub(items or {})
+    with _lock:
+        for attempt in range(3):
+            try:
+                cur, sha = get("archive/disposed.json")
+                cur = _merge(cur or {}, items)
+                for k in back or ():
+                    cur.pop(k, None)
+                cur = _trim_archive(cur)
+                put("archive/disposed.json", cur, sha, f"disposed: +{len(items)} −{len(back or ())}")
+                return len(cur)
+            except ConflictError:
+                time.sleep(1 + attempt)
+        raise RuntimeError("GitHub kept reporting a conflict — try again")
+
+
+def load_disposed():
+    obj, _ = get("archive/disposed.json")
+    return _trim_archive(obj)
 
 
 def check():

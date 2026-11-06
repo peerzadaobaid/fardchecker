@@ -1,10 +1,10 @@
-# FARD CHECKER VERSION 1.9.7
+# FARD CHECKER VERSION 1.9.9
 """Analysis report (v1.9).
 
-Case 1 — Pre-scrutiny: only the applicant's submission (no Patwari report yet).
+Stage 1 — only the applicant's submission (no Patwari report yet).
     1 Geotagged photograph (scale) · 2 Survey no. and its record · 3 Title and share (scale, owner drop-down)
     4 Documents checklist with Aadhaar (scale) · Overall (scale)
-Case 2 — After the Patwari's report: everything of Case 1 kept; inside each retained section a box
+Stage 2 — After the Patwari's report: everything of Case 1 kept; inside each retained section a box
     "After Patwari's report" adds what the report/tatima changes. Plus 4 Tatima (scale) and
     5 Patwari's report — contradictions (expected answers + record), and Overall with Case 1 points ✓/✗.
 """
@@ -142,7 +142,8 @@ def prepare(app, ai):
         c.applied = c.cert_area
     pr = norm(app.get("patReport"))
     filled = any(not E.is_pending(pf(f, x)) for x in ("possession", "fit", "cKhewat", "soil"))
-    c.case = 2 if (pr == "Submitted" or (not pr and filled)) else 1
+    sn = app.get("stageN")
+    c.case = int(sn) if str(sn) in ("1", "2") else (2 if (pr == "Submitted" or (not pr and filled)) else 1)
     c.v = E.load_village(c.village) if c.village else None
     c.K = main_no(c.khasra, c.v) if c.khasra else ""
     c.p = E.parcel_for(c.v, c.khasra) if c.v and c.khasra else None
@@ -1208,7 +1209,8 @@ def sat_prefetch(app):
     try:
         f = app.get("fields") or {}
         pr = norm(app.get("patReport"))
-        if pr != "Submitted" or not pf(f, "onspot"):
+        sn = str(app.get("stageN") or "")
+        if (sn != "2" if sn else pr != "Submitted") or not pf(f, "onspot"):
             return None
         c = Ctx()
         c.village = pf(f, "villageD") or norm(app.get("village"))
@@ -1359,7 +1361,7 @@ EXPECTED_MAP = [(k, lab) for k, lab, _ in EXPECTED]
 
 
 # ───────────────────────────── Overall ─────────────────────────────
-def overall(c, secs, title_s, prev_points):
+def overall(c, secs, title_s, prev_points, prev_report=None):
     if c.case == 1:
         w = [("Title", title_s, 40), ("Survey record", secs["survey"], 20), ("Photo", secs["photo"], 25), ("Documents", secs.get("docs"), 15)]
     else:
@@ -1397,7 +1399,8 @@ def overall(c, secs, title_s, prev_points):
     ov = []
     for n, sc, _ in have:
         ov.append(f"{n} {band(sc)[1].lower()} ({sc})")
-    return {"score": score, "points": uniq, "comment": comment, "summary": " · ".join(ov), "prev": prev_points if c.case == 2 else None}
+    return {"score": score, "points": uniq, "comment": comment, "summary": " · ".join(ov), "prev": prev_points if c.case == 2 else None,
+            "prev_report": prev_report if c.case == 2 else None}
 
 
 def overall_html(c, o):
@@ -1410,7 +1413,15 @@ def overall_html(c, o):
             done = p_.get("id") not in cur
             rows.append(f"<div style='margin:2px 0;color:{COL['green'] if done else COL['red']}'>{'✓ resolved' if done else '✗ still open'} — {esc(p_.get('text', ''))}</div>")
         if rows:
-            h.append("<div style='margin:8px 0 4px;font-weight:700'>Pre-scrutiny points after the Patwari's report</div>" + "".join(rows))
+            h.append("<div style='margin:8px 0 4px;font-weight:700'>Stage 1 points after the Patwari's report</div>" + "".join(rows))
+    if o.get("prev_report"):
+        cur = {p_["id"] for p_ in o["points"]}
+        rows = []
+        for p_ in o["prev_report"]:
+            done = p_.get("id") not in cur
+            rows.append(f"<div style='margin:2px 0;color:{COL['green'] if done else COL['red']}'>{'✓ corrected' if done else '✗ still open'} — {esc(p_.get('text', ''))}</div>")
+        if rows:
+            h.append("<div style='margin:8px 0 4px;font-weight:700'>Since the previous Patwari report (resubmitted)</div>" + "".join(rows))
     if o["points"]:
         note = "\n".join(f"{i}. {p_['text']}" for i, p_ in enumerate(o["points"], 1))
         h.append("<div style='margin:10px 0 4px;font-weight:700'>Points to verify</div>")
@@ -1425,7 +1436,8 @@ class Rep:
     pass
 
 
-def build(app, ai, ai_err=None, pages=None, id_pages=None, doc_labels=None, prev_points=None, other_fps=None, reader_status=None, skipped=None, sat_pre=None):
+def build(app, ai, ai_err=None, pages=None, id_pages=None, doc_labels=None, prev_points=None, other_fps=None, reader_status=None, skipped=None, sat_pre=None,
+          prev_report_points=None):
     ai = ai or {}
     c = prepare(app, ai)
     pages = pages or []
@@ -1466,7 +1478,7 @@ def build(app, ai, ai_err=None, pages=None, id_pages=None, doc_labels=None, prev
     else:
         secs["tatima"] = tatima_section(c, rep.tatima)
         secs["report"] = report_section(c, sat_pre)
-    ovs = {k: overall(c, secs, t, prev_points) for k, t in titles.items()}
+    ovs = {k: overall(c, secs, t, prev_points, prev_report_points) for k, t in titles.items()}
     out = render(c, rep, secs, titles, default, ovs, reader_status, ai_err, skipped)
     d = default
     gist = {"case": c.case, "score": ovs[d]["score"], "band": band(ovs[d]["score"])[0],
@@ -1528,7 +1540,7 @@ def render(c, rep, secs, titles, default, ovs, rs, ai_err, skipped):
     h.append(f'<h2 style="margin:0 0 4px;font-size:18px">{esc(hd["service"] or "Application")} — Survey no. {esc(hd["khasra"] or "?")}, {esc(hd["village"] or "?")}</h2>')
     h.append(f'<div style="color:#5b6475;font-size:13px">Applicant: {esc(hd["applicant"] or "—")} · App. no. {esc(hd["appNo"] or "—")}'
              f'{" · Area applied: " + km(hd["applied"]) if hd["applied"] is not None else ""}</div>')
-    lab = ("Pre-scrutiny — Patwari report not yet submitted", "#5b3fa8") if c.case == 1 else ("After the Patwari's report", "#12355b")
+    lab = ("Stage 1 — Applicant's submission (Patwari report and tatima not yet in)", "#5b3fa8") if c.case == 1 else ("Stage 2 — After the Patwari's report and tatima", "#12355b")
     h.append(f'<div style="display:inline-block;margin:8px 0 4px;padding:4px 12px;border-radius:14px;background:{lab[1]};color:#fff;font-weight:700;font-size:13px">{lab[0]}</div>')
     if not c.v:
         h.append(f'<div style="margin:6px 0;padding:8px 10px;border-radius:8px;background:#fdecea;color:#b42318">Village records not found for “{esc(c.village)}” — record checks could not run.</div>')
@@ -1633,7 +1645,7 @@ def render(c, rep, secs, titles, default, ovs, rs, ai_err, skipped):
 
 def case_text(c, secs, title_s, ov):
     L = ["Please review this Revenue Plus application as a Naib Tehsildar in J&K would, and make the final call.",
-         ("Stage: pre-scrutiny (Patwari report not yet submitted)." if c.case == 1 else "Stage: after the Patwari's report."), "",
+         ("Stage 1: applicant's submission (Patwari report and tatima not yet in)." if c.case == 1 else "Stage 2: after the Patwari's report and tatima."), "",
          f"## Application: {c.app.get('service') or ''} — survey no. {c.khasra}, village {c.village}; applicant {c.applicant}; "
          f"app. no. {c.app.get('appNo')}; area applied {km(c.applied) if c.applied is not None else '—'}"]
     sym = {"red": "[SERIOUS]", "amber": "[CHECK]", "green": "[OK]", "info": "-"}
