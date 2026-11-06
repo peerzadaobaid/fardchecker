@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.10
+# FARD CHECKER VERSION 1.9.11
 """Analysis report (v1.9).
 
 Stage 1 — only the applicant's submission (no Patwari report yet).

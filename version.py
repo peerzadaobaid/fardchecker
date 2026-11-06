@@ -1,11 +1,13 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.9.10
+FARD CHECKER VERSION 1.9.11
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.9.10"
+VERSION = "1.9.11"
 DATE = "7 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.9.11", "7 Nov 2026",
+     "Main list: new 'Analysis' column — Stage 1 / Stage 2 badge with where its analysis stands (✓ analysed with score, pending, ✗ failed with Redo, ↩ reverted to Patwari), kept up to date as analyses finish. The old 'Stage' column is renamed 'Pending with'. The Stage 1 / Stage 2 badge is also shown in the register lists and the Analysis failed list."),
     ("1.9.10", "7 Nov 2026",
      "A KMZ is always made — with the Patwari's tatima when there is one; when the survey no. is not on the village map, of the nearest available survey no. and its neighbours, named and labelled as such (only a village with no map on file has none, and the report says so). Section 2 opens with the area of the survey no. on the map against the total of all its entries in the Jamabandi (agree within 15%, at least 3 marla). Failed analyses are marked with the reason and a Redo button (Analysis failed list, Redo all failed); a temporary failure is retried once by itself after 5 minutes."),
     ("1.9.9", "6 Nov 2026",
