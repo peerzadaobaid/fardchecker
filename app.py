@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.11
+# FARD CHECKER VERSION 1.9.12
 """Revenue Plus Tracker — hosted tracker + application analyser (Flask, for Render).
 
 Environment variables (Render → Environment):
@@ -9,7 +9,7 @@ Environment variables (Render → Environment):
   GEMINI_MODEL       optional, default gemini-3.8-flash
   (Without ANTHROPIC_API_KEY the app runs in free mode: GPS overlay read by free OCR, handwriting not read.)
 """
-import base64, gc, hmac, html, os, time
+import base64, gc, hmac, html, json, os, time
 
 from flask import Flask, Response, jsonify, request, send_file
 
@@ -86,6 +86,8 @@ def ping():
     return jsonify(ok=True, version=version.VERSION, version_date=version.DATE, files_ok=all(v == version.VERSION for v in fv.values()), files=fv,
                    key_ok=ok_key(), ai=reader != "free-ocr", reader=reader,
                    sync=bool(os.environ.get("DATA_REPO") and os.environ.get("GITHUB_TOKEN")),
+                   memory={"now_mb": rss_mb(), "peak_mb": peak_mb(), "limit_mb": MEM_LIMIT_MB, "restart_at_mb": MEM_RESTART_MB,
+                           "worker_started": int(STARTED * 1000)},
                    gemini_model=os.environ.get("GEMINI_MODEL", "gemini-3.8-flash") if reader == "gemini" else None,
                    python=sys.version.split()[0], versions=vers)
 
@@ -217,8 +219,19 @@ def _save_report_later(key, ver, appv, gist, html):
             sync.save_report(key, ver, appv, gist, html)
         except Exception as e:
             print("report not saved online:", key, e, flush=True)
-    threading.Thread(target=run, daemon=True).start()
+    th = threading.Thread(target=run, daemon=True)
+    th.start()
+    _last_save["t"] = th            # the next analysis waits for this save to finish (no overlap in memory)
     return True
+
+
+@app.get("/api/memory")
+def memory():
+    """Memory of the analyser and of each recent analysis (since the worker last started)."""
+    if not ok_key():
+        return jsonify(error="Wrong or missing access key"), 401
+    return jsonify(now_mb=rss_mb(), peak_mb=peak_mb(), limit_mb=MEM_LIMIT_MB, restart_at_mb=MEM_RESTART_MB, analyses_done=_count["n"], per_worker=ANALYSES_PER_WORKER,
+                   worker_started=int(STARTED * 1000), restart_due=_restart["due"], analyses=list(MEMLOG))
 
 
 @app.get("/api/test-reader")
@@ -350,22 +363,95 @@ def khasra():
 import threading
 _one_at_a_time = threading.Lock()   # free plan: never run two analyses together (memory)
 
+# ── v1.9.12 memory: log every analysis, never overlap the online save with the next analysis,
+# and restart the worker cleanly BETWEEN analyses when memory is already high (instead of Render killing it mid-analysis)
+import collections
+MEMLOG = collections.deque(maxlen=40)
+STARTED = time.time()
+MEM_LIMIT_MB = int(os.environ.get("MEM_LIMIT_MB", "512"))
+MEM_RESTART_MB = int(os.environ.get("MEM_RESTART_MB", "380"))
+ANALYSES_PER_WORKER = int(os.environ.get("ANALYSES_PER_WORKER", "20"))
+_count = {"n": 0}
+_last_save = {"t": None}
+_restart = {"due": False, "why": ""}
+
+
+def rss_mb():
+    try:
+        with open("/proc/self/status") as fh:
+            for ln in fh:
+                if ln.startswith("VmRSS:"):
+                    return int(ln.split()[1]) // 1024
+    except Exception:
+        pass
+    return None
+
+
+def peak_mb():
+    try:
+        import resource
+        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // 1024
+    except Exception:
+        return None
+
+
+def _restart_worker_later(why):
+    """Ask gunicorn to replace this worker once the current answer has gone out (graceful: no request is cut)."""
+    if _restart["due"]:
+        return
+    _restart.update(due=True, why=why)
+    print("memory: restarting worker between analyses —", why, flush=True)
+
+    def go():
+        time.sleep(2)
+        t = _last_save["t"]
+        if t is not None and t.is_alive():
+            t.join(45)                 # let the online save finish first
+        import signal
+        os.kill(os.getpid(), signal.SIGTERM)     # gunicorn: finish the answers in progress, then a new worker starts
+        time.sleep(15)
+        os._exit(0)                              # still here (a background download holding the exit) — leave now
+    threading.Thread(target=go, daemon=True).start()
+
 
 @app.post("/api/analyse")
 def analyse():
     if not ok_key():
         return jsonify(error="Wrong or missing access key"), 401
+    if _restart["due"]:
+        return jsonify(error="Analyser busy — restarting to free memory, try again in a minute"), 503
     if not _one_at_a_time.acquire(timeout=170):
         return jsonify(error="Analyser busy — try again in a minute"), 503
     try:
+        t = _last_save["t"]
+        if t is not None and t.is_alive():
+            t.join(45)                 # the previous report is still being saved online — finish that first
+        engine.trim_memory()
         return _analyse()
     finally:
         _one_at_a_time.release()
+        engine.trim_memory()
+        _count["n"] += 1
+        m = rss_mb()
+        if m and m >= MEM_RESTART_MB:
+            _restart_worker_later(f"{m} MB in use after an analysis (limit {MEM_LIMIT_MB} MB)")
+        elif _count["n"] >= ANALYSES_PER_WORKER:
+            _restart_worker_later(f"{_count['n']} analyses done — routine restart to clear memory")
 
 
 def _analyse():
     t0 = time.time()
-    data = request.get_json(force=True, silent=True) or {}
+    raw = request.get_data(cache=False)            # the request body is not kept a second time
+    try:
+        data = json.loads(raw) if raw else {}
+    except Exception:
+        data = {}
+    del raw
+    mem = {"start": rss_mb()}
+    appd0 = data.get("app") or {}
+    rec = {"at": int(time.time() * 1000), "app": str(appd0.get("appNo") or "")[-6:], "village": appd0.get("village") or "",
+           "khasra": appd0.get("khasra") or "", "docs": len(data.get("docs") or []), "mem": mem}
+    MEMLOG.appendleft(rec)
     appd = data.get("app") or {}
     pages, skipped, seen = [], [], set()
     for d in data.pop("docs", None) or []:
@@ -378,6 +464,8 @@ def _analyse():
         except Exception as e:
             skipped.append(f"{lab}: {e}")
     engine.trim_memory()
+    mem["pages"] = rss_mb()
+    rec["pages"] = len(pages)
     f = appd.get("fields") or {}
     ctx = {"service": appd.get("service") or f.get("svcType") or "", "khasra": f.get("cKhasra") or appd.get("khasra") or "",
            "village": f.get("villageD") or appd.get("village") or "", "applicant": f.get("applicant") or appd.get("name") or "",
@@ -409,6 +497,7 @@ def _analyse():
     except Exception:
         sat_pre = None
     pool.shutdown(wait=False)
+    mem["read"] = rss_mb()
     reader_status = {"used": used, "ok": ai_err is None, "error": ai_err, "pages": len(pages), "secs": round(time.time() - t1),
                      "read": [k for k in ("fard", "tatima", "mutations") if (ai or {}).get(k) and (not isinstance(ai.get(k), dict) or ai[k].get("found"))]
                              + (["GPS stamp"] if ((ai or {}).get("photo") or {}).get("lat") else [])}
@@ -424,13 +513,18 @@ def _analyse():
                          prev_points=data.get("prev_points"), other_fps=data.get("photo_fps"), reader_status=reader_status, skipped=skipped,
                          sat_pre=sat_pre, prev_report_points=data.get("prev_report_points"))
     del id_pages
+    mem["report"] = rss_mb()
     ai_safe = {k: v for k, v in (ai or {}).items() if k != "pages"}
     timing = {"prepare": round(t1 - t0, 1), "read": reader_status["secs"], "total": round(time.time() - t0, 1)}
     saved = _save_report_later(data.get("rp_key"), data.get("rp_ver"), data.get("rp_appv"), res["gist"], res["html"])
     out = jsonify(saved_online=saved, html=res["html"], case=res["case"], gist=res["gist"], points=res["points"], photo_hash=res["photo_hash"], owner_default=res["owner_default"],
                   timing=timing, ai=ai_safe)
     pages.clear()
+    del res
     engine.trim_memory()
+    mem["end"] = rss_mb()
+    rec["peak"] = peak_mb()
+    rec["secs"] = timing["total"]
     return out
 
 
@@ -465,6 +559,13 @@ From v1.9.9 it also holds the <b>fard register</b>: each analysed report (photos
 if(!r.ok){{o.innerHTML='<span style="color:#b42318">'+(d.error||r.status)+'</span>';return}}
 var ix=d.index||{{}};o.innerHTML=(d.ok?'<b style="color:#145c36">✓ Connected</b> to '+d.repo:'<b style="color:#b42318">✗ Not working</b> — '+String(d.why||'').replace(/[<>&]/g,''))+
 (d.ok?'<div class=m>'+(Object.keys(ix).length?Object.keys(ix).map(function(k){{return 'Last scan ('+k+'): '+new Date(ix[k].at).toLocaleString()+' — '+ix[k].n+' applications'+(ix[k].partial?' (partial)':'')}}).join('<br>'):'No scan saved yet.')+'</div>':'')}}catch(e){{o.textContent='Error: '+e}}}}</script></div>
+<div class="c"><h2>Memory (Render free plan: 512 MB)</h2><p class="m">Memory used at each step of the recent analyses, since the analyser last started. When more than the restart level is still in use after an analysis, the analyser restarts itself between analyses (about 30 s) instead of being stopped by Render in the middle of one.</p>
+<p><input id="k4" placeholder="Access key" type="password"> <button onclick="showMem()">Show memory</button></p><div id="mm"></div>
+<script>async function showMem(){{var o=document.getElementById('mm');o.textContent='Loading…';try{{var r=await fetch('/api/memory?key='+encodeURIComponent(document.getElementById('k4').value));var d=await r.json();
+if(!r.ok){{o.innerHTML='<span style="color:#b42318">'+(d.error||r.status)+'</span>';return}}
+var c=function(v){{return v==null?'—':'<span style="color:'+(v>=d.restart_at_mb?'#b42318':v>=d.restart_at_mb*0.8?'#8a5300':'#145c36')+'">'+v+'</span>'}};
+o.innerHTML='<p>Now <b>'+c(d.now_mb)+' MB</b> · highest since start <b>'+c(d.peak_mb)+' MB</b> · restart level '+d.restart_at_mb+' MB · limit '+d.limit_mb+' MB · analyser started '+new Date(d.worker_started).toLocaleString()+(d.restart_due?' · <b style="color:#8a5300">restarting now</b>':'')+'</p>'+
+(d.analyses.length?'<table><tr><th>When</th><th>Application</th><th>Pages</th><th>Start</th><th>Pages read</th><th>AI read</th><th>Report</th><th>End</th><th>Peak</th><th>Secs</th></tr>'+d.analyses.map(function(a){{var m=a.mem||{{}};return '<tr><td class=m>'+new Date(a.at).toLocaleTimeString()+'</td><td>…'+String(a.app).replace(/[<>&]/g,'')+'<div class=m>'+String(a.village+' '+a.khasra).replace(/[<>&]/g,'')+'</div></td><td>'+(a.pages==null?'—':a.pages)+' <span class=m>('+a.docs+' docs)</span></td><td>'+c(m.start)+'</td><td>'+c(m.pages)+'</td><td>'+c(m.read)+'</td><td>'+c(m.report)+'</td><td>'+c(m.end)+'</td><td>'+c(a.peak)+'</td><td>'+(a.secs==null?'<span style="color:#b42318">failed</span>':a.secs)+'</td></tr>'}}).join('')+'</table><p class=m>All figures in MB. Peak is the highest the analyser has reached since it started.</p>':'<p class=m>No analysis since the analyser started.</p>')}}catch(e){{o.textContent='Error: '+e}}}}</script></div>
 <div class="c"><h2>3 · Village data</h2><p class="m">One folder per village in GitHub: <code>villages/&lt;Village name&gt;/</code> with the Jamabandi .xlsx and the shapefile (.shp .shx .dbf .prj). To add a village, open the <code>villages</code> folder on GitHub → Add file → Upload files → drag the whole village folder. Optional <code>aliases.txt</code> (one spelling per line) if the portal spells the village differently. A tehsil-wide shapefile with a Village column can go in <code>villages/_maps/</code> instead of a shapefile per village.</p>
 <p><input id="k" placeholder="Access key" type="password"> <button onclick="load()">Show villages</button> <button onclick="all_()" style="background:#12355b">Check all</button></p><div id="vs"></div></div>
 <script>

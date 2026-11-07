@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.11
+# FARD CHECKER VERSION 1.9.12
 """Scan sync — keeps the last scan (per login) and the shared tracker state in a PRIVATE GitHub repo,
 so any browser with the access key can open them.
 

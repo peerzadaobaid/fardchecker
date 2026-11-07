@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.11
+# FARD CHECKER VERSION 1.9.12
 """Revenue Plus application analyser — village records, document reading and checks.
 
 Village data lives in the repo:  villages/<Village name>/<anything>.xlsx  (Jamabandi export)
@@ -807,6 +807,19 @@ def trim_memory():
         pass
 
 
+def open_small(raw, side):
+    """Open a picture already reduced while decoding (JPEG draft mode): a 48-megapixel phone photo would otherwise take
+    about 150 MB of memory before it could be shrunk."""
+    from PIL import Image
+    im = Image.open(io.BytesIO(raw))
+    try:
+        if (im.format or "").upper() in ("JPEG", "MPO") and getattr(im, "n_frames", 1) == 1:
+            im.draft("RGB", (side, side))
+    except Exception:
+        pass
+    return im
+
+
 def doc_to_images(label, mime, b64, max_side=1400, seen=None):
     """Render document pages one at a time (low memory), skipping duplicate pages early."""
     import gc
@@ -849,12 +862,14 @@ def doc_to_images(label, mime, b64, max_side=1400, seen=None):
             add_img(f"{label} — page {i + 1}", im)
             # keep the original embedded photo (camera data, compression check) for colourful pages only
             try:
-                if _colourfulness(im) >= 0.08:
+                if "__orig__" not in seen and _colourfulness(im) >= 0.08:   # only the first photo's original is used by the report
                     imgs = sorted(page.get_images(full=True), key=lambda t: -(t[2] * t[3]))
                     if imgs and imgs[0][2] * imgs[0][3] >= 200 * 200:
                         x = doc.extract_image(imgs[0][0])
                         if x and x.get("ext", "").lower() in ("jpeg", "jpg", "png") and len(x["image"]) < 8e6:
                             out[-1]["orig"] = x["image"]
+                            seen.add("__orig__")
+                        del x
             except Exception:
                 pass
             del im
@@ -863,18 +878,20 @@ def doc_to_images(label, mime, b64, max_side=1400, seen=None):
         trim_memory()
     else:
         try:
-            im = Image.open(io.BytesIO(raw))
+            im = open_small(raw, max_side)
             frames = getattr(im, "n_frames", 1)
             for i in range(min(frames, 10)):
                 im.seek(i)
                 fr = im.convert("RGB")
+                fr.thumbnail((max_side, max_side))
                 h = hashlib.md5(fr.convert("L").resize((24, 24)).tobytes()).hexdigest()
                 if h in seen:
                     continue
                 seen.add(h)
                 add_img(f"{label}" + (f" — page {i + 1}" if frames > 1 else ""), fr)
-                if frames == 1 and len(raw) < 8e6 and _colourfulness(fr) >= 0.08:
+                if frames == 1 and "__orig__" not in seen and len(raw) < 8e6 and _colourfulness(fr) >= 0.08:
                     out[-1]["orig"] = raw
+                    seen.add("__orig__")
         except Exception:
             return []
     for o in out:
@@ -949,13 +966,15 @@ def free_read(pages):
         from PIL import Image
         ocr = _get_ocr()
         cands = []
-        for p in pages:
+        for p in pages:                     # only the colour score is kept — pages are decoded again one at a time below
             im = Image.open(io.BytesIO(base64.b64decode(p["data"]))).convert("RGB")
-            cands.append((_colourfulness(im), p, im))
+            cands.append((_colourfulness(im), p))
+            del im
         cands.sort(key=lambda c: -c[0])
         # photos first; plain scans (almost no colour) only if nothing found
         tries = [c for c in cands if c[0] >= 0.08] + [c for c in cands if c[0] < 0.08]
-        for col, p, im in tries:
+        for col, p in tries:
+            im = Image.open(io.BytesIO(base64.b64decode(p["data"]))).convert("RGB")
             w, h = im.size
             for box in ((0, int(h * 0.55), w, h), (0, 0, w, h)):   # bottom strip first, then whole page
                 crop = im.crop(box)

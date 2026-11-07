@@ -1,11 +1,13 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.9.11
+FARD CHECKER VERSION 1.9.12
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.9.11"
+VERSION = "1.9.12"
 DATE = "7 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.9.12", "7 Nov 2026",
+     "Memory (Render free plan, 512 MB): pictures are reduced while decoding instead of after (a large phone photo no longer takes ~150 MB on its own); the free OCR step no longer holds every page at once; only the one original photo the report uses is kept; the request body is not held twice; the online save of a report finishes before the next analysis starts. The analyser restarts itself cleanly between analyses when more than 380 MB is still in use, and after every 20 analyses (instead of being stopped by Render in the middle of one); the tracker waits and retries during such a restart without marking the application as failed. New 'Memory' box on the landing page shows memory at each step of recent analyses."),
     ("1.9.11", "7 Nov 2026",
      "Main list: new 'Analysis' column — Stage 1 / Stage 2 badge with where its analysis stands (✓ analysed with score, pending, ✗ failed with Redo, ↩ reverted to Patwari), kept up to date as analyses finish. The old 'Stage' column is renamed 'Pending with'. The Stage 1 / Stage 2 badge is also shown in the register lists and the Analysis failed list."),
     ("1.9.10", "7 Nov 2026",

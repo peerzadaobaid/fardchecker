@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.11
+# FARD CHECKER VERSION 1.9.12
 """Analysis report (v1.9).
 
 Stage 1 — only the applicant's submission (no Patwari report yet).
@@ -193,7 +193,7 @@ def ela_png(raw):
     try:
         from PIL import Image, ImageChops
         import numpy as np
-        im = Image.open(io.BytesIO(raw)).convert("RGB")
+        im = E.open_small(raw, 900).convert("RGB")
         im.thumbnail((900, 900))
         buf = io.BytesIO()
         im.save(buf, "JPEG", quality=90)
@@ -218,7 +218,7 @@ def dhash(img_b64_or_bytes):
     try:
         from PIL import Image
         raw = img_b64_or_bytes if isinstance(img_b64_or_bytes, (bytes, bytearray)) else base64.b64decode(img_b64_or_bytes)
-        im = Image.open(io.BytesIO(raw)).convert("L").resize((17, 16))
+        im = E.open_small(raw, 64).convert("L").resize((17, 16))
         px = list(im.getdata())
         bits = 0
         for y in range(16):
