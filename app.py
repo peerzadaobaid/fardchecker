@@ -60,6 +60,11 @@ def preflight(_any):
     return Response(status=204)
 
 
+# Service Plus (JanSugam) Tracker — its own pages and storage, see splus.py
+import splus
+splus.register(app, ok_key)
+
+
 @app.get("/tracker.js")
 def tracker_js():
     base = request.host_url.rstrip("/")
