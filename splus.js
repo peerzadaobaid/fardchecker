@@ -1,4 +1,4 @@
-// SERVICE PLUS TRACKER VERSION 1.0
+// SERVICE PLUS TRACKER VERSION 1.1
 // Read-only tracker for the J&K Service Plus (JanSugam) portal — Naib Tehsildar inbox.
 // It only ever clicks: Inbox, the Service / Task drop-downs, Get Data, Take Action (to read the page),
 // View Processing History, the history links (Forwarded / Forwarded to Naib Tehsildar) and the report "view" links.
@@ -9,7 +9,7 @@
     window.__spTracker.open();
     return;
   }
-  var VER = "1.0",
+  var VER = "1.1",
     API = window.__spApiBase || "",
     LS_LAST = "spLast",
     LS_RUN = "spRun",
@@ -957,30 +957,101 @@
     }
     return k;
   }
+  // The JanSugam portal (Content Security Policy) does not let the page talk to Render.
+  // A small helper window on Render does the talking; the page passes messages to it.
+  var ON_PORTAL = /jansugam\.jk\.gov\.in$/i.test(location.hostname),
+    API_ORIGIN = API ? new URL(API).origin : "",
+    bridge = window.__spBridge || null,
+    bReady = false,
+    bWait = [],
+    bReq = {},
+    bN = 0;
+  function bridgeAlive() {
+    try {
+      return !!(bridge && !bridge.closed);
+    } catch (x) {
+      return false;
+    }
+  }
+  if (bridgeAlive()) bReady = true; // the bookmark already talked to it
+  window.addEventListener("message", function (e) {
+    if (!API_ORIGIN || e.origin !== API_ORIGIN) return;
+    var m = e.data || {};
+    if (m.sp === "ready") {
+      bReady = true;
+      bWait.splice(0).forEach(function (f) {
+        f();
+      });
+    } else if (m.sp === "res" && bReq[m.id]) {
+      bReq[m.id](m);
+      delete bReq[m.id];
+    }
+  });
+  // must be called straight from a tap (browsers allow pop-ups only then)
+  function openBridge() {
+    if (!API || bridgeAlive()) return;
+    bReady = false;
+    bridge = window.open(API + "/splus/bridge", "spBridge", "width=440,height=320");
+    window.__spBridge = bridge;
+    if (!bridge) log("helper window blocked — allow pop-ups for this site");
+    try {
+      window.focus();
+    } catch (x) {}
+  }
+  async function viaBridge(method, path, body, key) {
+    if (!bridgeAlive()) throw new Error("the helper window is closed — tap Rescan / Load online scan to open it again (allow pop-ups for this site)");
+    if (!bReady)
+      await new Promise(function (ok, bad) {
+        bWait.push(ok);
+        setTimeout(function () {
+          bad(new Error("the helper window did not answer (Render may be waking up — try again in a minute)"));
+        }, 90000);
+      });
+    var id = ++bN;
+    return new Promise(function (ok, bad) {
+      bReq[id] = ok;
+      bridge.postMessage({ sp: "api", id: id, method: method, path: path, body: body || null, key: key }, API_ORIGIN);
+      setTimeout(function () {
+        if (bReq[id]) {
+          delete bReq[id];
+          bad(new Error("no answer from the helper window"));
+        }
+      }, 150000);
+    });
+  }
   async function apiCall(method, path, body) {
     var key = getKey(false);
     if (!API || !key) throw new Error("no access key yet");
-    var ac = window.AbortController ? new AbortController() : null;
-    ac && setTimeout(function () {
-      ac.abort();
-    }, 120000);
-    var r = await fetch(API + path, {
-      method: method,
-      headers: Object.assign({ "X-Access-Key": key }, body ? { "Content-Type": "application/json" } : {}),
-      body: body ? JSON.stringify(body) : undefined,
-      cache: "no-store",
-      signal: ac ? ac.signal : undefined,
-    });
-    var j = {};
-    try {
-      j = await r.json();
-    } catch (x) {}
-    if (r.status === 401) {
+    var status, j = {};
+    if (ON_PORTAL || bridgeAlive()) {
+      var m = await viaBridge(method, path, body, key);
+      status = m.status;
+      j = m.json || {};
+      if (m.error) throw new Error(m.error);
+    } else {
+      var ac = window.AbortController ? new AbortController() : null;
+      ac &&
+        setTimeout(function () {
+          ac.abort();
+        }, 120000);
+      var r = await fetch(API + path, {
+        method: method,
+        headers: Object.assign({ "X-Access-Key": key }, body ? { "Content-Type": "application/json" } : {}),
+        body: body ? JSON.stringify(body) : undefined,
+        cache: "no-store",
+        signal: ac ? ac.signal : undefined,
+      });
+      status = r.status;
+      try {
+        j = await r.json();
+      } catch (x) {}
+    }
+    if (status === 401) {
       try {
         localStorage.removeItem(LS_KEY);
       } catch (x) {}
     }
-    if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+    if (!(status >= 200 && status < 300)) throw new Error(j.error || "HTTP " + status);
     return j;
   }
   var syncMsg = "";
@@ -1494,11 +1565,13 @@
     $("scan") &&
       ($("scan").onclick = function () {
         if (busy) return;
+        openBridge();
         if (API) getKey(true);
         runScan(false);
       });
     $("resume") &&
       ($("resume").onclick = function () {
+        openBridge();
         if (API) getKey(true);
         runScan(true);
       });
@@ -1507,6 +1580,7 @@
         try {
           localStorage.removeItem(LS_RUN);
         } catch (x) {}
+        openBridge();
         if (API) getKey(true);
         runScan(false);
       });
@@ -1517,6 +1591,7 @@
       });
     $("online") &&
       ($("online").onclick = async function () {
+        openBridge();
         getKey(true);
         this.textContent = "Loading…";
         try {
@@ -1534,7 +1609,7 @@
       ($("diag").onclick = function () {
         var s = scan || {},
           txt =
-            "Service Plus Tracker " + VER + " · " + new Date().toString() + "\nPage: " + location.pathname + "\nAPI: " + (API ? "yes" : "no") + " · key: " + (getKey(false) ? "yes" : "no") + "\nScan: " + (s.items ? s.items.length + " items, at " + ddt(s.at) : "none") + "\n" +
+            "Service Plus Tracker " + VER + " · " + new Date().toString() + "\nPage: " + location.pathname + "\nAPI: " + (API ? "yes" : "no") + " · helper window: " + (bridgeAlive() ? (bReady ? "open" : "opening") : "closed") + " · key: " + (getKey(false) ? "yes" : "no") + "\nScan: " + (s.items ? s.items.length + " items, at " + ddt(s.at) : "none") + "\n" +
             (s.items || [])
               .map(function (it) {
                 return it.ref + " | " + it.job + " | " + it.read + " | pat " + (it.pat ? (patPdf(it) ? patPdf(it).state : "nopdf") : "-") + " | gq " + (it.gq ? "y" : "-") + " | rev " + (it.rev ? it.rev.n : 0) + (it.note ? " | " + it.note : "");
@@ -1652,6 +1727,4 @@
 
   if (!/jansugam\.jk\.gov\.in$/i.test(location.hostname)) log("Not on jansugam.jk.gov.in — scanning will not work here.");
   open();
-  // wake Render early so the first save is quick
-  if (API) fetch(API + "/api/ping", { cache: "no-store" }).catch(function () {});
 })();
