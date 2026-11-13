@@ -1,4 +1,4 @@
-// SERVICE PLUS TRACKER VERSION 1.4
+// SERVICE PLUS TRACKER VERSION 1.5
 // Read-only tracker for the J&K Service Plus (JanSugam) portal — Naib Tehsildar inbox.
 // It only ever clicks: Inbox, the Service / Task drop-downs, Get Data, Take Action (to read the page),
 // View Processing History, the history links (Forwarded / Forwarded to Naib Tehsildar) and the report "view" links.
@@ -9,7 +9,8 @@
     window.__spTracker.open();
     return;
   }
-  var VER = "1.4",
+  var VER = "1.5",
+    TOPNAME = window.name || "",
     API = window.__spApiBase || "",
     LS_LAST = "spLast",
     LS_RUN = "spRun",
@@ -175,8 +176,23 @@
       return false;
     }
   }
+  function isTabErr(d) {
+    try {
+      return /tab\s*error/i.test(d.location.pathname);
+    } catch (x) {
+      return false;
+    }
+  }
   function checkLogin(d) {
     if (isLogin(d)) throw SpErr("logout", "The Service Plus login has ended.");
+    if (isTabErr(d)) {
+      var nmNow = "";
+      try {
+        nmNow = d.defaultView.name;
+      } catch (x) {}
+      log("  portal answered tabError (second tab). Frame name “" + nmNow.slice(0, 40) + "”, tab name “" + TOPNAME.slice(0, 40) + "”. Page: " + T(d.body && d.body.textContent).slice(0, 300));
+      throw SpErr("taberror", "The portal refused the background window as a second tab (tabError). Tap Copy diagnostics and send them.");
+    }
   }
   function realOpts(sel) {
     return Array.prototype.filter
@@ -367,7 +383,15 @@
     if (!parentDoc) f.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms");
     f.style.cssText = "position:fixed;left:-30000px;top:0;width:1280px;height:900px;border:0;visibility:hidden";
     (d.body || d.documentElement).appendChild(f);
+    nameAs(f, TOPNAME);
     return f;
+  }
+  // The portal refuses a "second tab" (/tabError). It seems to tell tabs apart by the window name, so the hidden
+  // frames carry the portal tab's own name, and take a private name only for the instant a link or form is aimed at them.
+  function nameAs(f, n) {
+    try {
+      f.contentWindow.name = n;
+    } catch (x) {}
   }
   async function loadUrl(f, url) {
     var d0 = fdoc(f);
@@ -406,10 +430,12 @@
       saved.push([el, el.getAttribute("target")]);
       el.setAttribute("target", nm);
     });
+    nameAs(C, nm);
     var c0 = fdoc(C),
       href = link.getAttribute("href") || "";
     log("open: " + T(link.textContent).slice(0, 40) + " · " + noTok(href).slice(0, 120) + (link.getAttribute("onclick") ? " · onclick " + noTok(link.getAttribute("onclick")).slice(0, 120) : ""));
     link.click();
+    nameAs(C, TOPNAME);
     var res = await waitFor(function () {
       var cd = fdoc(C);
       if (cd && cd !== c0 && ready(cd) && (!readyTest || isLogin(cd) || !/html/i.test(cd.contentType || "html") || readyTest(cd))) return { doc: cd, frame: C, where: "child" };
@@ -506,7 +532,14 @@
       return null;
     }
     var src = String(fn).replace(/\s+/g, " ");
-    log("Inbox: menu function " + call.fn + "(" + call.args.join(", ") + "): " + noTok(src).slice(0, 400));
+    log("Inbox: menu function " + call.fn + "(" + call.args.join(", ") + "): " + noTok(src).slice(0, 1500));
+    log("  portal tab name: “" + TOPNAME.slice(0, 60) + "” · session keys: " + (function () {
+      try {
+        return Object.keys(sessionStorage).join(", ").slice(0, 200) || "none";
+      } catch (x) {
+        return "?";
+      }
+    })());
     if (/(^|[^.\w])(window\.|document\.)?location(\.href)?\s*=[^=]|location\.(assign|replace)\s*\(/.test(src) && !/submit/.test(src)) {
       log("  it changes this page's address directly — not used (it would leave the tracker)");
       return null;
@@ -523,15 +556,31 @@
       },
       onSub = function (e) {
         fix(e.target);
+        nameAs(F, nm);
+        setTimeout(function () {
+          nameAs(F, TOPNAME);
+        }, 0);
       };
     P.submit = function () {
       fix(this);
-      return oSub.apply(this, arguments);
+      nameAs(F, nm);
+      try {
+        return oSub.apply(this, arguments);
+      } finally {
+        nameAs(F, TOPNAME);
+      }
     };
     if (oReq)
       P.requestSubmit = function () {
         fix(this);
-        return oReq.apply(this, arguments);
+        nameAs(F, nm);
+        try {
+          return oReq.apply(this, arguments);
+        } finally {
+          setTimeout(function () {
+            nameAs(F, TOPNAME);
+          }, 0);
+        }
       };
     document.addEventListener("submit", onSub, true);
     window.open = function (u) {
@@ -719,7 +768,7 @@
       return waitFor(function () {
         var x = fdoc(F);
         if (!ready(x)) return null;
-        if (isLogin(x)) return x;
+        if (isLogin(x) || isTabErr(x)) return x;
         var s2 = serviceSel(x),
           t2 = taskSel(x);
         if (!s2 || selectedVal(s2) !== v || !t2) return null;
@@ -733,6 +782,7 @@
     // 1 · ordinary change of the drop-down
     setSel(ss, v);
     var ok = await filled(7000);
+    if (ok) checkLogin(ok);
     // 2 · the page listens through jQuery / select2
     if (!ok) {
       var x = fdoc(F),
@@ -1442,7 +1492,7 @@
             if (res.listDirty) await openInbox(frame());
             break;
           } catch (x) {
-            if (x.kind === "logout" || x.kind === "stopped" || x.kind === "safety") throw x;
+            if (x.kind === "logout" || x.kind === "stopped" || x.kind === "safety" || x.kind === "taberror") throw x;
             log("  " + it.ref + ": " + x.message);
             if (++tries >= 2) {
               it.read = "error";
