@@ -1,4 +1,4 @@
-// SERVICE PLUS TRACKER VERSION 1.3
+// SERVICE PLUS TRACKER VERSION 1.4
 // Read-only tracker for the J&K Service Plus (JanSugam) portal — Naib Tehsildar inbox.
 // It only ever clicks: Inbox, the Service / Task drop-downs, Get Data, Take Action (to read the page),
 // View Processing History, the history links (Forwarded / Forwarded to Naib Tehsildar) and the report "view" links.
@@ -9,7 +9,7 @@
     window.__spTracker.open();
     return;
   }
-  var VER = "1.3",
+  var VER = "1.4",
     API = window.__spApiBase || "",
     LS_LAST = "spLast",
     LS_RUN = "spRun",
@@ -42,7 +42,9 @@
     });
   }
   function noTok(s) {
-    return String(s || "").replace(/(OWASP_CSRFTOKEN|CSRFTOKEN|token)=[^&"' ]+/gi, "$1=…");
+    return String(s || "")
+      .replace(/(OWASP_CSRFTOKEN|CSRFTOKEN|token)=[^&"' ]+/gi, "$1=…")
+      .replace(/\b[A-Z0-9]{4}(?:-[A-Z0-9]{4}){5,}\b/g, "…token…");
   }
   function log(m) {
     var line = new Date().toTimeString().slice(0, 8) + " " + noTok(m);
@@ -179,7 +181,7 @@
   function realOpts(sel) {
     return Array.prototype.filter
       .call((sel && sel.options) || [], function (o) {
-        return o.value && !/^(-1|0|select)$/i.test(T(o.value)) && !/^-*\s*select\b/i.test(T(o.text));
+        return T(o.value) && !/^(-1|select)$/i.test(T(o.value)) && T(o.text) && !/^-*\s*(please\s*)?select\b/i.test(T(o.text));
       })
       .map(function (o) {
         return { value: o.value, text: T(o.text) };
@@ -675,34 +677,106 @@
   function selectedVal(sel) {
     return sel ? sel.value : "";
   }
+  function sig(sel) {
+    return sel
+      ? realOpts(sel)
+          .map(function (o) {
+            return o.value;
+          })
+          .join("|")
+      : "";
+  }
+  function dumpSelects(d) {
+    try {
+      var w = d.defaultView,
+        $ = w.jQuery || w.$;
+      log(
+        "  page: " + noTok(d.location.pathname) + " · jQuery " + (!!($ && $.fn) ? $.fn.jquery || "yes" : "no") + " · select2 " + (!!($ && $.fn && $.fn.select2)) + " · chosen " + (!!($ && $.fn && $.fn.chosen))
+      );
+      Array.prototype.forEach.call(d.querySelectorAll("select"), function (x, i) {
+        log(
+          "  select " + i + ": id=" + (x.id || "-") + " name=" + (x.name || "-") + " label=“" + labelOf(x).slice(0, 30) + "” value=" + x.value + " options=" + x.options.length + " · " +
+            Array.prototype.slice.call(x.options, 0, 3).map(function (o) {
+              return o.value + "=" + T(o.text).slice(0, 40);
+            }).join(" | ") + " · onchange=" + noTok(x.getAttribute("onchange") || "-").slice(0, 120)
+        );
+      });
+    } catch (x) {
+      log("  could not list the drop-downs: " + x.message);
+    }
+  }
   async function chooseService(F, v) {
     var d = fdoc(F),
       ss = serviceSel(d);
     if (!ss) throw SpErr("noinbox", "Service list not found on the Inbox page.");
-    if (ss.value !== v) {
-      // empty the task list first, so we wait for the tasks of the new service (not the old ones)
-      var ts0 = taskSel(d);
-      ts0 &&
-        Array.prototype.slice.call(ts0.options).forEach(function (o) {
-          if (realOpts({ options: [o] }).length) o.remove();
-        });
-      setSel(ss, v);
+    if (ss.value === v && realOpts(taskSel(d)).length) return d;
+    var before = sig(taskSel(d)),
+      d0 = d;
+    // wait until the task list of this service is in (it changes, or the page reloads with it)
+    var filled = function (ms) {
+      var last = null,
+        same = 0;
+      return waitFor(function () {
+        var x = fdoc(F);
+        if (!ready(x)) return null;
+        if (isLogin(x)) return x;
+        var s2 = serviceSel(x),
+          t2 = taskSel(x);
+        if (!s2 || selectedVal(s2) !== v || !t2) return null;
+        var g = sig(t2);
+        if (!g) return null;
+        if (g === last) same++;
+        else (same = 0), (last = g);
+        return same >= 2 && (g !== before || x !== d0 || !before) ? x : null;
+      }, ms);
+    };
+    // 1 · ordinary change of the drop-down
+    setSel(ss, v);
+    var ok = await filled(7000);
+    // 2 · the page listens through jQuery / select2
+    if (!ok) {
+      var x = fdoc(F),
+        w = x.defaultView,
+        $ = w.jQuery || w.$,
+        s2 = serviceSel(x);
+      if ($ && $.fn && s2) {
+        log("  service change: trying jQuery");
+        try {
+          $(s2).val(v).trigger("change");
+          $.fn.select2 && $(s2).trigger({ type: "select2:select", params: { data: { id: v, text: "" } } });
+          $.fn.chosen && $(s2).trigger("chosen:updated");
+        } catch (e) {
+          log("  jQuery change failed: " + e.message);
+        }
+        ok = await filled(7000);
+      }
     }
-    await sleep(500);
-    var last = -1,
-      same = 0;
-    var ok = await waitFor(function () {
-      var d = fdoc(F);
-      if (!ready(d)) return null;
-      var s = serviceSel(d),
-        t = taskSel(d);
-      if (!s || selectedVal(s) !== v || !t) return null;
-      var n = realOpts(t).length;
-      if (n && n === last) same++;
-      else (same = 0), (last = n);
-      return n && same >= 2 ? d : null;
-    }, 20000);
-    if (!ok) throw SpErr("task", "Task list did not fill for this service.");
+    // 3 · call the drop-down's own onchange
+    if (!ok) {
+      var x2 = fdoc(F),
+        s3 = serviceSel(x2);
+      if (s3 && s3.onchange) {
+        log("  service change: calling its onchange");
+        try {
+          s3.onchange.call(s3, new x2.defaultView.Event("change"));
+        } catch (e) {
+          log("  onchange failed: " + e.message);
+        }
+        ok = await filled(7000);
+      }
+    }
+    // the same tasks as before (two services with identical tasks) — accept them
+    if (!ok) {
+      var x3 = fdoc(F);
+      if (x3 && serviceSel(x3) && selectedVal(serviceSel(x3)) === v && sig(taskSel(x3))) {
+        log("  task list unchanged — using it");
+        ok = x3;
+      }
+    }
+    if (!ok) {
+      dumpSelects(fdoc(F));
+      throw SpErr("task", "Task list did not fill for this service.");
+    }
     checkLogin(ok);
     return ok;
   }
