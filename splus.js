@@ -1,4 +1,4 @@
-// SERVICE PLUS TRACKER VERSION 1.2
+// SERVICE PLUS TRACKER VERSION 1.3
 // Read-only tracker for the J&K Service Plus (JanSugam) portal — Naib Tehsildar inbox.
 // It only ever clicks: Inbox, the Service / Task drop-downs, Get Data, Take Action (to read the page),
 // View Processing History, the history links (Forwarded / Forwarded to Naib Tehsildar) and the report "view" links.
@@ -9,7 +9,7 @@
     window.__spTracker.open();
     return;
   }
-  var VER = "1.2",
+  var VER = "1.3",
     API = window.__spApiBase || "",
     LS_LAST = "spLast",
     LS_RUN = "spRun",
@@ -489,7 +489,94 @@
     log("  no Service list there (page: " + (d ? noTok(d.location.pathname) + " · “" + T(d.title).slice(0, 60) + "”" : "?") + ")");
     return null;
   }
+  // The portal's menu opens Inbox with its own function, e.g. onclick="callAnnotation('approvalServiceList.do','0')",
+  // which posts a form. We call that same function on this page, but send the form into the hidden frame.
+  var inboxCall = null;
+  function menuCall(a) {
+    var oc = (a && a.getAttribute("onclick")) || "";
+    var m = /([A-Za-z_$][\w$]*)\s*\(\s*['"]([^'"]*approvalServiceList\.do[^'"]*)['"]\s*(?:,\s*['"]([^'"]*)['"])?/.exec(oc);
+    return m ? { fn: m[1], args: m[3] === undefined ? [m[2]] : [m[2], m[3]] } : null;
+  }
+  async function viaMenuFunction(F, call) {
+    var fn = window[call.fn];
+    if (typeof fn !== "function") {
+      log("Inbox: menu function " + call.fn + " not found on the page");
+      return null;
+    }
+    var src = String(fn).replace(/\s+/g, " ");
+    log("Inbox: menu function " + call.fn + "(" + call.args.join(", ") + "): " + noTok(src).slice(0, 400));
+    if (/(^|[^.\w])(window\.|document\.)?location(\.href)?\s*=[^=]|location\.(assign|replace)\s*\(/.test(src) && !/submit/.test(src)) {
+      log("  it changes this page's address directly — not used (it would leave the tracker)");
+      return null;
+    }
+    var nm = F.name,
+      P = HTMLFormElement.prototype,
+      oSub = P.submit,
+      oReq = P.requestSubmit,
+      oOpen = window.open,
+      fix = function (f) {
+        try {
+          f.setAttribute("target", nm);
+        } catch (x) {}
+      },
+      onSub = function (e) {
+        fix(e.target);
+      };
+    P.submit = function () {
+      fix(this);
+      return oSub.apply(this, arguments);
+    };
+    if (oReq)
+      P.requestSubmit = function () {
+        fix(this);
+        return oReq.apply(this, arguments);
+      };
+    document.addEventListener("submit", onSub, true);
+    window.open = function (u) {
+      if (u) F.src = new URL(u, location.href).href;
+      return F.contentWindow;
+    };
+    var d0 = fdoc(F),
+      here = location.href,
+      restore = function () {
+        P.submit = oSub;
+        if (oReq) P.requestSubmit = oReq;
+        document.removeEventListener("submit", onSub, true);
+        window.open = oOpen;
+      };
+    var d = null;
+    try {
+      fn.apply(window, call.args);
+      d = await waitFor(function () {
+        var x = fdoc(F);
+        return x && x !== d0 && ready(x) && (serviceSel(x) || isLogin(x) || /error/i.test(x.location.pathname)) && x;
+      }, 25000);
+    } catch (x) {
+      log("  menu function failed: " + x.message);
+    } finally {
+      restore();
+    }
+    if (location.href !== here) log("  warning: the page address changed");
+    if (!d) {
+      log("  nothing arrived in the background frame");
+      return null;
+    }
+    checkLogin(d);
+    if (!serviceSel(d)) {
+      log("  background frame shows " + noTok(d.location.pathname) + " · “" + T(d.title).slice(0, 60) + "”");
+      return null;
+    }
+    await waitFor(function () {
+      return realOpts(serviceSel(fdoc(F))).length;
+    }, 5000);
+    inboxCall = call;
+    return fdoc(F);
+  }
   async function openInbox(F) {
+    if (inboxCall) {
+      var dc = await viaMenuFunction(F, inboxCall);
+      if (dc) return dc;
+    }
     if (inboxUrl) {
       var d0 = await tryUrl(F, inboxUrl, "the Inbox address used before");
       if (d0) return d0;
@@ -499,6 +586,14 @@
     // 1 · a real link reading "Inbox" on the page the user is on
     var c = inboxCands(document);
     log("Inbox items on this page: " + c.length + (c.length ? " · " + c.slice(0, 3).map(describe).join(" ‖ ") : ""));
+    for (var k = 0; k < c.length; k++) {
+      var mc = menuCall(c[k].closest("a") || c[k]);
+      if (mc) {
+        var dm = await viaMenuFunction(F, mc);
+        if (dm) return dm;
+        break;
+      }
+    }
     for (var i = 0; i < c.length; i++) {
       var a = c[i].closest("a");
       if (a && realHref(a) && /^https?:/i.test(a.href) && !tried[a.href]) {
