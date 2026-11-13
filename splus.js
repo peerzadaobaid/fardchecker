@@ -1,4 +1,4 @@
-// SERVICE PLUS TRACKER VERSION 1.1
+// SERVICE PLUS TRACKER VERSION 1.2
 // Read-only tracker for the J&K Service Plus (JanSugam) portal — Naib Tehsildar inbox.
 // It only ever clicks: Inbox, the Service / Task drop-downs, Get Data, Take Action (to read the page),
 // View Processing History, the history links (Forwarded / Forwarded to Naib Tehsildar) and the report "view" links.
@@ -9,7 +9,7 @@
     window.__spTracker.open();
     return;
   }
-  var VER = "1.1",
+  var VER = "1.2",
     API = window.__spApiBase || "",
     LS_LAST = "spLast",
     LS_RUN = "spRun",
@@ -434,32 +434,148 @@
 
   // ───────────────────────── Inbox
   var inboxUrl = null;
-  async function openInbox(F) {
-    if (!inboxUrl) {
-      var a = byText(document, /^\s*Inbox\s*$/i, "a")[0];
-      if (a && /^https?:/i.test(a.href) && !/#\s*$/.test(a.getAttribute("href") || "#")) inboxUrl = a.href;
-    }
-    if (inboxUrl) {
-      var d = await loadUrl(F, inboxUrl);
-      if (await waitFor(function () {
-        return serviceSel(fdoc(F));
-      }, 6000)) return fdoc(F);
-      log("Inbox link did not show the Service list: " + noTok(fdoc(F).location.pathname));
-    }
-    // same page as the user, then click Message Box → Inbox inside it
-    var d2 = await loadUrl(F, location.href),
-      l = byText(d2, /^\s*Inbox\s*$/i, "a")[0];
-    if (!l) throw SpErr("noinbox", "Could not find Message Box → Inbox. Open the Service Plus Dashboard and run the tracker again.");
-    var r = await openVia(l, function (dd) {
-      return serviceSel(dd);
+  function pageToken() {
+    var m = /(OWASP_CSRFTOKEN=[^&#]+)/.exec(location.href);
+    return m ? m[1] : "";
+  }
+  function withToken(u) {
+    var t = pageToken();
+    if (!t || /OWASP_CSRFTOKEN=/.test(u)) return u;
+    return u + (u.indexOf("?") >= 0 ? "&" : "?") + t;
+  }
+  // every element that reads "Inbox" (link, menu item, span …), in any frame of the page
+  function inboxCands(d) {
+    var out = [];
+    allDocs(d).forEach(function (x) {
+      Array.prototype.forEach.call(x.querySelectorAll("a,li,span,div,button,p"), function (e) {
+        var t = T(e.textContent);
+        if (t.length <= 20 && /^inbox\b/i.test(t) && !Array.prototype.some.call(e.children, function (c) {
+          return /^inbox\b/i.test(T(c.textContent));
+        }))
+          out.push(e);
+      });
     });
-    if (!r.doc) throw SpErr("noinbox", "Inbox did not open.");
-    if (r.where === "child") {
-      inboxUrl = fdoc(r.frame).location.href;
-      return loadUrl(F, inboxUrl);
+    return out;
+  }
+  function describe(e) {
+    var a = e.closest("a") || e;
+    return noTok((a.outerHTML || "").replace(/\s+/g, " ")).slice(0, 260);
+  }
+  // an approvalServiceList address written anywhere in the page (links, onclick, scripts)
+  function listUrlIn(d) {
+    var html = "";
+    try {
+      html = d.documentElement.innerHTML;
+    } catch (x) {}
+    var m = /["'(=\s]((?:https?:\/\/[^"'\s<>)]+\/|\/)?[\w\/.-]*approvalServiceList\.do[^"'\s<>)]*)/i.exec(html);
+    if (!m) return null;
+    try {
+      return new URL(m[1].replace(/&amp;/g, "&"), d.baseURI).href;
+    } catch (x) {
+      return null;
     }
-    inboxUrl = r.doc.location.href;
-    return r.doc;
+  }
+  async function tryUrl(F, url, why) {
+    log("Inbox: trying " + why + " → " + noTok(url).replace(/^https?:\/\/[^/]+/, ""));
+    await loadUrl(F, url);
+    var ok = await waitFor(function () {
+      return serviceSel(fdoc(F));
+    }, 8000);
+    if (ok) {
+      inboxUrl = url;
+      return fdoc(F);
+    }
+    var d = fdoc(F);
+    log("  no Service list there (page: " + (d ? noTok(d.location.pathname) + " · “" + T(d.title).slice(0, 60) + "”" : "?") + ")");
+    return null;
+  }
+  async function openInbox(F) {
+    if (inboxUrl) {
+      var d0 = await tryUrl(F, inboxUrl, "the Inbox address used before");
+      if (d0) return d0;
+      inboxUrl = null;
+    }
+    var tried = {};
+    // 1 · a real link reading "Inbox" on the page the user is on
+    var c = inboxCands(document);
+    log("Inbox items on this page: " + c.length + (c.length ? " · " + c.slice(0, 3).map(describe).join(" ‖ ") : ""));
+    for (var i = 0; i < c.length; i++) {
+      var a = c[i].closest("a");
+      if (a && realHref(a) && /^https?:/i.test(a.href) && !tried[a.href]) {
+        tried[a.href] = 1;
+        var d1 = await tryUrl(F, a.href, "the Inbox link");
+        if (d1) return d1;
+      }
+    }
+    // 2 · the Inbox address written in the page (menu scripts / onclick)
+    var u = listUrlIn(document);
+    if (u && !tried[(u = withToken(u))]) {
+      tried[u] = 1;
+      var d2 = await tryUrl(F, u, "the address found in the menu");
+      if (d2) return d2;
+    }
+    // 3 · open the same page in the background, open Message Box, click Inbox there
+    log("Inbox: opening this page in the background and clicking Message Box → Inbox");
+    var dd = await loadUrl(F, location.href);
+    await waitFor(function () {
+      return inboxCands(fdoc(F)).length || byText(fdoc(F), /^\s*Message\s*Box\b/i, "a,li,span,div").length;
+    }, 15000);
+    var cc = inboxCands(fdoc(F));
+    if (!cc.length) {
+      var mb = byText(fdoc(F), /^\s*Message\s*Box\s*$/i, "a,li,span,div").sort(function (x, y) {
+        return x.textContent.length - y.textContent.length;
+      })[0];
+      if (mb) {
+        log("  clicking Message Box");
+        (mb.closest("a") || mb).click();
+        await waitFor(function () {
+          return inboxCands(fdoc(F)).length;
+        }, 8000);
+        cc = inboxCands(fdoc(F));
+      }
+    }
+    var u2 = listUrlIn(fdoc(F));
+    if (u2 && !tried[(u2 = withToken(u2))]) {
+      tried[u2] = 1;
+      var d3 = await tryUrl(F, u2, "the address found in the background page");
+      if (d3) return d3;
+      await loadUrl(F, location.href);
+      await sleep(1500);
+      cc = inboxCands(fdoc(F));
+    }
+    if (cc.length) {
+      var el = cc[0].closest("a") || cc[0];
+      log("  clicking " + describe(el));
+      var r = await openVia(el, function (x) {
+        return serviceSel(x);
+      });
+      if (r.doc && serviceSel(r.doc)) {
+        if (r.where === "child") {
+          inboxUrl = r.doc.location.href;
+          return loadUrl(F, inboxUrl);
+        }
+        inboxUrl = r.doc.location.href;
+        return r.doc;
+      }
+      // the click may have changed the page itself without opening anything new
+      var ok = await waitFor(function () {
+        return serviceSel(fdoc(F)) && fdoc(F);
+      }, 8000);
+      if (ok) {
+        inboxUrl = ok.location.href;
+        return ok;
+      }
+      log("  Inbox click did not show the Service list");
+    }
+    // 4 · the usual Inbox address, with this login's token
+    if (pageToken()) {
+      var u3 = location.origin + "/approvalServiceList.do?" + pageToken();
+      if (!tried[u3]) {
+        var d4 = await tryUrl(F, u3, "the usual Inbox address");
+        if (d4) return d4;
+      }
+    }
+    throw SpErr("noinbox", "Could not open Message Box → Inbox. Tap Copy diagnostics and send them.");
   }
   function selectedVal(sel) {
     return sel ? sel.value : "";
