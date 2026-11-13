@@ -1,4 +1,4 @@
-// SERVICE PLUS TRACKER VERSION 1.5
+// SERVICE PLUS TRACKER VERSION 1.6
 // Read-only tracker for the J&K Service Plus (JanSugam) portal — Naib Tehsildar inbox.
 // It only ever clicks: Inbox, the Service / Task drop-downs, Get Data, Take Action (to read the page),
 // View Processing History, the history links (Forwarded / Forwarded to Naib Tehsildar) and the report "view" links.
@@ -9,7 +9,7 @@
     window.__spTracker.open();
     return;
   }
-  var VER = "1.5",
+  var VER = "1.6",
     TOPNAME = window.name || "",
     API = window.__spApiBase || "",
     LS_LAST = "spLast",
@@ -386,6 +386,73 @@
     nameAs(f, TOPNAME);
     return f;
   }
+  // The portal's one-tab check: a page that opens writes to localStorage, an open page answers by writing to
+  // localStorage too (seen through the "storage" event), and the new page then sends itself to /tabError.
+  // While a scan runs, the portal tab and the tracker's hidden frames do not write that answer.
+  function guardWin(w) {
+    try {
+      if (!w || w.__spGuard) return;
+      var real = w.localStorage,
+        keep = function (k) {
+          return /^(sp|rp)/.test(String(k));
+        };
+      // writes by the portal's own scripts (its "answer" to a new page) are dropped; the tracker's own keys pass
+      var px = new Proxy(real, {
+        get: function (t, k) {
+          if (k === "setItem")
+            return function (a, v) {
+              if (keep(a)) t.setItem(a, v);
+            };
+          if (k === "removeItem")
+            return function (a) {
+              if (keep(a)) t.removeItem(a);
+            };
+          if (k === "clear") return function () {};
+          var v = t[k];
+          return typeof v === "function" ? v.bind(t) : v;
+        },
+        set: function (t, k, v) {
+          if (keep(k)) t[k] = v;
+          return true;
+        },
+        deleteProperty: function (t, k) {
+          if (keep(k)) delete t[k];
+          return true;
+        },
+      });
+      var o = w,
+        desc = null;
+      while (o && !(desc = Object.getOwnPropertyDescriptor(o, "localStorage"))) o = Object.getPrototypeOf(o);
+      Object.defineProperty(w, "localStorage", { value: px, configurable: true, writable: true });
+      w.__spGuard = desc || true;
+    } catch (x) {}
+  }
+  function walkWins(d, fn) {
+    try {
+      fn(d.defaultView);
+      Array.prototype.forEach.call(d.querySelectorAll("iframe,frame"), function (f) {
+        var c = fdoc(f);
+        if (c) walkWins(c, fn);
+      });
+    } catch (x) {}
+  }
+  var guardT = null;
+  function guardOn() {
+    walkWins(document, guardWin);
+    if (!guardT)
+      guardT = setInterval(function () {
+        walkWins(document, guardWin);
+      }, 100);
+  }
+  function guardOff() {
+    clearInterval(guardT);
+    guardT = null;
+    try {
+      var desc = window.__spGuard;
+      if (desc && desc !== true) Object.defineProperty(window, "localStorage", desc);
+      delete window.__spGuard;
+    } catch (x) {}
+  }
   // The portal refuses a "second tab" (/tabError). It seems to tell tabs apart by the window name, so the hidden
   // frames carry the portal tab's own name, and take a private name only for the instant a link or form is aimed at them.
   function nameAs(f, n) {
@@ -398,6 +465,7 @@
     f.src = url;
     var d = await waitFor(function () {
       var d = fdoc(f);
+      d && d !== d0 && guardWin(d.defaultView);
       return d !== d0 && ready(d) && d;
     }, 60000);
     if (!d) throw SpErr("timeout", "The portal did not answer (page " + noTok(url).replace(/^https?:\/\/[^/]+/, "") + ")");
@@ -620,6 +688,18 @@
     await waitFor(function () {
       return realOpts(serviceSel(fdoc(F))).length;
     }, 5000);
+    if (!inboxCall) {
+      try {
+        log("  storage keys: " + Object.keys(localStorage).filter(function (k) {
+          return !/^sp|^rp/.test(k);
+        }).join(", ").slice(0, 200));
+        Array.prototype.forEach.call(fdoc(F).scripts, function (sc) {
+          var t = sc.textContent || "";
+          var i = t.search(/tabError|storage|openpages|page_available/i);
+          if (i >= 0) log("  page script: " + noTok(t.slice(Math.max(0, i - 200), i + 300).replace(/\s+/g, " ")));
+        });
+      } catch (x) {}
+    }
     inboxCall = call;
     return fdoc(F);
   }
@@ -1435,6 +1515,7 @@
     if (busy) return;
     busy = true;
     stopFlag = false;
+    guardOn();
     var R = resume ? J(LS_RUN) : null;
     var prevScan = J(LS_LAST),
       prev = {};
@@ -1529,6 +1610,7 @@
       render(msg);
     } finally {
       busy = false;
+      guardOff();
       if (F) {
         try {
           F.remove();
