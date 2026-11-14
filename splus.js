@@ -1,4 +1,4 @@
-// SERVICE PLUS TRACKER VERSION 1.7
+// SERVICE PLUS TRACKER VERSION 1.8
 // Read-only tracker for the J&K Service Plus (JanSugam) portal — Naib Tehsildar inbox.
 // It only ever clicks: Inbox, the Service / Task drop-downs, Get Data, Take Action (to read the page),
 // View Processing History, the history links (Forwarded / Forwarded to Naib Tehsildar) and the report "view" links.
@@ -9,7 +9,7 @@
     window.__spTracker.open();
     return;
   }
-  var VER = "1.7",
+  var VER = "1.8",
     TOPNAME = window.name || "",
     API = window.__spApiBase || "",
     LS_LAST = "spLast",
@@ -171,7 +171,9 @@
   }
   function isLogin(d) {
     try {
-      return !!(d && d.querySelector('input[type="password"]') && !/Message\s*Box/i.test(d.body.textContent));
+      if (!d || !d.body) return false;
+      if (d.querySelector('input[type="password"]') && !/Message\s*Box/i.test(d.body.textContent)) return true;
+      return /error/i.test(d.location.pathname) && /Session\s*Invalidated|session\s*has\s*been\s*expired|Session\s*expired/i.test(d.body.textContent);
     } catch (x) {
       return false;
     }
@@ -995,7 +997,9 @@
       var bt = T(x.body.textContent);
       if (Date.now() - clickT < 3000) return null;
       if (/no\s*(data|record|application)s?\s*(available|found)/i.test(bt) && !resultTable(x)) return "none";
-      if (tb && !bodyRows(tb).length && /Showing\s*0\s*to\s*0\s*of\s*0/i.test(bt)) return "none";
+      if (tb && !bodyRows(tb).length && !Array.prototype.some.call(tb.querySelectorAll("tbody tr"), function (r) {
+        return r.__spOld;
+      })) return "none";
       return null;
     }, 30000, 300);
     if (t === "bad") checkLogin(fdoc(F));
@@ -1163,51 +1167,167 @@
     return btoa(s);
   }
   // fetch the file behind a "view" link and keep it (online in the data repo, or for this session only)
+  function req(win, method, url, body) {
+    return new Promise(function (ok, bad) {
+      try {
+        var x = new win.XMLHttpRequest();
+        x.open(method, url, true);
+        x.responseType = "arraybuffer";
+        x.withCredentials = true;
+        x.timeout = 90000;
+        if (body != null) x.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        x.onload = function () {
+          if (x.status !== 200) return bad(new Error("HTTP " + x.status));
+          ok({ buf: x.response, type: x.getResponseHeader("Content-Type") || "" });
+        };
+        x.onerror = function () {
+          bad(new Error("network error"));
+        };
+        x.ontimeout = function () {
+          bad(new Error("timed out"));
+        };
+        x.send(body == null ? null : body);
+      } catch (e) {
+        bad(e);
+      }
+    });
+  }
+  function tokenIn(d) {
+    try {
+      var i = d.querySelector('input[name="OWASP_CSRFTOKEN"]');
+      if (i && i.value) return i.value;
+      var m = /OWASP_CSRFTOKEN["'\s]*[=:,]\s*["']?([A-Z0-9]{4}(?:-[A-Z0-9]{4}){5,})/.exec(d.documentElement.innerHTML);
+      return m ? m[1] : "";
+    } catch (x) {
+      return "";
+    }
+  }
+  // the portal answers a request without its security token with an error (and may end the login): never send one
+  function tokened(d, url) {
+    if (/^(data|blob):/i.test(url) || /OWASP_CSRFTOKEN=/.test(url)) return url;
+    var t = tokenIn(d) || tokenIn(document);
+    return t ? url + (url.indexOf("?") >= 0 ? "&" : "?") + "OWASP_CSRFTOKEN=" + encodeURIComponent(t) : null;
+  }
+  function dataUriBuf(u) {
+    var m = /^data:([^;,]*)(;base64)?,(.*)$/i.exec(String(u).replace(/\s+/g, ""));
+    if (!m || !m[2]) return null;
+    var bin = atob(m[3]),
+      a = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    return { buf: a.buffer, type: m[1] };
+  }
+  function hasFile(a) {
+    if (!a) return false;
+    var img = a.querySelector("img");
+    return realHref(a) || !!a.getAttribute("onclick") || !!(img && (img.getAttribute("src") || "").length > 10);
+  }
+  var LS_NOPDF = "spNoPdf",
+    LS_PDFTRY = "spPdfTry";
+  // fetch the file behind a "view" link and keep it (online in the data repo, or for this session only)
   async function grabFile(link, app, name) {
+    try {
+      if (localStorage.getItem(LS_NOPDF)) return { state: "skipped" };
+    } catch (x) {}
     var d = link.ownerDocument,
       w = d.defaultView,
-      href = link.getAttribute("href") || "",
-      url = /^\s*(#|javascript:)/i.test(href) || !href ? null : new URL(href, d.baseURI).href;
-    if (!url) {
-      // most "view" links call window.open(url): catch the address without opening anything
-      var cap = null,
-        orig = w.open;
-      w.open = function (u) {
-        cap = u ? new URL(u, d.baseURI).href : null;
-        return { focus: function () {}, close: function () {}, document: { write: function () {}, close: function () {} } };
-      };
-      try {
-        link.click();
-        await waitFor(function () {
-          return cap;
-        }, 3000, 100);
-      } finally {
-        w.open = orig;
-      }
-      url = cap;
-      if (!url) {
-        // otherwise let it open (form posted to a window, or the page itself) in a hidden frame
-        var r = await openVia(link, null, 10000).catch(function () {
-          return {};
-        });
-        url = r.url || (r.frame && fdoc(r.frame) && fdoc(r.frame).location.href) || null;
-        if (r.frame)
-          try {
-            r.frame.remove();
-          } catch (x) {}
-      }
-    }
-    if (!url) {
-      log("  file link not understood: " + noTok(link.outerHTML).slice(0, 300));
-      return { state: "failed", why: "link not understood" };
-    }
+      img = link.querySelector("img"),
+      f = null,
+      what = "";
     try {
-      var f = await fetchFile(w, url),
-        k = kindOf(f.buf, f.type);
-      if (!k) {
-        log("  file is not a PDF/image (" + f.type + ") from " + noTok(url).slice(0, 160));
-        return { state: "failed", why: "not a PDF" };
+      if (img && /^data:/i.test(img.getAttribute("src") || "")) f = dataUriBuf(img.getAttribute("src"));
+      else if (realHref(link) && /^data:/i.test(link.getAttribute("href"))) f = dataUriBuf(link.getAttribute("href"));
+      if (!f) {
+        var plan = null;
+        if (realHref(link)) plan = { method: "GET", url: new URL(link.getAttribute("href"), d.baseURI).href };
+        else if (img && (img.getAttribute("src") || "").length > 10 && !link.getAttribute("onclick")) plan = { method: "GET", url: new URL(img.getAttribute("src"), d.baseURI).href };
+        else {
+          // run the portal's own "view" function, but catch what it would open instead of opening it
+          var cap = {},
+            P = w.HTMLFormElement.prototype,
+            oSub = P.submit,
+            oOpen = w.open,
+            take = function (fm) {
+              var parts = [];
+              Array.prototype.forEach.call(fm.elements, function (el) {
+                if (el.name && !el.disabled && !/^(button|submit|file)$/i.test(el.type) && (!/^(checkbox|radio)$/i.test(el.type) || el.checked))
+                  parts.push(encodeURIComponent(el.name) + "=" + encodeURIComponent(el.value));
+              });
+              cap.form = { method: (fm.getAttribute("method") || "GET").toUpperCase(), url: new URL(fm.getAttribute("action") || "", d.baseURI).href, body: parts.join("&") };
+            },
+            onSub = function (e) {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+              take(e.target);
+            };
+          P.submit = function () {
+            take(this);
+          };
+          w.open = function (u) {
+            if (u && !/^\s*(about:blank)?\s*$/.test(u)) cap.url = new URL(u, d.baseURI).href;
+            return { focus: function () {}, close: function () {}, location: {}, document: { write: function () {}, close: function () {}, body: {} } };
+          };
+          d.addEventListener("submit", onSub, true);
+          try {
+            link.click();
+            await waitFor(function () {
+              return cap.form || cap.url;
+            }, 4000, 100);
+            await sleep(150);
+          } finally {
+            P.submit = oSub;
+            w.open = oOpen;
+            d.removeEventListener("submit", onSub, true);
+          }
+          if (cap.form) plan = cap.form.method === "POST" ? cap.form : { method: "GET", url: cap.form.url + (cap.form.body ? (cap.form.url.indexOf("?") >= 0 ? "&" : "?") + cap.form.body : "") };
+          else if (cap.url) plan = { method: "GET", url: cap.url };
+        }
+        if (!plan) {
+          var fnm = /([A-Za-z_$][\w$]*)\s*\(/.exec(link.getAttribute("onclick") || "");
+          log("  file link not understood: " + noTok(link.outerHTML.replace(/\s+/g, " ")).slice(0, 200) + (fnm && typeof w[fnm[1]] === "function" ? " · " + fnm[1] + ": " + noTok(String(w[fnm[1]]).replace(/\s+/g, " ")).slice(0, 900) : ""));
+          return { state: "failed", why: "link not understood" };
+        }
+        if (plan.method === "GET") {
+          plan.url = tokened(d, plan.url);
+          if (!plan.url) {
+            log("  file address has no security token — not requested");
+            return { state: "failed", why: "no token" };
+          }
+        } else if (!/OWASP_CSRFTOKEN=/.test(plan.body || "") && !/OWASP_CSRFTOKEN=/.test(plan.url)) {
+          var tk = tokenIn(d) || tokenIn(document);
+          if (!tk) {
+            log("  file request has no security token — not sent");
+            return { state: "failed", why: "no token" };
+          }
+          plan.body = (plan.body ? plan.body + "&" : "") + "OWASP_CSRFTOKEN=" + encodeURIComponent(tk);
+        }
+        what = plan.method + " " + noTok(plan.url).replace(/^https?:\/\/[^/]+/, "").slice(0, 80);
+        log("  file: " + what);
+        try {
+          localStorage.setItem(LS_PDFTRY, app);
+        } catch (x) {}
+        f = /^data:/i.test(plan.url) ? dataUriBuf(plan.url) : await req(w, plan.method, plan.url, plan.method === "POST" ? plan.body || "" : null);
+        // the answer may be a page that holds the document
+        if (f && !kindOf(f.buf, f.type)) {
+          var txt = new TextDecoder().decode(new Uint8Array(f.buf).subarray(0, 6e6));
+          if (/Session\s*Invalidated|session\s*has\s*been\s*expired/i.test(txt)) throw SpErr("logout", "The Service Plus login ended while fetching a document.");
+          var du = /data:(?:application\/pdf|image\/(?:jpe?g|png));base64,[A-Za-z0-9+\/=\s]+/i.exec(txt),
+            su = /<(?:iframe|embed|object|img)[^>]+(?:src|data)\s*=\s*["']([^"']+)["']/i.exec(txt);
+          if (du) f = dataUriBuf(du[0]);
+          else if (su && tokened(d, new URL(su[1].replace(/&amp;/g, "&"), plan.url).href)) {
+            var u2 = tokened(d, new URL(su[1].replace(/&amp;/g, "&"), plan.url).href);
+            log("  file: inside the page → GET " + noTok(u2).replace(/^https?:\/\/[^/]+/, "").slice(0, 80));
+            f = /^data:/i.test(u2) ? dataUriBuf(u2) : await req(w, "GET", u2, null);
+          } else {
+            log("  file answer is a page, not a PDF (" + f.type + "): " + noTok(txt.replace(/\s+/g, " ")).slice(0, 700));
+            f = null;
+          }
+        }
+        try {
+          localStorage.removeItem(LS_PDFTRY);
+        } catch (x) {}
       }
+      var k = f && kindOf(f.buf, f.type);
+      if (!k) return { state: "failed", why: "not a PDF" };
       var key = app + "|" + name;
       try {
         blobs[key] = URL.createObjectURL(new Blob([f.buf], { type: k === "pdf" ? "application/pdf" : "image/" + (k === "jpg" ? "jpeg" : "png") }));
@@ -1225,7 +1345,8 @@
       }
       return out;
     } catch (x) {
-      log("  file fetch failed: " + x.message + " · " + noTok(url).slice(0, 160));
+      if (x.kind === "logout" || x.kind === "stopped") throw x;
+      log("  file fetch failed: " + x.message + " · " + what);
       return { state: "failed", why: x.message };
     }
   }
@@ -1270,7 +1391,7 @@
     for (var i = 0; i < slots.length; i++) {
       var f = field(docs, slots[i][0]),
         a = f && f.el.querySelector("a");
-      if (!a) continue;
+      if (!hasFile(a)) continue;
       var name = who + "-" + slots[i][1] + "-" + (hrow.proT ? new Date(hrow.proT).toISOString().slice(0, 10) : "x");
       if (prevSame && prevSame.files) {
         var old = prevSame.files.filter(function (z) {
@@ -1681,9 +1802,18 @@
       setJ(LS_RUN, R);
       prog(null);
       if (R && R.items && R.items.length) finish(R, prev, prevScan, true);
+      var pdfHit = false;
+      try {
+        if (x.kind === "logout" && localStorage.getItem(LS_PDFTRY)) {
+          pdfHit = true;
+          localStorage.setItem(LS_NOPDF, "1");
+          localStorage.removeItem(LS_PDFTRY);
+          log("login ended right after a document request — PDF fetching switched off");
+        }
+      } catch (e) {}
       var msg =
         x.kind === "logout"
-          ? "Your Service Plus login has ended (the portal logs out after 30 minutes). Log in again, open the tracker and tap Resume — it continues from application " + (R.i + 1) + "."
+          ? "Your Service Plus login has ended" + (pdfHit ? " right after the tracker asked for a report PDF, so PDF fetching is now switched off (reports are still read; PDFs show as “open on portal”)." : " (the portal logs out after 30 minutes).") + " Log in again, open the tracker and tap Resume — it continues from application " + (R.i + 1) + "."
           : x.kind === "stopped"
           ? "Scan stopped. Tap Resume to continue from application " + (R.i + 1) + "."
           : "The scan stopped: " + x.message + ". Tap Resume to try again, or Copy diagnostics and send them.";
@@ -1817,6 +1947,7 @@
       .map(function (z, i) {
         var lab = z.slot === "report" ? "Report PDF" : z.slot === "doc-image" ? "Image" : "Document";
         if (z.state === "failed") return '<span class="f f-amber">' + lab + " — not fetched</span>";
+        if (z.state === "skipped") return '<span class="f f-info">' + lab + " — open on portal</span>";
         return '<button class=fb data-file="' + esc(it.ref) + "|" + esc(z.name) + '">' + lab + (z.state === "saved" ? "" : " (this browser)") + "</button>";
       })
       .join("");
@@ -1881,6 +2012,11 @@
       (API ? "<button id=online>Load online scan</button>" : "") +
       "<button id=csv>Download CSV</button><button id=diag>Copy diagnostics</button></div></div>";
     if (scan.warn && scan.warn.length) h += '<div class="card warn"><b>These lists could not be read</b> (not counted below): ' + esc(scan.warn.join("; ")) + ". Tap Copy diagnostics and send them.</div>";
+    var noPdf = false;
+    try {
+      noPdf = !!localStorage.getItem(LS_NOPDF);
+    } catch (x) {}
+    if (noPdf) h += '<div class="card warn">PDF fetching is switched off (the login ended once while fetching a PDF). <button id=pdfon>Try PDFs again</button></div>';
     var k = function (f, cls, lab, n, em) {
       return '<div class="kpi ' + cls + (view.f === f ? " on" : "") + '" data-f="' + f + '"><span>' + lab + "</span><b>" + n + "</b><em>" + em + "</em></div>";
     };
@@ -1937,7 +2073,7 @@
         (dys == null ? '<span class=mut>' + (it.applied ? "applied " + dd(it.applied) + " · " + daysSince(it.applied) + " days ago" : "—") + "</span>" : '<span class="dy ' + daysCls(dys) + '">' + dys + "</span> <span class=mut>days · " + dd(it.since) + "</span>") +
         "</td><td data-l=Patwari>" +
         (it.pat
-          ? '<span class=ok>✓ Report</span> <span class=mut>' + dd(it.pat.t) + "</span><br>" + (pp ? (pp.state === "failed" ? '<span class="f f-amber">PDF not fetched</span>' : '<span class=ok>PDF ✓</span>') : '<span class="f f-info">No PDF submitted</span>')
+          ? '<span class=ok>✓ Report</span> <span class=mut>' + dd(it.pat.t) + "</span><br>" + (pp ? (pp.state === "failed" ? '<span class="f f-amber">PDF not fetched</span>' : pp.state === "skipped" ? '<span class="f f-info">PDF on portal</span>' : '<span class=ok>PDF ✓</span>') : '<span class="f f-info">No PDF submitted</span>')
           : '<span class=mut>' + (it.read === "ok" ? "Not with Patwari yet" : "—") + "</span>") +
         "</td><td data-l=Girdawar>" +
         (it.gq
@@ -2081,6 +2217,13 @@
         openBridge();
         if (API) getKey(true);
         runScan(false);
+      });
+    $("pdfon") &&
+      ($("pdfon").onclick = function () {
+        try {
+          localStorage.removeItem(LS_NOPDF);
+        } catch (x) {}
+        render();
       });
     $("stop") &&
       ($("stop").onclick = function () {
