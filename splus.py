@@ -1,4 +1,4 @@
-# SERVICE PLUS TRACKER VERSION 1.6
+# SERVICE PLUS TRACKER VERSION 1.7
 """Service Plus (JanSugam) Tracker — server part, added to the Fard Checker app on Render.
 
 What it adds (nothing else in the app changes):
@@ -25,7 +25,7 @@ import time
 import requests
 from flask import Response, jsonify, request
 
-VERSION = "1.6"
+VERSION = "1.7"
 ORIGINS = ("https://jansugam.jk.gov.in",)
 _lock = threading.Lock()
 

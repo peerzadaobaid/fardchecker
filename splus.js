@@ -1,4 +1,4 @@
-// SERVICE PLUS TRACKER VERSION 1.6
+// SERVICE PLUS TRACKER VERSION 1.7
 // Read-only tracker for the J&K Service Plus (JanSugam) portal — Naib Tehsildar inbox.
 // It only ever clicks: Inbox, the Service / Task drop-downs, Get Data, Take Action (to read the page),
 // View Processing History, the history links (Forwarded / Forwarded to Naib Tehsildar) and the report "view" links.
@@ -9,7 +9,7 @@
     window.__spTracker.open();
     return;
   }
-  var VER = "1.6",
+  var VER = "1.7",
     TOPNAME = window.name || "",
     API = window.__spApiBase || "",
     LS_LAST = "spLast",
@@ -910,6 +910,41 @@
     checkLogin(ok);
     return ok;
   }
+  var REF_RE = /[A-Z]{2,}(?:-[A-Z0-9]+)+\/\d{4}\/\d+/;
+  function refOf(cell) {
+    if (!cell) return "";
+    var as = cell.querySelectorAll("a");
+    for (var i = 0; i < as.length; i++) {
+      var t = T(as[i].textContent);
+      if (REF_RE.test(t) && t.length < 40) return REF_RE.exec(t)[0];
+    }
+    var m = REF_RE.exec(T(cell.textContent));
+    return m ? m[0] : "";
+  }
+  function refLinkOf(cell) {
+    if (!cell) return null;
+    var as = Array.prototype.slice.call(cell.querySelectorAll("a"));
+    return (
+      as.filter(function (a) {
+        var t = T(a.textContent);
+        return REF_RE.test(t) && t.length < 40;
+      })[0] || null
+    );
+  }
+  // the list itself carries: Applicant Name, Application Applied On, Application Due Date
+  function listInfo(cell) {
+    var t = T(cell && cell.textContent),
+      g = function (re) {
+        var m = re.exec(t);
+        return m ? T(m[1]) : "";
+      },
+      name = g(/Applicant\s*Name\s*:\s*(.*?)\s*(?:Application\s*Applied|Application\s*Received|Application\s*Due|$)/i);
+    return {
+      name: /^applicant$/i.test(name) ? "" : title(name),
+      applied: parseD(g(/Applied\s*On\s*:\s*([\d\/.-]+)/i)),
+      due: parseD(g(/Due\s*Date\s*:\s*([\d\/.-]+)/i)),
+    };
+  }
   function resultTable(d) {
     return findTable(allDocs(d), [/Application\s*(Number|Ref)/i, /Action/i]);
   }
@@ -931,11 +966,23 @@
     });
     var btn = byText(d, /get\s*data/i)[0];
     if (!btn) throw SpErr("getdata", "Get Data button not found.");
+    var said = null,
+      hook = function (w) {
+        try {
+          w.alert = function (m) {
+            said = T(m) || "(empty message)";
+          };
+        } catch (x) {}
+      };
+    hook(d.defaultView);
     btn.click();
     var clickT = Date.now();
     var t = await waitFor(function () {
       var x = fdoc(F);
       if (!ready(x)) return null;
+      if (isLogin(x) || isTabErr(x)) return "bad";
+      if (x !== d) hook(x.defaultView);
+      if (said) return "none";
       var tb = resultTable(x);
       if (tb) {
         var rows = bodyRows(tb).concat(Array.prototype.map.call(tb.querySelectorAll("td.dataTables_empty"), function (td) {
@@ -951,7 +998,23 @@
       if (tb && !bodyRows(tb).length && /Showing\s*0\s*to\s*0\s*of\s*0/i.test(bt)) return "none";
       return null;
     }, 30000, 300);
-    if (!t) throw SpErr("getdata", "No list came back after Get Data.");
+    if (t === "bad") checkLogin(fdoc(F));
+    if (said) log("  portal message after Get Data: “" + said.slice(0, 160) + "”");
+    if (!t) {
+      try {
+        var x = fdoc(F);
+        log("  after Get Data — page " + noTok(x.location.pathname) + " · tables: " + Array.prototype.map.call(x.querySelectorAll("table"), function (tb) {
+          return "[" + hdrCells(tb).join(" | ").slice(0, 120) + "] rows " + tb.rows.length;
+        }).join(" ; ").slice(0, 500));
+        var bt = T(x.body.textContent),
+          i = bt.search(/Get\s*Data/i);
+        log("  text after the Get Data button: " + bt.slice(i < 0 ? 0 : i, (i < 0 ? 0 : i) + 400));
+        Array.prototype.forEach.call(x.querySelectorAll(".modal.in,.modal.show,.bootbox,.alert,.blockMsg,.error,.errorMessage"), function (m) {
+          T(m.textContent) && log("  message box: " + T(m.textContent).slice(0, 200));
+        });
+      } catch (e) {}
+      throw SpErr("getdata", "No list came back after Get Data.");
+    }
     if (t === "none") return [];
     await sleep(300);
     var rows = await readPaged(t, function (tb) {
@@ -961,9 +1024,13 @@
       if (ic < 0) ic = colIdx(tb, /Action/i);
       return bodyRows(tb)
         .map(function (r) {
-          var c = r.cells;
+          var c = r.cells,
+            li = listInfo(c[ia]);
           return {
-            ref: T(c[ia] && c[ia].textContent),
+            name: li.name,
+            applied: li.applied,
+            due: li.due,
+            ref: refOf(c[ia]),
             status: is >= 0 ? T(c[is].textContent) : "",
             act: ic >= 0 ? T(c[ic].textContent) : "",
           };
@@ -984,10 +1051,10 @@
       ic = colIdx(tb, /^Action$/i);
     if (ic < 0) ic = colIdx(tb, /Action/i);
     var r = bodyRows(tb).filter(function (r) {
-      return T(r.cells[ia] && r.cells[ia].textContent) === ref;
+      return refOf(r.cells[ia]) === ref;
     })[0];
     if (!r) return null;
-    return { row: r, refLink: r.cells[ia] && r.cells[ia].querySelector("a"), actLink: ic >= 0 && r.cells[ic] ? r.cells[ic].querySelector("a,button") : null };
+    return { row: r, refLink: refLinkOf(r.cells[ia]), actLink: ic >= 0 && r.cells[ic] ? r.cells[ic].querySelector("a,button") : null };
   }
 
   // ───────────────────────── one application
@@ -1291,7 +1358,7 @@
     it.svcFull = g(/^Service\s*Name$/i) || it.svcFull;
     it.task = g(/^Current\s*Task$/i) || it.task;
     it.job = jobOf(it.task);
-    it.applied = parseD(g(/^Application\s*(Received|Applied|Submission)\s*Date$/i));
+    it.applied = parseD(g(/^Application\s*(Received|Applied|Submission)\s*Date$/i)) || it.applied;
     var h = await history(dd);
     if (!h) {
       it.read = "nohistory";
@@ -1331,7 +1398,7 @@
         it.rev = { n: revs.length, latest: lr };
       }
       if (it.pat) {
-        it.applicant = applicantOf(it.pat.text);
+        it.applicant = it.applicant || applicantOf(it.pat.text);
         it.village = villageOf(it.pat.text);
       }
     }
@@ -1538,11 +1605,24 @@
           var dd = await chooseService(frame(), svcs[s].value),
             tasks = realOpts(taskSel(dd));
           for (var k = 0; k < tasks.length; k++) {
-            var rows = await getData(frame(), svcs[s].value, tasks[k].value);
+            var rows = [];
+            try {
+              rows = await getData(frame(), svcs[s].value, tasks[k].value);
+            } catch (x) {
+              if (x.kind !== "getdata") throw x;
+              R.warn = R.warn || [];
+              R.warn.push(svcShort(svcs[s].text) + " · " + tasks[k].text);
+              log("  list not read — carrying on with the next one");
+              await openInbox(frame());
+              await chooseService(frame(), svcs[s].value);
+            }
             log(svcShort(svcs[s].text) + " · " + tasks[k].text + ": " + rows.length);
             rows.forEach(function (r) {
               R.items.push({
                 ref: r.ref,
+                applicant: r.name,
+                applied: r.applied,
+                due: r.due,
                 svc: svcShort(svcs[s].text),
                 svcFull: svcs[s].text,
                 g: { svc: svcs[s].value, task: tasks[k].value },
@@ -1650,7 +1730,7 @@
       }
       return x;
     });
-    scan = { v: VER, at: R.start, login: R.login, items: items, done: done, partial: partial, read: R.i, total: R.items.length };
+    scan = { v: VER, at: R.start, login: R.login, items: items, done: done, partial: partial, read: R.i, total: R.items.length, warn: R.warn || [] };
     setJ(LS_LAST, scan);
     syncScan(scan);
     render();
@@ -1800,6 +1880,7 @@
       "</button>" +
       (API ? "<button id=online>Load online scan</button>" : "") +
       "<button id=csv>Download CSV</button><button id=diag>Copy diagnostics</button></div></div>";
+    if (scan.warn && scan.warn.length) h += '<div class="card warn"><b>These lists could not be read</b> (not counted below): ' + esc(scan.warn.join("; ")) + ". Tap Copy diagnostics and send them.</div>";
     var k = function (f, cls, lab, n, em) {
       return '<div class="kpi ' + cls + (view.f === f ? " on" : "") + '" data-f="' + f + '"><span>' + lab + "</span><b>" + n + "</b><em>" + em + "</em></div>";
     };
@@ -1853,7 +1934,7 @@
         esc(it.halqa || "—") +
         (it.applicant ? '<div class=mut>' + esc(it.applicant) + "</div>" : "") +
         '</td><td data-l="With me since">' +
-        (dys == null ? '<span class=mut>—</span>' : '<span class="dy ' + daysCls(dys) + '">' + dys + "</span> <span class=mut>days · " + dd(it.since) + "</span>") +
+        (dys == null ? '<span class=mut>' + (it.applied ? "applied " + dd(it.applied) + " · " + daysSince(it.applied) + " days ago" : "—") + "</span>" : '<span class="dy ' + daysCls(dys) + '">' + dys + "</span> <span class=mut>days · " + dd(it.since) + "</span>") +
         "</td><td data-l=Patwari>" +
         (it.pat
           ? '<span class=ok>✓ Report</span> <span class=mut>' + dd(it.pat.t) + "</span><br>" + (pp ? (pp.state === "failed" ? '<span class="f f-amber">PDF not fetched</span>' : '<span class=ok>PDF ✓</span>') : '<span class="f f-info">No PDF submitted</span>')
