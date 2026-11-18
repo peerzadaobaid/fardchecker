@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.12
+# FARD CHECKER VERSION 1.9.13
 """Revenue Plus application analyser — village records, document reading and checks.
 
 Village data lives in the repo:  villages/<Village name>/<anything>.xlsx  (Jamabandi export)
@@ -1791,7 +1791,9 @@ def build_kml(rep, image_name=None):
     desc = ""
     if image_name:
         desc = (f"<description><![CDATA[<b>{esc(tatima_title(rep))}</b> ({esc(rep.tatima['label'])})<br>"
-                f"<img src=\"{image_name}\" width=\"520\"><br><i>Sketch is not to scale — compare the shaded part with this outline.</i>]]></description>")
+                f"<img src=\"{image_name}\" width=\"520\"><br><i>Sketch is not to scale — compare the shaded part with this outline.</i>"
+                + (f"<br><b>Sketch on the map:</b> {esc(rep.overlay['how'])} — approximate." if getattr(rep, "overlay", None) else "")
+                + "]]></description>")
     kml = '<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>'
     nr = getattr(rep, "near", None)
     kml += (f"<name>Survey {esc(nr['asked'])} NOT on map — nearest available {esc(p['khasra'])} (locality only)</name>" if nr
@@ -1881,6 +1883,118 @@ def detect_shaded_shape(rgb):
     return best[1] if best else None
 
 
+def drawn_outline(rgb):
+    """v1.9.13 — any closed shape drawn on a sketch, in any ink colour (blue / black / red-brown / green), even when the pen
+    strokes have small gaps: strokes of one colour lying close together are joined. The shape must enclose an area, its ink
+    must run along its edge with the inside mostly empty (a drawn plot, not a block of handwriting), and it must hold
+    shading in another colour (the applied part). Returns {"box": (x, y, w, h), "mask": filled shape (H x W, uint8)} or None."""
+    import cv2
+    import numpy as np
+    from PIL import Image
+    H, W = rgb.shape[:2]
+    if _colourfulness(Image.fromarray(rgb)) >= 0.08:          # a photo or ID card, not a sketch
+        return None
+    md = min(W, H)
+    hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
+    h, s_, v = hsv[:, :, 0].astype(int), hsv[:, :, 1].astype(int), hsv[:, :, 2].astype(int)
+    ink = (v < 200) | (s_ > 60)
+    fams = {"blue": ink & (h >= 90) & (h <= 140) & (s_ > 40), "dark": ink & (s_ <= 60) & (v < 140),
+            "red": ink & ((h < 22) | (h > 158)) & (s_ > 40), "green": ink & (h > 35) & (h < 90) & (s_ > 40)}
+    allcol = ink & (s_ > 40)
+    gap = max(9, int(md * 0.035)) | 1
+    best = None
+    for m in fams.values():
+        m8 = m.astype(np.uint8) * 255
+        if m8.mean() < 0.05:
+            continue
+        hl = cv2.morphologyEx(m8, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (max(10, int(W * 0.25)), 1)))
+        m8 = cv2.subtract(m8, cv2.dilate(hl, np.ones((5, 5), np.uint8)))          # ruled lines across the page
+        joined = cv2.morphologyEx(cv2.dilate(m8, np.ones((3, 3), np.uint8)), cv2.MORPH_CLOSE, np.ones((gap, gap), np.uint8))
+        cs, _ = cv2.findContours(joined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for c in cs:
+            x, y, w, hh = cv2.boundingRect(c)
+            if w < W * 0.06 or hh < H * 0.05 or w > W * 0.7 or hh > H * 0.6 or not 0.2 < w / hh < 5:
+                continue
+            hull = cv2.convexHull(c)
+            if cv2.contourArea(hull) / float(w * hh) < 0.3:
+                continue
+            region = np.zeros((H, W), np.uint8)
+            cv2.fillPoly(region, [hull], 1)
+            band = max(5, int(min(w, hh) * 0.16))
+            inner = cv2.erode(region, np.ones((band * 2 + 1, band * 2 + 1), np.uint8))
+            own = m & (region > 0)
+            n_own = own.sum()
+            if n_own < 30 or inner.sum() < 0.12 * w * hh:
+                continue
+            edge = (own & (inner == 0)).sum() / float(n_own)
+            dens = m[inner > 0].mean()
+            if edge < 0.7 or dens > 0.06:
+                continue
+            other = (allcol & ~m)[region > 0].mean()
+            if other < 0.01:
+                continue
+            shape = np.zeros((H, W), np.uint8)                  # the drawn shape itself (keeps a concave outline)
+            cv2.drawContours(shape, [c], -1, 1, -1)
+            if shape.sum() < 0.5 * region.sum():
+                shape = region
+            score = edge + (1 - dens * 10) + 1.5 + min(1, (w * hh) / (W * H * 0.02))
+            if not best or score > best[0]:
+                best = (score, (int(x), int(y), int(w), int(hh)), shape)
+    return {"box": best[1], "mask": best[2]} if best else None
+
+
+def _norm_mask(mask_img, n=128):
+    """Shape (PIL 'L') → its bounding box stretched to n x n (sketches are not to scale)."""
+    import numpy as np
+    bb = mask_img.getbbox()
+    if not bb:
+        return None
+    return np.array(mask_img.crop(bb).resize((n, n), 0)) > 0
+
+
+def _poly_mask(geom, n=128):
+    """Surveyed khasra (lon/lat) → its bounding box stretched to n x n, north up."""
+    import cv2
+    import numpy as np
+    g = max(getattr(geom, "geoms", [geom]), key=lambda q: q.area)
+    xs, ys = g.exterior.coords.xy
+    lat0 = sum(ys) / len(ys)
+    X = [x * math.cos(math.radians(lat0)) for x in xs]
+    x0, x1, y0, y1 = min(X), max(X), min(ys), max(ys)
+    pts = np.array([[(a - x0) / max(1e-12, x1 - x0) * (n - 1), (y1 - b) / max(1e-12, y1 - y0) * (n - 1)] for a, b in zip(X, ys)], np.int32)
+    out = np.zeros((n, n), np.uint8)
+    cv2.fillPoly(out, [pts], 1)
+    return out > 0
+
+
+def best_turn(mask_img, geom, north_known):
+    """Turn the drawn shape to the angle where it best covers the surveyed khasra. Returns (clockwise degrees, match, match unturned).
+    With North written on the sketch the search stays within 90° either way; small turns are preferred when two angles fit equally."""
+    import numpy as np
+    target = _poly_mask(geom)
+    if target.sum() == 0:
+        return 0, 0.0, 0.0
+
+    def iou(deg):
+        a = _norm_mask(mask_img.rotate(-deg, resample=0, expand=True))
+        if a is None:
+            return 0.0
+        return float((a & target).sum()) / max(1, float((a | target).sum()))
+    lim = 90 if north_known else 180
+    base = iou(0)
+    best = (base, 0)
+    for deg in range(-lim, lim + 1, 3):
+        v = iou(deg)
+        if v - 0.0008 * abs(deg) > best[0] - 0.0008 * abs(best[1]):
+            best = (v, deg)
+    v, d = best
+    for deg in range(d - 2, d + 3):                          # refine to the degree
+        w_ = iou(deg)
+        if w_ > v:
+            v, d = w_, deg
+    return d, v, base
+
+
 def sketch_overlay(rep):
     """Sketch cropped around the drawn khasra, white made transparent, placed on the surveyed khasra's extent (north up)."""
     tat, p = getattr(rep, "tatima", None), rep.p
@@ -1902,13 +2016,18 @@ def sketch_overlay(rep):
     if str(tt.get("sketch_kind") or "").lower().startswith("loc"):
         rep.overlay_note = "Not laid over the map: the tatima is a location / route sketch, not a drawing of the khasra."
         return None
-    box, how = None, ""
+    box, how, shape = None, "", None
     try:
         box = detect_sketch_box(rgb)
         how = "outline found automatically"
         if not box:
             box = detect_shaded_shape(rgb)
             how = "outline found round the shaded part"
+        if not box:
+            d_ = drawn_outline(rgb)
+            if d_:
+                box, shape = d_["box"], d_["mask"]
+                how = "outline of the drawn khasra found"
     except Exception:
         box = None
     bx = tt.get("box_2d")
@@ -1921,7 +2040,8 @@ def sketch_overlay(rep):
             bx_, by_, bw_, bh_ = box
             mx, my = int(bw_ * 0.3) + 6, int(bh_ * 0.3) + 6
             sub = rgb[max(0, by_ - my):min(H, by_ + bh_ + my), max(0, bx_ - mx):min(W, bx_ + bw_ + mx)]
-            if bw_ < 10 or bh_ < 10 or sub.size == 0 or (detect_sketch_box(sub) is None and detect_shaded_shape(sub) is None):
+            if bw_ < 10 or bh_ < 10 or sub.size == 0 or (detect_sketch_box(sub) is None and detect_shaded_shape(sub) is None
+                                                         and drawn_outline(sub) is None):
                 box = None
                 rep.overlay_note = "Not laid over the map: no closed outline of the khasra could be found on the sketch."
         except Exception:
@@ -1930,9 +2050,24 @@ def sketch_overlay(rep):
         rep.overlay_note = rep.overlay_note or "Not laid over the map: no closed outline of the khasra could be found on the sketch."
         return None
     x, y, w, h = box
+    if shape is None:                                    # rectangle / shaded finder: take the drawn shape round that box if there is one
+        try:
+            mx_, my_ = int(w * 0.3) + 6, int(h * 0.3) + 6
+            sx0, sy0 = max(0, x - mx_), max(0, y - my_)
+            d_ = drawn_outline(rgb[sy0:min(H, y + h + my_), sx0:min(W, x + w + mx_)])
+            if d_:
+                shape = np.zeros((H, W), np.uint8)
+                sub_m = d_["mask"]
+                shape[sy0:sy0 + sub_m.shape[0], sx0:sx0 + sub_m.shape[1]] = sub_m
+        except Exception:
+            shape = None
+        if shape is None:
+            shape = np.zeros((H, W), np.uint8)
+            shape[y:y + h, x:x + w] = 1
     m = int(max(w, h) * 0.9)                             # keep the surroundings (neighbour numbers, arrows)
     cx0, cy0, cx1, cy1 = max(0, x - m), max(0, y - m), min(W, x + w + m), min(H, y + h + m)
     crop = Image.fromarray(rgb[cy0:cy1, cx0:cx1]).convert("RGBA")
+    smask = Image.fromarray((shape[cy0:cy1, cx0:cx1] * 255).astype(np.uint8), "L")
     # white paper → transparent, ink stays
     a = np.array(crop)
     lum = a[:, :, :3].mean(axis=2)
@@ -1946,15 +2081,27 @@ def sketch_overlay(rep):
     crop.putalpha(alpha)
     # rotate so that north is up (only when the AI told us where North is written)
     north = (tt.get("north_at") or "top").lower()
+    north_known = bool(tt.get("north_at")) and north in ("top", "bottom", "left", "right")
     rot = {"top": 0, "right": 90, "bottom": 180, "left": 270}.get(north, 0)
-    bxl, byt, bxr, byb = x - cx0, y - cy0, x - cx0 + w, y - cy0 + h       # box inside the crop
-    cw, ch = crop.size
     if rot:
         crop = crop.rotate(rot, expand=True)               # counter-clockwise
-        for _ in range(rot // 90):                          # rotate the box coordinates the same way
-            bxl, byt, bxr, byb = byt, cw - bxr, byb, cw - bxl
-            cw, ch = ch, cw
-    # geographic placement: drawn box → khasra extent
+        smask = smask.rotate(rot, resample=0, expand=True)
+    # v1.9.13: turn the sketch to the angle where the drawn shape best covers the surveyed khasra
+    turn, match, match0 = 0, None, None
+    try:
+        t_, v_, b_ = best_turn(smask, p["geom"], north_known)
+        match, match0 = v_, b_
+        if v_ >= 0.5 and v_ - b_ >= 0.08 and t_:
+            turn = t_
+    except Exception:
+        pass
+    if turn:
+        crop = crop.rotate(-turn, resample=Image.BICUBIC, expand=True)       # negative = clockwise
+        smask = smask.rotate(-turn, resample=0, expand=True)
+    bb = smask.getbbox() or (0, 0, crop.size[0], crop.size[1])
+    bxl, byt, bxr, byb = bb
+    cw, ch = crop.size
+    # geographic placement: drawn shape → khasra extent
     minx, miny, maxx, maxy = p["geom"].bounds
     lon_px = (maxx - minx) / max(1, bxr - bxl)
     lat_px = (maxy - miny) / max(1, byb - byt)
@@ -1962,12 +2109,18 @@ def sketch_overlay(rep):
     east = maxx + (cw - bxr) * lon_px
     north_ = maxy + byt * lat_px
     south = miny - (ch - byb) * lat_px
+    if turn:
+        how += (f"; turned {abs(turn)}° {'clockwise' if turn > 0 else 'anticlockwise'} to match the surveyed shape "
+                f"(match {match * 100:.0f}%, {match0 * 100:.0f}% without turning)")
+    elif match is not None:
+        how += (f"; shape match {match0 * 100:.0f}%" + ("" if match0 >= 0.5 else " — the drawn shape does not match the surveyed khasra well, check by eye"))
+    if rot:
+        how += f"; turned so North is up (North was written at the {north})"
     crop.thumbnail((900, 900))
     buf = io.BytesIO()
     crop.save(buf, "PNG", optimize=True)
     return {"png": base64.b64encode(buf.getvalue()).decode(), "north": north_, "south": south, "east": east, "west": west,
-            "how": how + ("" if not rot else f"; turned so North is up (North was written at the {north})"),
-            "north_known": bool(tt.get("north_at")) and north in ("top", "bottom", "left", "right")}
+            "how": how, "north_known": north_known, "turn": turn, "match": match, "match0": match0}
 
 
 def build_kmz(rep):

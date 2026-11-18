@@ -1,11 +1,13 @@
 """Fard Checker — single place for the version number and the change list.
-FARD CHECKER VERSION 1.9.12
+FARD CHECKER VERSION 1.9.13
 Every file of the app carries the same "FARD CHECKER VERSION x.y" line; the Render page checks they all match."""
-VERSION = "1.9.12"
-DATE = "7 Nov 2026"
+VERSION = "1.9.13"
+DATE = "18 Nov 2026"
 
 # newest first: (version, date, what changed)
 CHANGES = [
+    ("1.9.13", "18 Nov 2026",
+     "Patwari's sketch on the map: the outline of the drawn khasra is now found in any shape and any ink colour (blue, black, red-brown, green), even with small gaps between pen strokes, provided the applied part is shaded inside. The sketch is turned to the angle where the drawn shape best covers the surveyed khasra (e.g. 559: turned 38° clockwise, match 81% against 35% unturned); weak matches stay north-up and are marked 'check by eye'. The KMZ popup and the report say how it was placed."),
     ("1.9.12", "7 Nov 2026",
      "Memory (Render free plan, 512 MB): pictures are reduced while decoding instead of after (a large phone photo no longer takes ~150 MB on its own); the free OCR step no longer holds every page at once; only the one original photo the report uses is kept; the request body is not held twice; the online save of a report finishes before the next analysis starts. The analyser restarts itself cleanly between analyses when more than 380 MB is still in use, and after every 20 analyses (instead of being stopped by Render in the middle of one); the tracker waits and retries during such a restart without marking the application as failed. New 'Memory' box on the landing page shows memory at each step of recent analyses."),
     ("1.9.11", "7 Nov 2026",

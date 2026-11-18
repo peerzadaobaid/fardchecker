@@ -1,4 +1,4 @@
-# FARD CHECKER VERSION 1.9.12
+# FARD CHECKER VERSION 1.9.13
 """Revenue Plus Tracker — hosted tracker + application analyser (Flask, for Render).
 
 Environment variables (Render → Environment):
@@ -58,11 +58,6 @@ def cors(resp):
 @app.route("/api/<path:_any>", methods=["OPTIONS"])
 def preflight(_any):
     return Response(status=204)
-
-
-# Service Plus (JanSugam) Tracker — its own pages and storage, see splus.py
-import splus
-splus.register(app, ok_key)
 
 
 @app.get("/tracker.js")
